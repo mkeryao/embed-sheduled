@@ -15,6 +15,11 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC implementation of the {@link TaskConfigDao} interface.
+ * Handles database operations for {@link com.example.taskscheduler.entity.TaskConfig} entities
+ * using Spring's {@link JdbcTemplate}.
+ */
 @Repository
 public class TaskConfigDaoImpl implements TaskConfigDao {
 

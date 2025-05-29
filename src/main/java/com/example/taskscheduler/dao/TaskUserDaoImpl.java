@@ -15,6 +15,11 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC implementation of the {@link TaskUserDao} interface.
+ * Handles database operations for {@link TaskUser} entities
+ * using Spring's {@link JdbcTemplate}.
+ */
 @Repository
 public class TaskUserDaoImpl implements TaskUserDao {
 

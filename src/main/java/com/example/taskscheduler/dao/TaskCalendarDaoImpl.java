@@ -17,6 +17,11 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * JDBC implementation of the {@link TaskCalendarDao} interface.
+ * Handles database operations for {@link TaskCalendar} and {@link TaskCalendarDay} entities
+ * using Spring's {@link JdbcTemplate}.
+ */
 @Repository
 public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
@@ -105,8 +110,9 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public int deleteCalendarById(Integer calendarId) {
-        // Consider cascade deletion or manual deletion of child task_calendar_day entries if not handled by DB
-        jdbcTemplate.update(DELETE_CALENDAR_DAYS_BY_CALENDAR_ID_SQL, calendarId); // Manual cascade
+        // Manually cascade delete associated calendar days before deleting the calendar itself.
+        // This is important if the database schema does not define ON DELETE CASCADE for the foreign key.
+        jdbcTemplate.update(DELETE_CALENDAR_DAYS_BY_CALENDAR_ID_SQL, calendarId);
         return jdbcTemplate.update(DELETE_CALENDAR_BY_ID_SQL, calendarId);
     }
 

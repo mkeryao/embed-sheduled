@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Task Management - Task Scheduler</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -79,45 +79,100 @@
                             <label for="taskType">Task Type</label>
                             <select class="form-control" id="taskType">
                                 <option value="0">Bean Task</option>
+                                    <option value="1">Shell Script Task</option>
+                                    <option value="2">HTTP Task</option>
                                     <option value="3">Workflow Task</option>
-                                <option value="1" disabled>HTTP Task (Not Implemented)</option>
-                                <option value="2" disabled>Shell Script (Not Implemented)</option>
                             </select>
                         </div>
                         </div>
 
                         <!-- Type Specific Fields Container -->
                         <div id="typeSpecificFieldsContainer">
-                            <!-- Bean Task Specific Fields -->
+                            <!-- Bean Task Specific Fields (type 0) -->
                             <div id="beanTaskFields" class="type-specific-fields" style="display:none;">
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <label for="beanName">Bean Name</label>
-                                    <input type="text" class="form-control" id="beanName">
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="beanName">Bean Name</label>
+                                        <input type="text" class="form-control" id="beanName" placeholder="e.g., mySampleTask">
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="methodName">Method Name</label>
+                                        <input type="text" class="form-control" id="methodName" placeholder="e.g., executeSuccess">
+                                    </div>
                                 </div>
-                                <div class="form-group col-md-6">
-                                    <label for="methodName">Method Name</label>
-                                    <input type="text" class="form-control" id="methodName">
+                                <div class="form-group">
+                                    <label for="beanParameters">Bean Parameters (JSON)</label>
+                                    <textarea class="form-control" id="beanParameters" rows="2" placeholder='{"key": "value"}'></textarea>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <label for="beanParameters">Bean Parameters (JSON)</label>
-                                <textarea class="form-control" id="beanParameters" rows="2" placeholder='{"key": "value"}'></textarea>
-                            </div>
-                        </div>
                         
-                        <!-- HTTP Task Specific Fields -->
-                        <div id="httpTaskFields" class="type-specific-fields" style="display:none;">
+                            <!-- Shell Script Task Specific Fields (type 1) -->
+                            <div id="shellTaskFields" class="type-specific-fields" style="display:none;">
+                                <div class="form-group">
+                                    <label for="shellScriptContent">Script Content or Path</label>
+                                    <textarea class="form-control" id="shellScriptContent" rows="3" placeholder="e.g., echo 'Hello' or /path/to/script.sh"></textarea>
+                                </div>
+                                <div class="form-group form-check">
+                                    <input type="checkbox" class="form-check-input" id="shellIsInlineScript">
+                                    <label class="form-check-label" for="shellIsInlineScript">Is Inline Script (vs. Path)</label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="shellArguments">Arguments (one per line)</label>
+                                    <textarea class="form-control" id="shellArguments" rows="2" placeholder="arg1&#10;arg2 with spaces"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="shellWorkingDirectory">Working Directory (Optional)</label>
+                                    <input type="text" class="form-control" id="shellWorkingDirectory" placeholder="e.g., /tmp">
+                                </div>
+                                <small class="form-text text-muted">
+                                    Note: Shell script parameters (script, arguments, workingDirectory, isInlineScript) will be stored as a JSON object in the generic "Bean Parameters" field in the database.
+                                    The fields below (Bean Name, Method Name) are not used for Shell tasks.
+                                </small>
                             </div>
 
-                        <!-- Shell Script Specific Fields -->
-                        <div id="shellTaskFields" class="type-specific-fields" style="display:none;">
+                            <!-- HTTP Task Specific Fields (type 2) -->
+                            <div id="httpTaskFields" class="type-specific-fields" style="display:none;">
+                                <div class="form-group">
+                                    <label for="httpUrl">HTTP URL</label>
+                                    <input type="url" class="form-control" id="httpUrl" placeholder="https://example.com/api/data" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="httpMethod">HTTP Method</label>
+                                    <select class="form-control" id="httpMethod">
+                                        <option value="GET">GET</option>
+                                        <option value="POST">POST</option>
+                                        <option value="PUT">PUT</option>
+                                        <option value="DELETE">DELETE</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="httpHeaders">HTTP Headers (JSON)</label>
+                                    <textarea class="form-control" id="httpHeaders" rows="2" placeholder='{"Content-Type": "application/json", "X-API-KEY":"secret"}'></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="httpBody">HTTP Body (e.g., JSON for POST/PUT)</label>
+                                    <textarea class="form-control" id="httpBody" rows="3" placeholder='{"key": "value"}'></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="httpConnectTimeout">Connect Timeout (ms, Optional)</label>
+                                        <input type="number" class="form-control" id="httpConnectTimeout" placeholder="e.g., 5000">
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="httpReadTimeout">Read Timeout (ms, Optional)</label>
+                                        <input type="number" class="form-control" id="httpReadTimeout" placeholder="e.g., 10000">
+                                    </div>
+                                </div>
+                                 <small class="form-text text-muted">
+                                    Note: HTTP task parameters will be stored as a JSON object in the generic "Bean Parameters" field in the database.
+                                    The fields below (Bean Name, Method Name) are not used for HTTP tasks.
+                                </small>
                             </div>
 
-                        <!-- Workflow Task Specific Fields -->
-                        <div id="workflowTaskFields" class="type-specific-fields" style="display:none;">
-                            <div class="form-group">
-                                <label for="globalParametersJson">Global Parameters (JSON, Optional)</label>
+                            <!-- Workflow Task Specific Fields (type 3) -->
+                            <div id="workflowTaskFields" class="type-specific-fields" style="display:none;">
+                                <div class="form-group">
+                                    <label for="globalParametersJson">Global Parameters (JSON, Optional)</label>
                                 <textarea class="form-control" id="globalParametersJson" rows="3" placeholder='{"key": "globalValue", "api_url": "https://example.com"}'></textarea>
                             </div>
                             <div class="form-group">
@@ -182,9 +237,9 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    <script src="libs/popperjs/popper.min.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function() {
@@ -206,8 +261,8 @@
             function getTaskTypeString(typeInt) {
                 switch(typeInt) {
                     case 0: return "Bean";
-                                // case 1: return "HTTP"; // Not yet enabled in UI dropdown fully
-                                // case 2: return "Shell"; // Not yet enabled in UI dropdown fully
+                                case 1: return "Shell Script";
+                                case 2: return "HTTP";
                                 case 3: return "Workflow";
                                 default: return `Unknown (${typeInt})`;
                 }
@@ -251,19 +306,24 @@
             // Show/hide type-specific fields based on selection
             $('#taskType').change(function() {
                 const type = $(this).val();
-                        $('.type-specific-fields').hide(); // Hide all type-specific sections
+                        $('.type-specific-fields').hide(); 
+                        $('#beanName, #methodName, #beanParameters').closest('.form-group').show(); // Default visibility for bean params
+                        
                         if (type === '0') { // Bean Task
                             $('#beanTaskFields').show();
+                        } else if (type === '1') { // Shell Script Task
+                            $('#shellTaskFields').show();
+                             // Hide direct bean parameters for shell tasks as they use structured JSON in beanParameters
+                            $('#beanName, #methodName').closest('.form-group').hide();
+                            $('#beanParameters').closest('.form-group').hide(); // Hide the generic beanParameters textarea
+                        } else if (type === '2') { // HTTP Task
+                            $('#httpTaskFields').show();
+                            // Hide direct bean parameters for HTTP tasks
+                            $('#beanName, #methodName').closest('.form-group').hide();
+                            $('#beanParameters').closest('.form-group').hide();
                         } else if (type === '3') { // Workflow Task
                             $('#workflowTaskFields').show();
-                            // For workflow, typically beanName, methodName etc. are not directly set on the parent workflow task.
-                            // They are defined within the workflowNodes.
-                            // You might want to disable/hide beanName, methodName for workflow parent task config.
-                            $('#beanName, #methodName, #beanParameters').closest('.form-group').hide(); 
-                        } else {
-                            // For other types like HTTP/Shell if they were enabled and had specific fields
-                            // $('#httpTaskFields').show(); or $('#shellTaskFields').show();
-                             $('#beanName, #methodName, #beanParameters').closest('.form-group').show(); // Show for non-workflow bean tasks
+                            $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
                         }
                     }).trigger('change');
 
@@ -289,18 +349,12 @@
                     taskType: parseInt($('#taskType').val()),
                     isActive: $('#isActive').is(':checked'),
                     
-                    // Type-specific fields
+                    // Common fields for BEAN tasks (type 0)
                     beanName: $('#beanName').val(),
                     methodName: $('#methodName').val(),
-                    beanParameters: $('#beanParameters').val(),
-                    httpUrl: $('#httpUrl').val(), // Will be null if not HTTP task
-                    httpMethod: $('#httpMethod').val(),
-                    httpHeaders: $('#httpHeaders').val(),
-                    httpBody: $('#httpBody').val(),
-                    scriptPath: $('#scriptPath').val(), // Will be null if not Shell task
-                    scriptParameters: $('#scriptParameters').val(),
+                    // beanParameters will be populated based on task type below
 
-                    // Advanced settings
+                    // Advanced settings (common to all)
                     startDate: $('#startDate').val() || null,
                     endDate: $('#endDate').val() || null,
                     taskCalendarGroup: $('#taskCalendarGroup').val() || null,
@@ -313,26 +367,40 @@
                     // The controller will convert these from JSON strings if they are sent as such.
                     // Or, if the DTO expects lists, parse them here.
                     // For now, assume the controller handles TaskConfigDto which has List<...>
-                    workflowNodes: parseJsonOrNull($('#workflowNodesJson').val()),
-                    workflowEdges: parseJsonOrNull($('#workflowEdgesJson').val()),
-                    globalParameters: parseJsonOrNull($('#globalParametersJson').val())
+                    workflowNodes: null, // Will be populated for workflow type
+                    workflowEdges: null,
+                    globalParameters: null
                 };
-
-                // Clear empty fields for type-specific data that isn't relevant
-                if (taskData.taskType !== 0) {
-                    taskData.beanName = null; taskData.methodName = null; taskData.beanParameters = null;
-                    // taskData.httpUrl = null; etc. for other types
-                    taskData.workflowNodes = null; taskData.workflowEdges = null;
+                
+                // Populate beanParameters based on task type
+                if (taskData.taskType === 0) { // Bean
+                    taskData.beanParameters = $('#beanParameters').val();
+                } else if (taskData.taskType === 1) { // Shell
+                    const shellParams = {
+                        script: $('#shellScriptContent').val(),
+                        isInlineScript: $('#shellIsInlineScript').is(':checked'),
+                        arguments: ($('#shellArguments').val() || '').split('\n').map(arg => arg.trim()).filter(arg => arg.length > 0),
+                        workingDirectory: $('#shellWorkingDirectory').val() || null
+                    };
+                    taskData.beanParameters = JSON.stringify(shellParams);
+                    taskData.beanName = null; taskData.methodName = null; // Not used for Shell type directly
+                } else if (taskData.taskType === 2) { // HTTP
+                    const httpParams = {
+                        url: $('#httpUrl').val(),
+                        method: $('#httpMethod').val(),
+                        headers: parseJsonOrNull($('#httpHeaders').val()) || {},
+                        body: $('#httpBody').val() || null,
+                        connectTimeout: parseJsonOrNull($('#httpConnectTimeout').val()),
+                        readTimeout: parseJsonOrNull($('#httpReadTimeout').val())
+                    };
+                    taskData.beanParameters = JSON.stringify(httpParams);
+                    taskData.beanName = null; taskData.methodName = null; // Not used for HTTP type directly
+                } else if (taskData.taskType === 3) { // Workflow
+                    taskData.workflowNodes = parseJsonOrNull($('#workflowNodesJson').val());
+                    taskData.workflowEdges = parseJsonOrNull($('#workflowEdgesJson').val());
+                    taskData.globalParameters = parseJsonOrNull($('#globalParametersJson').val());
+                    taskData.beanName = null; taskData.methodName = null; taskData.beanParameters = null; // Not used for Workflow parent
                 }
-                // Similar logic for other types if they were mutually exclusive for these fields
-                if (taskData.taskType !== 3) { // Not a workflow task
-                    taskData.workflowNodes = null; taskData.workflowEdges = null;
-                } else { // Is a workflow task, clear bean/http/shell specific fields
-                    taskData.beanName = null; taskData.methodName = null; taskData.beanParameters = null;
-                    // taskData.httpUrl = null; etc.
-                }
-
-                // ... (rest of the method)
 
 
                 const method = taskId ? 'PUT' : 'POST';
@@ -366,15 +434,50 @@
                         $('#taskType').val(task.taskType.toString()).trigger('change');
                         $('#isActive').prop('checked', task.isActive);
 
-                        // Populate type-specific fields
+                        // Populate common bean fields first
                         $('#beanName').val(task.beanName);
                         $('#methodName').val(task.methodName);
-                        $('#beanParameters').val(task.beanParameters);
                         
-                        // Populate workflow fields
-                        $('#workflowNodesJson').val(task.workflowNodes ? JSON.stringify(task.workflowNodes, null, 2) : '');
-                        $('#workflowEdgesJson').val(task.workflowEdges ? JSON.stringify(task.workflowEdges, null, 2) : '');
-                        $('#globalParametersJson').val(task.globalParameters ? JSON.stringify(task.globalParameters, null, 2) : '');
+                        // Populate type-specific fields based on task.taskType
+                        if (task.taskType === 0) { // Bean
+                            $('#beanParameters').val(task.beanParameters);
+                        } else if (task.taskType === 1) { // Shell
+                            if (task.beanParameters) {
+                                try {
+                                    const shellP = JSON.parse(task.beanParameters);
+                                    $('#shellScriptContent').val(shellP.script);
+                                    $('#shellIsInlineScript').prop('checked', shellP.isInlineScript || false);
+                                    $('#shellArguments').val((shellP.arguments || []).join('\n'));
+                                    $('#shellWorkingDirectory').val(shellP.workingDirectory);
+                                } catch (e) {
+                                    showFeedback('Error parsing Shell parameters: ' + e.message, true);
+                                    $('#beanParameters').val(task.beanParameters); // Show raw if parse fails
+                                }
+                            }
+                        } else if (task.taskType === 2) { // HTTP
+                             if (task.beanParameters) {
+                                try {
+                                    const httpP = JSON.parse(task.beanParameters);
+                                    $('#httpUrl').val(httpP.url);
+                                    $('#httpMethod').val(httpP.method);
+                                    $('#httpHeaders').val(httpP.headers ? JSON.stringify(httpP.headers, null, 2) : '');
+                                    $('#httpBody').val(httpP.body);
+                                    $('#httpConnectTimeout').val(httpP.connectTimeout);
+                                    $('#httpReadTimeout').val(httpP.readTimeout);
+                                } catch (e) {
+                                    showFeedback('Error parsing HTTP parameters: ' + e.message, true);
+                                    $('#beanParameters').val(task.beanParameters); // Show raw if parse fails
+                                }
+                            }
+                        } else if (task.taskType === 3) { // Workflow
+                            $('#workflowNodesJson').val(task.workflowNodes ? JSON.stringify(task.workflowNodes, null, 2) : '');
+                            $('#workflowEdgesJson').val(task.workflowEdges ? JSON.stringify(task.workflowEdges, null, 2) : '');
+                            $('#globalParametersJson').val(task.globalParameters ? JSON.stringify(task.globalParameters, null, 2) : '');
+                            $('#beanParameters').val(''); // Clear generic beanParameters for workflow type
+                        } else {
+                             $('#beanParameters').val(task.beanParameters); // Fallback for unknown or simple bean tasks
+                        }
+
 
                         // Populate advanced settings
                         $('#startDate').val(task.startDate);

@@ -4,23 +4,44 @@ CREATE TABLE task_config (
     task_name VARCHAR(255) NOT NULL,
     task_group VARCHAR(255) NOT NULL,
     cron_expression VARCHAR(255) NOT NULL,
-    task_type INT NOT NULL COMMENT '0: Bean task, 1: HTTP task (Not Implemented), 2: Shell script (Not Implemented), 3: Workflow task',
-    bean_name VARCHAR(255), -- For Bean tasks
+    task_type INT NOT NULL COMMENT '0: Bean task, 1: (Legacy/Unused), 2: HTTP task, 3: Workflow task, 4: Shell script task',
+    
+    -- Task execution parameters (specific to task_type)
+    bean_name VARCHAR(255), -- For Bean, Workflow (indirectly via nodes)
     method_name VARCHAR(255), -- For Bean tasks
-    bean_parameters TEXT, -- JSON string for parameters
-    http_url VARCHAR(1024), -- For HTTP tasks
-    http_method VARCHAR(10), -- GET, POST, etc.
-    http_headers TEXT, -- JSON string for headers
-    http_body TEXT, -- For POST/PUT requests
-    script_path VARCHAR(1024), -- For Shell scripts
-    script_parameters TEXT, -- Parameters for the script
+    bean_parameters TEXT, -- For Bean (direct params), HTTP (HttpTaskParameters JSON), Shell (params string), Workflow (step overrides)
+
+    -- Fields for HTTP tasks (stored in bean_parameters as JSON for task_type=2)
+    -- http_url VARCHAR(1024), (Covered by bean_parameters for HTTP tasks)
+    -- http_method VARCHAR(10), 
+    -- http_headers TEXT, 
+    -- http_body TEXT, 
+
+    -- Fields for Shell tasks (stored in bean_parameters for task_type=1)
+    -- script_path VARCHAR(1024), 
+    -- script_parameters TEXT, 
+    
+    -- Advanced features
+    task_calendar_group VARCHAR(255), -- Name of the calendar group to check for exclusion days
+    task_exclude_times TEXT, -- Comma-separated time ranges for exclusion, e.g., "00:00-08:00,22:00-23:59"
+    start_date DATE, -- Task will not run before this date
+    end_date DATE, -- Task will not run after this date
+    execute_timeout_seconds INT DEFAULT 0, -- 0 means no timeout
+    
+    -- Notification settings
+    notify_success_user_ids VARCHAR(1024), -- Comma-separated user IDs
+    notify_failed_user_ids VARCHAR(1024), -- Comma-separated user IDs
+    
     description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
-    task_lock_name VARCHAR(255) DEFAULT NULL, -- Name of the distributed lock for this task
-    task_lock_most_seconds INT DEFAULT NULL, -- Duration for the lock in seconds
-    workflow_nodes TEXT, -- JSON array of WorkflowNode
-    workflow_edges TEXT, -- JSON array of WorkflowEdge
+    task_lock_name VARCHAR(255) DEFAULT NULL,
+    task_lock_most_seconds INT DEFAULT NULL,
+
+    -- Workflow specific fields (for task_type=3)
+    workflow_nodes TEXT, -- JSON array of WorkflowNode, defines the structure
+    workflow_edges TEXT, -- JSON array of WorkflowEdge, defines transitions
     global_parameters TEXT, -- JSON map for global workflow parameters
+
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_task_group_name (task_group, task_name)
@@ -33,12 +54,13 @@ CREATE TABLE task_execute_log (
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP,
     state VARCHAR(20) NOT NULL COMMENT 'RUNNING, SUCCESS, FAILED, TIMEOUT, SKIPPED',
+    rtn_msg TEXT, -- Return message or short summary of execution
     ex_msg TEXT, -- Exception message if any
     instance_id VARCHAR(255), -- Identifier of the scheduler instance that ran the task
     parent_execute_no INT, -- For workflow steps, references the main workflow's log_id
-    task_pattern VARCHAR(50), -- e.g. NORMAL, WORKFLOW_STEP
+    task_pattern VARCHAR(50), -- e.g. NORMAL, WORKFLOW_PARENT, WORKFLOW_STEP
     FOREIGN KEY (task_id) REFERENCES task_config(task_id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_execute_no) REFERENCES task_execute_log(log_id) ON DELETE SET NULL
+    FOREIGN KEY (parent_execute_no) REFERENCES task_execute_log(log_id) ON DELETE SET NULL -- Or CASCADE if preferred
 );
 
 -- User table for potential UI authentication/authorization or task ownership
@@ -69,7 +91,7 @@ CREATE TABLE task_calendar_day (
     FOREIGN KEY (calendar_id) REFERENCES task_calendar(calendar_id) ON DELETE CASCADE
 );
 
--- Lock table for distributed task execution (optimistic locking or leader election)
+-- Lock table for distributed task execution
 CREATE TABLE task_lock (
     lock_name VARCHAR(255) PRIMARY KEY,
     owner_instance_id VARCHAR(255),
@@ -79,33 +101,35 @@ CREATE TABLE task_lock (
 );
 
 -- Example data
--- Note: The INSERT INTO task_config needs to be updated to include all columns from the modified table def.
--- The previous INSERTs only had 11 columns, now it has more due to advanced features + workflow.
--- For existing tasks, new columns like task_calendar_group, etc., will be NULL.
--- The example workflow task will populate workflow_nodes.
 INSERT INTO task_config (
     task_name, task_group, cron_expression, task_type, 
     bean_name, method_name, bean_parameters, 
-    http_url, http_method, http_headers, http_body, 
-    script_path, script_parameters, 
     description, is_active, 
     task_lock_name, task_lock_most_seconds,
     task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds,
     notify_success_user_ids, notify_failed_user_ids,
     workflow_nodes, workflow_edges, global_parameters
 ) VALUES
-('MySampleSuccessTask', 'DEFAULT_GROUP', '0/30 * * * * ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"Hello from scheduler!", "value": 123}', NULL, NULL, NULL, NULL, NULL, NULL, 'A sample task that should succeed.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
-('MySampleFailedTask', 'DEFAULT_GROUP', '0/45 * * * * ?', 0, 'mySampleTask', 'executeFailed', '{"error":"Simulated failure"}', NULL, NULL, NULL, NULL, NULL, NULL, 'A sample task that is expected to fail.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
-('MyLockedTask', 'DEFAULT_GROUP', '0/20 * * * * ?', 0, 'mySampleTask', 'simpleExecute', '{}', NULL, NULL, NULL, NULL, NULL, NULL, 'A sample task that uses a distributed lock.', TRUE, 'SAMPLE_LOCK_FOR_MY_TASK', 60, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
-('MyInactiveTask', 'DEFAULT_GROUP', '0 0 0 1 1 ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"This should not run", "value": 0}', NULL, NULL, NULL, NULL, NULL, NULL, 'An inactive sample task.', FALSE, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
-('MyFirstWorkflow', 'WORKFLOW_GROUP', '0 0 1 * * ?', 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'A sample workflow task.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, 
-    '[{"nodeId":"node1","taskConfigId":1,"nodeName":"Step 1: Success Task","parameters":{"message":"Input for step 1"}}, {"nodeId":"node2","taskConfigId":2,"nodeName":"Step 2: Failed Task","parameters":{}}]',
-    '[{"fromNodeId":"node1", "toNodeId":"node2", "condition":"SUCCESS", "expression":"${node1_output.status == ''SUCCESS''}"}]',
-    '{"global_api_key":"some_global_value", "default_retry_count":3}');
+('MySampleSuccessTask', 'DEFAULT_GROUP', '0/30 * * * * ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"Hello from scheduler!", "value": 123}', 'A sample task that should succeed.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
+('MySampleFailedTask', 'DEFAULT_GROUP', '0/45 * * * * ?', 0, 'mySampleTask', 'executeFailed', '{"error":"Simulated failure"}', 'A sample task that is expected to fail.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 30, NULL, '1', NULL, NULL, NULL),
+('MyLockedTask', 'DEFAULT_GROUP', '0/20 * * * * ?', 0, 'mySampleTask', 'simpleExecute', '{}', 'A sample task that uses a distributed lock.', TRUE, 'SAMPLE_LOCK_FOR_MY_TASK', 60, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
+('MyInactiveTask', 'DEFAULT_GROUP', '0 0 0 1 1 ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"This should not run", "value": 0}', 'An inactive sample task.', FALSE, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
+('MyFirstWorkflow', 'WORKFLOW_GROUP', '0 0 1 * * ?', 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'A sample workflow task.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, '1', 
+    '[{"nodeId":"node1","taskConfigId":1,"nodeName":"Step 1: Success Task","parameters":{"message":"Input for step 1 from workflow"}}, {"nodeId":"node2","taskConfigId":2,"nodeName":"Step 2: Failed Task","parameters":{}}]',
+    '[{"fromNodeId":"node1", "toNodeId":"node2", "priority":0, "expression":"${node1_output.status == ''SUCCESS''}"}]',
+    '{"global_api_key":"some_global_value", "default_retry_count":3}'),
+('SampleHttpTask', 'HTTP_TASKS', '0 0 2 * * ?', 2, NULL, NULL, 
+    '{"url":"https://jsonplaceholder.typicode.com/todos/1", "method":"GET", "headers":{"X-Custom":"Test"}, "body":null, "connectTimeout":5000, "readTimeout":10000}',
+    'A sample HTTP GET task.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
+('SampleShellScriptTask', 'SHELL_TASKS', '0 0 3 * * ?', 4, NULL, NULL,
+    '{"script":"echo \\"Hello from Shell Task! Argument: $1\\"; date", "isInlineScript":true, "arguments":["TestArg1"], "workingDirectory":"/tmp"}',
+    'A sample inline Shell script task.', TRUE, NULL, NULL, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL);
+
 
 INSERT INTO task_user (username, password_hash, email, webhook_address, is_admin)
 VALUES
-('admin', 'a79913f77510932813c0077209097628111854514c3805845979118300a281e5', 'admin@example.com', NULL, TRUE);
+('admin', 'a79913f77510932813c0077209097628111854514c380584579118300a281e5', 'admin@example.com', 'https://webhook.site/your-unique-webhook-url-for-admin', TRUE),
+('user1', 'another_hashed_password', 'user1@example.com', 'https://webhook.site/your-unique-webhook-url-for-user1', FALSE);
 
 INSERT INTO task_calendar (calendar_name, description) VALUES ('NATIONAL_HOLIDAYS', 'National holidays for the year.');
 INSERT INTO task_calendar_day (calendar_id, event_date, is_working_day, description)

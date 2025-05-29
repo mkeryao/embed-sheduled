@@ -10,6 +10,11 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.util.UUID;
 
+/**
+ * Service for managing distributed locks using a database table (`task_lock`).
+ * It provides mechanisms to acquire and release locks, with retry logic for acquisition.
+ * The scheduler instance ID is used to identify lock owners.
+ */
 @Service
 public class DistributedLockService {
 
@@ -18,18 +23,32 @@ public class DistributedLockService {
     @Autowired
     private TaskLockDao taskLockDao;
 
+    /**
+     * Configurable scheduler instance ID. If not provided, a UUID is generated.
+     * Used to identify the owner of a lock.
+     */
     @Value("${scheduler.instance.id:#{null}}")
     private String configuredInstanceId;
 
+    /**
+     * Maximum number of attempts to acquire a lock.
+     */
     @Value("${scheduler.lock.retry.maxAttempts:3}")
     private int maxLockAttempts;
 
+    /**
+     * Delay in milliseconds between lock acquisition retries.
+     */
     @Value("${scheduler.lock.retry.delayMs:1000}")
     private long lockRetryDelayMs;
 
 
     private String schedulerInstanceId;
 
+    /**
+     * Initializes the service, setting up the scheduler instance ID.
+     * It also ensures that a placeholder record for a global scheduler lock exists in the database.
+     */
     @PostConstruct
     public void init() {
         if (configuredInstanceId == null || configuredInstanceId.trim().isEmpty()) {
@@ -40,13 +59,27 @@ public class DistributedLockService {
             logger.info("scheduler.instance.id configured as: {}", schedulerInstanceId);
         }
         logger.info("DistributedLockService initialized. Max lock attempts: {}, Retry delay: {}ms", maxLockAttempts, lockRetryDelayMs);
+        // Ensure a common lock record exists if needed, e.g., for a global leader election lock
         taskLockDao.ensureLockRecordExists("GLOBAL_SCHEDULER_LOCK");
     }
 
+    /**
+     * Retrieves the unique identifier for this scheduler instance.
+     * @return The scheduler instance ID.
+     */
     public String getSchedulerInstanceId() {
         return schedulerInstanceId;
     }
 
+    /**
+     * Attempts to acquire or refresh a distributed lock with retry logic.
+     *
+     * @param lockName The name of the lock.
+     * @param owner The identifier of the entity attempting to acquire the lock (typically the scheduler instance ID).
+     * @param lockMostSeconds The duration in seconds for which the lock should be held.
+     *                        If 0 or negative, the lock is attempted for a very long duration (effectively indefinite).
+     * @return {@code true} if the lock was successfully acquired or refreshed, {@code false} otherwise.
+     */
     public boolean tryLock(String lockName, String owner, int lockMostSeconds) {
         if (lockName == null || lockName.trim().isEmpty() || owner == null || owner.trim().isEmpty()) {
             logger.warn("Lock name or owner is null/empty. LockName: '{}', Owner: '{}'", lockName, owner);
@@ -77,11 +110,10 @@ public class DistributedLockService {
                 try {
                     logger.info("Waiting {}ms before next lock acquisition attempt for lock [{}].", lockRetryDelayMs, lockName);
                     Thread.sleep(lockRetryDelayMs);
-                    // Consider exponential backoff here if needed: delayMs *= 2;
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     logger.warn("Lock acquisition retry sleep interrupted for lock [{}]. Failing early.", lockName, e);
-                    return false; // Exit if interrupted
+                    return false; 
                 }
             }
         }
@@ -91,26 +123,26 @@ public class DistributedLockService {
     }
 
     /**
-     * Releases a distributed lock.
+     * Releases a distributed lock if it is currently held by the specified owner.
      *
-     * @param lockName The name of the lock.
+     * @param lockName The name of the lock to release.
      * @param owner The identifier of the entity that currently holds the lock.
      */
     public void unlock(String lockName, String owner) {
         if (lockName == null || lockName.trim().isEmpty()) {
             logger.warn("Attempted to unlock with null or empty lockName.");
-            return; // Or throw IllegalArgumentException
+            return; 
         }
          if (owner == null || owner.trim().isEmpty()) {
             logger.warn("Attempted to unlock with null or empty owner for lockName: {}", lockName);
-            return; // Or throw IllegalArgumentException
+            return; 
         }
 
         boolean released = taskLockDao.releaseLock(lockName, owner);
         if (released) {
             logger.info("Lock [{}] successfully released by owner [{}].", lockName, owner);
         } else {
-            logger.warn("Failed to release lock [{}] by owner [{}]. It might not have been owned by this instance or was already released.", lockName, owner);
+            logger.warn("Failed to release lock [{}] by owner [{}]. It might not have been owned by this instance or was already released/expired.", lockName, owner);
         }
     }
 }
