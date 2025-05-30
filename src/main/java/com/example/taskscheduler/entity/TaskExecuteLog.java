@@ -37,6 +37,8 @@ public class TaskExecuteLog {
     /** Optional message, typically used to store exception messages if the task failed or timed out. */
     private String exMsg;
 
+    private String rtnMsg ;
+
     /** Identifier of the scheduler instance that executed this task. Useful in distributed environments. */
     private String instanceId;
 

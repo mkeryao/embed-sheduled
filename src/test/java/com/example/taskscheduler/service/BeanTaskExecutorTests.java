@@ -1,8 +1,7 @@
 package com.example.taskscheduler.service;
 
 import com.example.taskscheduler.dao.TaskExecuteLogDao;
-import com.example.taskscheduler.entity.TaskConfig;
-import com.example.taskscheduler.service.testbeans.TestBean; // Assuming TestBean is in this package for testing
+import com.example.taskscheduler.entity.TaskConfig;// Assuming TestBean is in this package for testing
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,6 +12,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationContext;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -166,14 +166,8 @@ public class BeanTaskExecutorTests {
     }
 }
 
-// Dummy test bean class (can be an inner class or in a separate file in test sources)
-// Needs to be public or package-private in the same package for spy/reflection if not an inner class.
-// For simplicity, let's assume it's defined appropriately or use a real bean from your context if suitable.
-// This is a simplified placeholder.
-package com.example.taskscheduler.service.testbeans; // Put in a matching package structure in test
 
-import java.util.Map;
-public class TestBean {
+class TestBean {
     public void doSomething() { System.out.println("TestBean.doSomething called"); }
     public void doSomethingWithParams(String message, int count) { System.out.println("TestBean.doSomethingWithParams called with: " + message + ", " + count); }
     public void doSomethingWithMap(Map<String, Object> params) { System.out.println("TestBean.doSomethingWithMap called with: " + params); }

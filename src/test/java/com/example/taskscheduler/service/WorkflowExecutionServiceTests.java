@@ -8,6 +8,7 @@ import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
 import com.example.taskscheduler.util.ExpressionUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

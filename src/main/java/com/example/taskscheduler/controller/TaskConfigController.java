@@ -6,22 +6,28 @@ import com.example.taskscheduler.dto.workflow.WorkflowEdge;
 import com.example.taskscheduler.dto.workflow.WorkflowNode;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.scheduler.CoreSchedulerService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.fasterxml.jackson.core.* ;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.util.StringUtils;
 
 @RestController
 @RequestMapping("/api/tasks")
 public class TaskConfigController {
+    private static final Logger logger =  LoggerFactory.getLogger(TaskConfigController.class);
 
     @Autowired
     private TaskConfigDao taskConfigDao;
@@ -34,7 +40,9 @@ public class TaskConfigController {
 
     // --- DTO Mappers ---
     private TaskConfigDto convertToDto(TaskConfig taskConfig) {
-        if (taskConfig == null) return null;
+        if (taskConfig == null){
+            return null;
+        }
         TaskConfigDto dto = new TaskConfigDto();
         BeanUtils.copyProperties(taskConfig, dto, "workflowNodesJson", "workflowEdgesJson", "globalParametersJson");
 
@@ -48,14 +56,16 @@ public class TaskConfigController {
             if (StringUtils.hasText(taskConfig.getGlobalParametersJson())) {
                 dto.setGlobalParameters(objectMapper.readValue(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {}));
             }
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             logger.error("Error parsing workflow/global params JSON to DTO for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
         }
         return dto;
     }
 
     private TaskConfig convertToEntity(TaskConfigDto dto) {
-        if (dto == null) return null;
+        if (dto == null) {
+            return null;
+        }
         TaskConfig entity = new TaskConfig();
         BeanUtils.copyProperties(dto, entity, "workflowNodes", "workflowEdges", "globalParameters");
 
@@ -75,7 +85,7 @@ public class TaskConfigController {
             } else {
                 entity.setGlobalParametersJson(null);
             }
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             logger.error("Error stringifying workflow/global params DTO to JSON for entity (Task Name {}): {}", dto.getTaskName(), e.getMessage(), e);
         }
         return entity;
@@ -113,7 +123,9 @@ public class TaskConfigController {
 
     @PutMapping("/{id}")
     public ResponseEntity<TaskConfigDto> updateTask(@PathVariable Integer id, @RequestBody TaskConfigDto taskConfigDto) {
-        if (taskConfigDto == null) return ResponseEntity.badRequest().build();
+        if (taskConfigDto == null) {
+            return ResponseEntity.badRequest().build();
+        }
         Optional<TaskConfig> existingTaskOptional = taskConfigDao.findById(id);
         if (!existingTaskOptional.isPresent()) {
             return ResponseEntity.notFound().build();
