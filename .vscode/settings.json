@@ -1,0 +1,11 @@
+{
+    "java.format.settings.url": ".vscode/java-formatter.xml" ,
+    //指定项目JDK
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-1.8",
+            "path": "D:\\Program Files\\Java\\jdk1.8.0_192",
+            "default": true
+        }
+    ]
+}
