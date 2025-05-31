@@ -33,6 +33,7 @@ A lightweight, standalone task scheduling system built with Java and Spring Boot
 *   **Unit Tests**: Core services and utilities are covered by unit tests (JUnit 5, Mockito).
 *   **Localized Frontend Assets**: All frontend JavaScript and CSS libraries (Bootstrap, jQuery, Popper.js) are served locally.
 *   **MDC Logging**: Enhanced logging with `execute_no` (task execution log ID) in MDC for better traceability, configured via `logback-spring.xml`.
+*   **Performance**: Guava caching implemented for frequently accessed User and Task Calendar data to reduce database load.
 
 ## Technologies Used
 
@@ -40,6 +41,7 @@ A lightweight, standalone task scheduling system built with Java and Spring Boot
     *   Java 8
     *   Spring Boot (Web, JDBC, Scheduling)
     *   Fastjson (for JSON processing, replacing default Jackson)
+    *   Guava (for in-memory caching in DAOs)
     *   Maven (Build Tool)
     *   Logback (for logging, with MDC)
 *   **Frontend**:
@@ -207,6 +209,12 @@ This is the central entity for defining a schedulable job.
 *   **Future Extensibility**:
     *   The `TaskUser` entity has a `notificationPreferencesJson` field intended for future use, allowing users to specify preferences for different channels (e.g., email, Slack) and their respective details (e.g., `{"EMAIL": {"emailAddress": "user@example.com", "enabled": true}}`).
     *   Developers can add new notification methods by implementing the `NotificationChannel` interface and registering it as a Spring bean. `NotificationService` will automatically pick it up.
+
+### Caching
+*   **DAO Caching**: To enhance performance, Guava caches are utilized within `TaskUserDaoImpl` and `TaskCalendarDaoImpl`.
+    *   User data (by ID and username) and Task Calendar data (calendars by ID/name, days by calendar ID, specific day by ID/date) are cached.
+    *   Caches are configured with maximum sizes and time-based expiration (e.g., 1 hour for users, 6 hours for calendars).
+    *   Cache invalidation logic is implemented in DAO methods that modify data (e.g., save, update, delete) to maintain data consistency. Logging for cache operations (hits, misses, puts, invalidations) is included at DEBUG level.
 
 ## UI Guide
 
