@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
+import java.net.UnknownHostException;
 import java.util.UUID;
 
 /**
@@ -51,10 +53,12 @@ public class DistributedLockService {
      * It also ensures that a placeholder record for a global scheduler lock exists in the database.
      */
     @PostConstruct
-    public void init() {
-        if (configuredInstanceId == null || configuredInstanceId.trim().isEmpty()) {
-            schedulerInstanceId = UUID.randomUUID().toString();
-            logger.info("scheduler.instance.id not configured, generated UUID: {}", schedulerInstanceId);
+    public void init() throws UnknownHostException {
+        if (!StringUtils.hasText(schedulerInstanceId)) {
+            //获取当前机器的IP和Name
+            this.schedulerInstanceId = java.net.InetAddress.getLocalHost().getHostName()
+                    + ":" + java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            logger.info("scheduler.instance.id not configured, hostName: {}", schedulerInstanceId);
         } else {
             schedulerInstanceId = configuredInstanceId;
             logger.info("scheduler.instance.id configured as: {}", schedulerInstanceId);
@@ -81,7 +85,7 @@ public class DistributedLockService {
      * @return {@code true} if the lock was successfully acquired or refreshed, {@code false} otherwise.
      */
     public boolean tryLock(String lockName, String owner) {
-        if (lockName == null || lockName.trim().isEmpty() || owner == null || owner.trim().isEmpty()) {
+        if ( !StringUtils.hasText(lockName) ||  !StringUtils.hasText(owner) ) {
             logger.warn("Lock name or owner is null/empty. LockName: '{}', Owner: '{}'", lockName, owner);
             return false;
         }
@@ -125,11 +129,11 @@ public class DistributedLockService {
      * @param owner The identifier of the entity that currently holds the lock.
      */
     public void unlock(String lockName, String owner) {
-        if (lockName == null || lockName.trim().isEmpty()) {
+        if (!StringUtils.hasText(lockName)) {
             logger.warn("Attempted to unlock with null or empty lockName.");
             return;
         }
-         if (owner == null || owner.trim().isEmpty()) {
+         if (!StringUtils.hasText(owner)) {
             logger.warn("Attempted to unlock with null or empty owner for lockName: {}", lockName);
             return;
         }

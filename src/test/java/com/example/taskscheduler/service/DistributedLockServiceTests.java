@@ -9,6 +9,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.net.UnknownHostException;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -27,7 +29,7 @@ public class DistributedLockServiceTests {
     private final int leaseDurationMs = lockDurationSeconds * 1000;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws UnknownHostException {
         // Set configuredInstanceId and retry properties using ReflectionTestUtils
         // as they are @Value annotated and won't be injected directly in plain unit test
         ReflectionTestUtils.setField(distributedLockService, "configuredInstanceId", testOwner);
@@ -49,7 +51,7 @@ public class DistributedLockServiceTests {
     }
 
     @Test
-    void testTryLock_FailsWhenLockHeldByAnother_NoRetries() {
+    void testTryLock_FailsWhenLockHeldByAnother_NoRetries() throws UnknownHostException {
         // Re-initialize with 1 attempt to test no retry scenario
         ReflectionTestUtils.setField(distributedLockService, "maxLockAttempts", 1);
         distributedLockService.init(); // Re-init with new maxAttempts

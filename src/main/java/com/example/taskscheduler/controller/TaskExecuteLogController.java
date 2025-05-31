@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -31,7 +32,7 @@ public class TaskExecuteLogController {
         int endIndex = Math.min(startIndex + size, totalLogs);
 
         if (startIndex >= totalLogs) {
-            return ResponseEntity.ok(List.of()); // Empty list if page is out of bounds
+            return ResponseEntity.ok(Collections.emptyList()); // Empty list if page is out of bounds
         }
 
         List<TaskExecuteLog> paginatedLogs = allLogs.subList(startIndex, endIndex);
@@ -52,7 +53,7 @@ public class TaskExecuteLogController {
         int endIndex = Math.min(startIndex + size, totalLogs);
 
         if (startIndex >= totalLogs) {
-            return ResponseEntity.ok(List.of());
+            return ResponseEntity.ok(Collections.emptyList()); // Empty list if page is out of bounds
         }
 
         List<TaskExecuteLog> paginatedLogs = taskLogs.subList(startIndex, endIndex);

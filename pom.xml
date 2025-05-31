@@ -30,9 +30,24 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-json</artifactId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                    <groupId>org.springframework.boot</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-log4j2</artifactId>
+            <!-- No need to exclude spring-boot-starter-json here as it's not a primary dependency of starter-jdbc -->
+            <!-- If it were, a similar exclusion would be needed. -->
+        </dependency>
 
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
+            <version>3.4.4</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>

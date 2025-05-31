@@ -10,6 +10,9 @@ import com.example.taskscheduler.enums.ExecutionMode; // Import ExecutionMode
 import com.example.taskscheduler.service.BeanTaskExecutor;
 import com.example.taskscheduler.service.ShellTaskExecutor; // Added
 import com.example.taskscheduler.service.HttpTaskExecutor; // Added
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.StringUtils; // Added
 import com.example.taskscheduler.service.DistributedLockService;
 import com.example.taskscheduler.service.NotificationService;
@@ -44,7 +47,7 @@ import java.util.concurrent.ScheduledFuture;
  * task execution, and notifications.
  */
 @Service
-public class CoreSchedulerService implements SchedulingConfigurer {
+public class CoreSchedulerService implements SchedulingConfigurer, ApplicationListener<ContextRefreshedEvent> {
 
     private static final Logger logger = LoggerFactory.getLogger(CoreSchedulerService.class);
     // private final String instanceId = UUID.randomUUID().toString(); // Instance ID now comes from DistributedLockService
@@ -53,7 +56,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
     private TaskConfigDao taskConfigDao;
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
-    @Autowired
+
     private TaskScheduler taskScheduler; // Spring's default TaskScheduler
     @Autowired
     private ApplicationContext applicationContext; // To get BeanTaskExecutor
@@ -74,12 +77,10 @@ public class CoreSchedulerService implements SchedulingConfigurer {
     private final Map<Integer, CronTask> cronTasks = new ConcurrentHashMap<>(); // For potential re-registration needs
     private ScheduledTaskRegistrar taskRegistrar;
 
-
     /**
      * Initializes the service after dependency injection.
      * It loads and schedules all active tasks from the database.
      */
-    @PostConstruct
     public void init() {
         // beanTaskExecutor = applicationContext.getBean(BeanTaskExecutor.class); // Initialize if needed immediately, or on first use
         loadAndScheduleInitialTasks();
@@ -93,6 +94,12 @@ public class CoreSchedulerService implements SchedulingConfigurer {
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         this.taskRegistrar = taskRegistrar;
+        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        taskScheduler.setPoolSize(15); // 设置线程池大小
+        taskScheduler.setThreadNamePrefix("embed-sheduled-task-");
+        taskScheduler.initialize();
+        taskRegistrar.setScheduler(taskScheduler);
+        this.taskScheduler = taskScheduler; // Use this for scheduling tasks
         // Initial tasks are typically loaded via @PostConstruct calling scheduleTask directly.
         // This registrar could be used if tasks were defined statically or needed more complex registrar-level setup.
     }
@@ -498,5 +505,10 @@ public class CoreSchedulerService implements SchedulingConfigurer {
             ((org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler) this.taskRegistrar.getScheduler()).shutdown();
         }
         logger.info("CoreSchedulerService shutdown complete.");
+    }
+
+    @Override
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        loadAndScheduleInitialTasks();
     }
 }

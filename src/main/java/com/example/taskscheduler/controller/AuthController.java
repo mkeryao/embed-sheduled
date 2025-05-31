@@ -7,6 +7,7 @@ import com.example.taskscheduler.entity.TaskUser;
 import com.example.taskscheduler.util.JwtUtil;
 import com.example.taskscheduler.util.PasswordUtil; // Will create this next
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
+@Slf4j
 public class AuthController {
 
     @Autowired
@@ -47,6 +49,7 @@ public class AuthController {
         TaskUser user = userOptional.get();
         String hashedPassword = passwordUtil.hashPassword(loginRequest.getPassword(), loginRequest.getUsername());
 
+        log.info("hashedPassword {}", hashedPassword);
         if (!hashedPassword.equals(user.getPasswordHash())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password.");
         }
