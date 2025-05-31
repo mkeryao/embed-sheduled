@@ -1,0 +1,50 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="tasks.html">Task Scheduler</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav mr-auto">
+            <li class="nav-item">
+                <a class="nav-link" href="tasks.html">Tasks</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="logs.html">Logs</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="calendars.html">Calendars</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="users.html">Users</a>
+            </li>
+        </ul>
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="#" id="logout-link">Logout (<span id="loggedInUser"></span>)</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<div id="feedback-message" class="alert" style="display: none;"></div>
+
+<script>
+$(document).ready(function() {
+    // Set logged-in username
+    const username = localStorage.getItem('username');
+    if (username) {
+        $('#loggedInUser').text(username);
+    } else {
+         $('#loggedInUser').text('N/A'); // Should not happen if auth check is working
+    }
+
+    // Highlight active nav link
+    const path = window.location.pathname.split("/").pop();
+    $('#navbarNav .nav-link').each(function() {
+        const href = $(this).attr('href');
+        if (href === path) {
+            $(this).parent().addClass('active');
+            $(this).append(' <span class="sr-only">(current)</span>');
+        }
+    });
+});
+</script>

@@ -1,8 +1,8 @@
 package com.example.taskscheduler.service;
 
 import com.example.taskscheduler.dao.TaskExecuteLogDao;
-import com.example.taskscheduler.entity.TaskConfig;// Assuming TestBean is in this package for testing
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.taskscheduler.entity.TaskConfig;
+import com.example.taskscheduler.service.testbeans.TestBean; // Assuming TestBean is in this package for testing
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,7 +12,6 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationContext;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,8 +23,6 @@ public class BeanTaskExecutorTests {
 
     @Mock
     private ApplicationContext applicationContext;
-    @Spy
-    private ObjectMapper objectMapper = new ObjectMapper(); // Use a real ObjectMapper, can be spied if needed
     @Mock
     private TaskExecuteLogDao taskExecuteLogDao; // Mocked, though not directly used by execute in this version
 
@@ -70,7 +67,7 @@ public class BeanTaskExecutorTests {
 
         verify(testBeanInstance).doSomethingWithParams("Hello", 5);
     }
-    
+
     @Test
     void testExecute_SuccessfulWithMapParam() throws Exception {
         String paramsJson = "{\"message\":\"Hello Map\", \"value\":123}";
@@ -78,7 +75,7 @@ public class BeanTaskExecutorTests {
         when(applicationContext.getBean("testBean")).thenReturn(testBeanInstance);
 
         beanTaskExecutor.execute(config);
-        
+
         // ObjectMapper inside convertParameters will convert the JSON to a Map
         // The spy testBeanInstance will be called with this map.
         // We are verifying the method on the spy is called.
@@ -103,7 +100,7 @@ public class BeanTaskExecutorTests {
         Exception exception = assertThrows(NoSuchMethodException.class, () -> beanTaskExecutor.execute(config));
         assertTrue(exception.getMessage().contains("nonExistentMethod not found in testBean"));
     }
-    
+
     @Test
     void testExecute_MethodWithMismatchedParams_findMethodReturnsNull() {
         // TestBean has doSomethingWithParams(String, int)
@@ -124,7 +121,7 @@ public class BeanTaskExecutorTests {
     void testExecute_Timeout() throws Exception {
         TaskConfig config = createTaskConfig("testBean", "doSomethingSlow", null, 1); // 1 second timeout
         when(applicationContext.getBean("testBean")).thenReturn(testBeanInstance);
-        
+
         // Make the actual method call slow
         doAnswer(invocation -> {
             try {
@@ -150,12 +147,12 @@ public class BeanTaskExecutorTests {
         verify(testBeanInstance).doSomething();
         // No timeout exception should be thrown
     }
-    
+
     @Test
     void testExecute_MethodThrowsException() throws Exception {
         TaskConfig config = createTaskConfig("testBean", "throwExceptionMethod", null, 0);
         when(applicationContext.getBean("testBean")).thenReturn(testBeanInstance);
-        
+
         // Configure the spy to throw an exception when throwExceptionMethod is called
         doThrow(new RuntimeException("Test bean failure")).when(testBeanInstance).throwExceptionMethod();
 
@@ -164,13 +161,4 @@ public class BeanTaskExecutorTests {
         assertTrue(exception.getMessage().contains("Execution failed for task TestBeanTask: Test bean failure"));
         verify(testBeanInstance).throwExceptionMethod();
     }
-}
-
-
-class TestBean {
-    public void doSomething() { System.out.println("TestBean.doSomething called"); }
-    public void doSomethingWithParams(String message, int count) { System.out.println("TestBean.doSomethingWithParams called with: " + message + ", " + count); }
-    public void doSomethingWithMap(Map<String, Object> params) { System.out.println("TestBean.doSomethingWithMap called with: " + params); }
-    public void doSomethingSlow() throws InterruptedException { Thread.sleep(100); System.out.println("TestBean.doSomethingSlow called and finished."); }
-    public void throwExceptionMethod() { throw new RuntimeException("Test bean failure"); }
 }

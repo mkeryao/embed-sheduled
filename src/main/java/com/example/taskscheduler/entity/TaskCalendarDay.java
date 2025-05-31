@@ -24,8 +24,8 @@ public class TaskCalendarDay {
     /** The specific date of this entry (e.g., "2024-12-25"). */
     private Date eventDate;
 
-    /** 
-     * Flag indicating if this day is a working day. 
+    /**
+     * Flag indicating if this day is a working day.
      * {@code true} if it's a working day, {@code false} if it's a non-working day.
      */
     private boolean isWorkingDay;

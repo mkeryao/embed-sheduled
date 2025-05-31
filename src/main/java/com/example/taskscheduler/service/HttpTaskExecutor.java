@@ -4,8 +4,7 @@ import com.example.taskscheduler.dao.TaskExecuteLogDao;
 import com.example.taskscheduler.dto.taskparams.HttpTaskParameters;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alibaba.fastjson.JSON; // Fastjson import
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +32,9 @@ public class HttpTaskExecutor {
 
     private static final Logger logger = LoggerFactory.getLogger(HttpTaskExecutor.class);
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    // ObjectMapper no longer needed if Fastjson is used exclusively for this internal parsing too
+    // @Autowired
+    // private ObjectMapper objectMapper;
 
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao; // To update log directly
@@ -60,7 +60,9 @@ public class HttpTaskExecutor {
             if (!StringUtils.hasText(taskConfig.getBeanParameters())) {
                 throw new IllegalArgumentException("HTTP task parameters (beanParameters) are missing or empty.");
             }
-            params = objectMapper.readValue(taskConfig.getBeanParameters(), HttpTaskParameters.class);
+            // Replace with Fastjson parsing
+            params = JSON.parseObject(taskConfig.getBeanParameters(), HttpTaskParameters.class);
+
 
             if (!StringUtils.hasText(params.getUrl()) || !StringUtils.hasText(params.getMethod())) {
                 throw new IllegalArgumentException("URL and Method are mandatory in HTTP task parameters.");
@@ -82,7 +84,7 @@ public class HttpTaskExecutor {
             logger.info("Executing HTTP Task ID {}: Method={}, URL={}, Headers={}, Body Snippet='{}'",
                     taskConfig.getTaskId(), params.getMethod(), params.getUrl(), params.getHeaders(),
                     StringUtils.hasText(params.getBody()) ? params.getBody().substring(0, Math.min(params.getBody().length(), 100)) : "N/A");
-            
+
             ResponseEntity<String> responseEntity = customRestTemplate.exchange(
                     params.getUrl(),
                     httpMethod,
@@ -94,7 +96,7 @@ public class HttpTaskExecutor {
             String responseBody = responseEntity.getBody();
             responseSummary = "Status: " + httpStatusCode +
                               ". Response: " + (responseBody != null ? responseBody.substring(0, Math.min(responseBody.length(), 500)) : "[No Body]");
-            
+
             logEntry.setExMsg(null); // Clear any previous exMsg if retrying
             // Consider HTTP status codes: 2xx are success. Others might be failures depending on requirements.
             // For now, any 2xx is considered SUCCESS for the task step.
@@ -106,10 +108,14 @@ public class HttpTaskExecutor {
             }
             logger.info("HTTP Task ID {} completed. {}", taskConfig.getTaskId(), responseSummary);
 
-        } catch (IllegalArgumentException | com.fasterxml.jackson.core.JsonProcessingException e) {
-            logger.error("HTTP Task ID {} failed: Invalid parameters or JSON parsing error. {}", taskConfig.getTaskId(), e.getMessage(), e);
+        } catch (IllegalArgumentException e) { // JSON parsing exceptions from Fastjson are typically runtime (e.g., JSONException)
+            logger.error("HTTP Task ID {} failed: Invalid parameters. {}", taskConfig.getTaskId(), e.getMessage(), e);
             logEntry.setState("FAILED");
             logEntry.setExMsg("Invalid task parameters: " + e.getMessage());
+        } catch (com.alibaba.fastjson.JSONException e) { // Catch Fastjson specific parsing exception
+            logger.error("HTTP Task ID {} failed: JSON parsing error. {}", taskConfig.getTaskId(), e.getMessage(), e);
+            logEntry.setState("FAILED");
+            logEntry.setExMsg("Invalid task parameters JSON format: " + e.getMessage());
         } catch (ResourceAccessException e) { // Catches connect/read timeouts, DNS resolution issues etc.
             logger.error("HTTP Task ID {} failed: Resource access error (e.g., timeout, DNS). {}", taskConfig.getTaskId(), e.getMessage(), e);
             logEntry.setState("FAILED"); // Or "TIMED_OUT" if specifically identifiable

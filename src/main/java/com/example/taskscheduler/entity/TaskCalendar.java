@@ -17,7 +17,7 @@ public class TaskCalendar {
     /** Unique identifier for the calendar. */
     private Integer calendarId;
 
-    /** 
+    /**
      * Unique name for the calendar (e.g., "NATIONAL_HOLIDAYS", "COMPANY_BLACKOUT_PERIODS").
      * This name is referenced in {@link TaskConfig#taskCalendarGroup}.
      */

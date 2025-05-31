@@ -19,6 +19,7 @@ import java.util.UUID;
 public class DistributedLockService {
 
     private static final Logger logger = LoggerFactory.getLogger(DistributedLockService.class);
+    private static final int DEFAULT_CLUSTER_LOCK_LEASE_MS = 60000; // 60 seconds
 
     @Autowired
     private TaskLockDao taskLockDao;
@@ -73,24 +74,19 @@ public class DistributedLockService {
 
     /**
      * Attempts to acquire or refresh a distributed lock with retry logic.
+     * The lock lease duration is determined by the internal constant {@code DEFAULT_CLUSTER_LOCK_LEASE_MS}.
      *
      * @param lockName The name of the lock.
      * @param owner The identifier of the entity attempting to acquire the lock (typically the scheduler instance ID).
-     * @param lockMostSeconds The duration in seconds for which the lock should be held.
-     *                        If 0 or negative, the lock is attempted for a very long duration (effectively indefinite).
      * @return {@code true} if the lock was successfully acquired or refreshed, {@code false} otherwise.
      */
-    public boolean tryLock(String lockName, String owner, int lockMostSeconds) {
+    public boolean tryLock(String lockName, String owner) {
         if (lockName == null || lockName.trim().isEmpty() || owner == null || owner.trim().isEmpty()) {
             logger.warn("Lock name or owner is null/empty. LockName: '{}', Owner: '{}'", lockName, owner);
             return false;
         }
 
-        int leaseDurationMs = (lockMostSeconds <= 0) ? Integer.MAX_VALUE : lockMostSeconds * 1000;
-        if (leaseDurationMs == Integer.MAX_VALUE) {
-             logger.debug("Lock [{}] requested by owner [{}] for indefinite duration.", lockName, owner);
-        }
-
+        int leaseDurationMs = DEFAULT_CLUSTER_LOCK_LEASE_MS;
 
         logger.info("Attempting to acquire lock [{}] for owner [{}]. Lease: {}ms. Max attempts: {}. Retry delay: {}ms.",
                 lockName, owner, leaseDurationMs, maxLockAttempts, lockRetryDelayMs);
@@ -113,7 +109,7 @@ public class DistributedLockService {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     logger.warn("Lock acquisition retry sleep interrupted for lock [{}]. Failing early.", lockName, e);
-                    return false; 
+                    return false;
                 }
             }
         }
@@ -131,11 +127,11 @@ public class DistributedLockService {
     public void unlock(String lockName, String owner) {
         if (lockName == null || lockName.trim().isEmpty()) {
             logger.warn("Attempted to unlock with null or empty lockName.");
-            return; 
+            return;
         }
          if (owner == null || owner.trim().isEmpty()) {
             logger.warn("Attempted to unlock with null or empty owner for lockName: {}", lockName);
-            return; 
+            return;
         }
 
         boolean released = taskLockDao.releaseLock(lockName, owner);

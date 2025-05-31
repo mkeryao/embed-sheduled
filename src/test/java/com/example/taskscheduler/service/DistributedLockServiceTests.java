@@ -33,7 +33,7 @@ public class DistributedLockServiceTests {
         ReflectionTestUtils.setField(distributedLockService, "configuredInstanceId", testOwner);
         ReflectionTestUtils.setField(distributedLockService, "maxLockAttempts", 3);
         ReflectionTestUtils.setField(distributedLockService, "lockRetryDelayMs", 100L); // Use a short delay for tests
-        
+
         // Call init manually after setting fields
         distributedLockService.init();
     }
@@ -42,7 +42,7 @@ public class DistributedLockServiceTests {
     void testTryLock_AcquiresSuccessfullyOnFirstAttempt() {
         when(taskLockDao.tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs)).thenReturn(true);
 
-        boolean acquired = distributedLockService.tryLock(testLockName, testOwner, lockDurationSeconds);
+        boolean acquired = distributedLockService.tryLock(testLockName, testOwner); // Removed 3rd arg
 
         assertTrue(acquired);
         verify(taskLockDao, times(1)).tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs);
@@ -56,7 +56,7 @@ public class DistributedLockServiceTests {
 
         when(taskLockDao.tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs)).thenReturn(false);
 
-        boolean acquired = distributedLockService.tryLock(testLockName, testOwner, lockDurationSeconds);
+        boolean acquired = distributedLockService.tryLock(testLockName, testOwner); // Removed 3rd arg
 
         assertFalse(acquired);
         verify(taskLockDao, times(1)).tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs);
@@ -68,7 +68,7 @@ public class DistributedLockServiceTests {
             .thenReturn(false) // Fails on 1st attempt
             .thenReturn(true); // Succeeds on 2nd attempt
 
-        boolean acquired = distributedLockService.tryLock(testLockName, testOwner, lockDurationSeconds);
+        boolean acquired = distributedLockService.tryLock(testLockName, testOwner); // Removed 3rd arg
 
         assertTrue(acquired);
         verify(taskLockDao, times(2)).tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs);
@@ -78,12 +78,12 @@ public class DistributedLockServiceTests {
     void testTryLock_FailsAfterAllRetries() {
         when(taskLockDao.tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs)).thenReturn(false);
 
-        boolean acquired = distributedLockService.tryLock(testLockName, testOwner, lockDurationSeconds);
+        boolean acquired = distributedLockService.tryLock(testLockName, testOwner); // Removed 3rd arg
 
         assertFalse(acquired);
         verify(taskLockDao, times(3)).tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs); // Max 3 attempts
     }
-    
+
     @Test
     void testTryLock_InterruptedDuringRetrySleep() {
         when(taskLockDao.tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs)).thenReturn(false);
@@ -97,10 +97,10 @@ public class DistributedLockServiceTests {
         // Simulate Thread.sleep throwing InterruptedException by making the test thread interrupted
         // This is not a perfect simulation but can sometimes trigger the catch block.
         // A robust test for this would require more advanced techniques or a refactor of the sleep logic.
-        
+
         // For this test, let's just ensure it still fails after max attempts if lock not acquired.
         // The InterruptedException path is hard to reliably test here without more complex setup.
-        boolean acquired = distributedLockService.tryLock(testLockName, testOwner, lockDurationSeconds);
+        boolean acquired = distributedLockService.tryLock(testLockName, testOwner); // Removed 3rd arg
         assertFalse(acquired);
         verify(taskLockDao, times(3)).tryAcquireOrRefreshLock(testLockName, testOwner, leaseDurationMs);
     }
@@ -114,7 +114,7 @@ public class DistributedLockServiceTests {
 
         verify(taskLockDao, times(1)).releaseLock(testLockName, testOwner);
     }
-    
+
     @Test
     void testUnlock_FailsOrLockNotOwned() {
         when(taskLockDao.releaseLock(testLockName, testOwner)).thenReturn(false);
@@ -126,13 +126,13 @@ public class DistributedLockServiceTests {
 
     @Test
     void testTryLock_WithNullOrEmptyParams() {
-        assertFalse(distributedLockService.tryLock(null, testOwner, lockDurationSeconds));
-        assertFalse(distributedLockService.tryLock("", testOwner, lockDurationSeconds));
-        assertFalse(distributedLockService.tryLock(testLockName, null, lockDurationSeconds));
-        assertFalse(distributedLockService.tryLock(testLockName, "", lockDurationSeconds));
+        assertFalse(distributedLockService.tryLock(null, testOwner)); // Removed 3rd arg
+        assertFalse(distributedLockService.tryLock("", testOwner)); // Removed 3rd arg
+        assertFalse(distributedLockService.tryLock(testLockName, null)); // Removed 3rd arg
+        assertFalse(distributedLockService.tryLock(testLockName, "")); // Removed 3rd arg
         verify(taskLockDao, never()).tryAcquireOrRefreshLock(anyString(), anyString(), anyInt());
     }
-    
+
     @Test
     void testUnlock_WithNullOrEmptyParams() {
         distributedLockService.unlock(null, testOwner);

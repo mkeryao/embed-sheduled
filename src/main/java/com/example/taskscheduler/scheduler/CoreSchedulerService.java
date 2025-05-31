@@ -6,7 +6,14 @@ import com.example.taskscheduler.dao.TaskExecuteLogDao;
 import com.example.taskscheduler.entity.TaskCalendarDay;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
-import com.example.taskscheduler.service.*;
+import com.example.taskscheduler.enums.ExecutionMode; // Import ExecutionMode
+import com.example.taskscheduler.service.BeanTaskExecutor;
+import com.example.taskscheduler.service.ShellTaskExecutor; // Added
+import com.example.taskscheduler.service.HttpTaskExecutor; // Added
+import org.springframework.util.StringUtils; // Added
+import com.example.taskscheduler.service.DistributedLockService;
+import com.example.taskscheduler.service.NotificationService;
+import com.example.taskscheduler.service.WorkflowExecutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -18,7 +25,6 @@ import org.springframework.scheduling.config.CronTask;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 // import org.springframework.scheduling.support.CronTrigger; // Replaced by CustomTaskTrigger
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -133,9 +139,9 @@ public class CoreSchedulerService implements SchedulingConfigurer {
             // Use CustomTaskTrigger instead of standard CronTrigger
             CustomTaskTrigger customTaskTrigger = new CustomTaskTrigger(taskConfig, taskCalendarDao);
             ScheduledFuture<?> future;
-            
+
             future = taskScheduler.schedule(taskRunnable, customTaskTrigger);
-            
+
             synchronized (scheduledTasks) {
                 scheduledTasks.put(taskConfig.getTaskId(), future);
             }
@@ -155,9 +161,20 @@ public class CoreSchedulerService implements SchedulingConfigurer {
 
     /**
      * Creates a {@link Runnable} for the given task configuration.
-     * This runnable encapsulates the logic for executing the task, including
-     * pre-execution checks (locking, date/time exclusions), actual execution,
-     * logging, and notifications.
+     * This runnable encapsulates the logic for executing the task. Key aspects include:
+     * <ul>
+     *   <li>Logging task attempts and outcomes to {@link TaskExecuteLog}.</li>
+     *   <li>Handling {@link ExecutionMode#CLUSTER}: Acquires a distributed lock (derived from task ID)
+     *       to ensure single-instance execution in a cluster. If the lock is not acquired, the task is skipped.
+     *       {@link ExecutionMode#BROADCAST} tasks run without locking.</li>
+     *   <li>Performing pre-execution checks: start/end dates, calendar exclusions, and daily time exclusions.
+     *       If any exclusion applies, the task is skipped.</li>
+     *   <li>Executing the task based on its {@code taskType} (Bean, HTTP, Shell, Workflow) via respective executors.</li>
+     *   <li>Capturing exceptions, including {@link BeanTaskExecutor.TaskTimeoutException}.</li>
+     *   <li>Updating the final status in {@link TaskExecuteLog}.</li>
+     *   <li>Releasing the distributed lock (if acquired) in a finally block.</li>
+     *   <li>Triggering notifications via {@link NotificationService} based on task outcome and configuration.</li>
+     * </ul>
      *
      * @param taskConfig The configuration of the task.
      * @return A {@link Runnable} that can be scheduled.
@@ -166,9 +183,9 @@ public class CoreSchedulerService implements SchedulingConfigurer {
         return () -> {
             TaskExecuteLog savedLog = null; // Initialize to null
             boolean lockAcquired = false;
-            String taskLockName = taskConfig.getTaskLockName();
+            String derivedLockNameForCluster = null; // Will hold the lock name if mode is CLUSTER
             String executeNo = null; // Will be logId
-            
+
             try {
                 // Initial log entry for attempting to run
                 TaskExecuteLog log = new TaskExecuteLog();
@@ -177,7 +194,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
                 log.setState("RUNNING"); // Initial state, might change to SKIPPED
                 log.setInstanceId(distributedLockService.getSchedulerInstanceId());
                 // Set taskPattern based on task type
-                log.setTaskPattern(taskConfig.getTaskType() == 3 ? "WORKFLOW_PARENT" : "NORMAL");
+                log.setTaskPattern(taskConfig.getTaskType() == 10 ? "WORKFLOW_PARENT" : "NORMAL"); // 3 changed to 10
                 savedLog = taskExecuteLogDao.save(log);
                 executeNo = String.valueOf(savedLog.getLogId());
                 MDC.put("execute_no", executeNo);
@@ -186,18 +203,26 @@ public class CoreSchedulerService implements SchedulingConfigurer {
                         taskConfig.getTaskName(), taskConfig.getTaskId(), savedLog.getLogId());
 
                 // Distributed Lock Acquisition
-                if (StringUtils.hasText(taskLockName)) {
-                    Integer lockSeconds = taskConfig.getTaskLockMostSeconds();
-                    int secondsToLock = (lockSeconds != null && lockSeconds > 0) ? lockSeconds : 0; // 0 for "indefinite"
-                    lockAcquired = distributedLockService.tryLock(taskLockName, distributedLockService.getSchedulerInstanceId(), secondsToLock);
+                if (taskConfig.getExecutionMode() == ExecutionMode.CLUSTER) {
+                    if (taskConfig.getTaskId() == null) { // Should not happen for persisted tasks
+                        logger.error("Task ID is null for CLUSTER mode task: {}. Cannot form lock name.", taskConfig.getTaskName());
+                        taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", "Task ID is null, cannot acquire cluster lock.");
+                        // Optionally send notification
+                        notificationService.sendNotification(taskConfig, taskExecuteLogDao.findById(savedLog.getLogId()).orElse(savedLog));
+                        return;
+                    }
+                    derivedLockNameForCluster = "task_lock_id_" + taskConfig.getTaskId();
+                    lockAcquired = distributedLockService.tryLock(derivedLockNameForCluster, distributedLockService.getSchedulerInstanceId());
                     if (!lockAcquired) {
-                        String skipMessage = "Skipped: Could not acquire lock '" + taskLockName + "'";
+                        String skipMessage = "Skipped: Could not acquire CLUSTER lock '" + derivedLockNameForCluster + "'";
                         logger.warn("{} for task ID {}", skipMessage, taskConfig.getTaskId());
                         taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "SKIPPED", skipMessage);
                         notificationService.sendNotification(taskConfig, taskExecuteLogDao.findById(savedLog.getLogId()).orElse(savedLog));
-                        return; 
+                        return;
                     }
-                    logger.info("Lock '{}' acquired for task ID {}", taskLockName, taskConfig.getTaskId());
+                    logger.info("CLUSTER Lock '{}' acquired for task ID {}", derivedLockNameForCluster, taskConfig.getTaskId());
+                } else {
+                    logger.debug("Task ID {} running in BROADCAST mode, no lock required.", taskConfig.getTaskId());
                 }
 
                 // Exclusion Checks (Date, Calendar, Time)
@@ -210,13 +235,13 @@ public class CoreSchedulerService implements SchedulingConfigurer {
                             taskConfig.getTaskName(), taskConfig.getTaskId(), skipReason, savedLog.getLogId());
                     taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "SKIPPED", skipReason);
                     // Notification for skipped tasks is handled in the finally block after lock release
-                    return; 
+                    return;
                 }
 
                 // Actual Task Execution
                 logger.info("Executing task: {} (ID: {}, Log ID: {})",
                         taskConfig.getTaskName(), taskConfig.getTaskId(), savedLog.getLogId());
-                
+
                 switch (taskConfig.getTaskType()) {
                     case 0: // Bean task
                         if (beanTaskExecutor == null) beanTaskExecutor = applicationContext.getBean(BeanTaskExecutor.class);
@@ -238,17 +263,17 @@ public class CoreSchedulerService implements SchedulingConfigurer {
                             httpTaskExecutor.execute(taskConfig, savedLog);
                             logger.info("HTTP Task {} (ID: {}) execution handled by HttpTaskExecutor. Final state: {}", taskConfig.getTaskName(), taskConfig.getTaskId(), taskExecuteLogDao.findById(savedLog.getLogId()).map(TaskExecuteLog::getState).orElse("UNKNOWN"));
                             break;
-                    case 3: // Workflow task
+                    case 10: // Workflow task (was 3)
                         workflowExecutionService.startWorkflow(taskConfig, savedLog);
                         logger.info("Workflow Task {} (ID: {}) processing initiated. Final state will be set by WorkflowExecutionService.", taskConfig.getTaskName(), taskConfig.getTaskId());
                         break;
-                        default: 
+                        default:
                             String unknownMsg = "Unknown task type: " + taskConfig.getTaskType();
                             logger.error(unknownMsg + " for task ID: {}", taskConfig.getTaskId());
                             taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", unknownMsg);
                         break;
                 }
-            } catch (BeanTaskExecutor.TaskTimeoutException e) { 
+            } catch (BeanTaskExecutor.TaskTimeoutException e) {
                 logger.error("Task {} (ID: {}) timed out.", taskConfig.getTaskName(), taskConfig.getTaskId(), e);
                 if (savedLog != null) taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "TIMED_OUT", e.getMessage());
             } catch (Exception e) {
@@ -257,16 +282,16 @@ public class CoreSchedulerService implements SchedulingConfigurer {
                     String errorMsg = e.getMessage() != null ? (e.getMessage().length() > 2000 ? e.getMessage().substring(0, 2000) : e.getClass().getSimpleName()) : "Unknown error";
                     TaskExecuteLog currentLog = taskExecuteLogDao.findById(savedLog.getLogId()).orElse(null);
                     // Avoid overwriting a more specific state like TIMED_OUT if already set by BeanTaskExecutor's exception handling
-                    if (currentLog != null && !"TIMED_OUT".equals(currentLog.getState())) { 
+                    if (currentLog != null && !"TIMED_OUT".equals(currentLog.getState())) {
                         taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", errorMsg);
                     } else if (currentLog == null) { // Should ideally not happen
                          taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", "Log disappeared: " + errorMsg);
                     }
                 }
             } finally {
-                if (lockAcquired && StringUtils.hasText(taskLockName)) {
-                    distributedLockService.unlock(taskLockName, distributedLockService.getSchedulerInstanceId());
-                    logger.info("Lock '{}' released for task ID {}", taskLockName, taskConfig.getTaskId());
+                if (lockAcquired && derivedLockNameForCluster != null) { // Only unlock if acquired and name is set (i.e., CLUSTER mode)
+                    distributedLockService.unlock(derivedLockNameForCluster, distributedLockService.getSchedulerInstanceId());
+                    logger.info("CLUSTER Lock '{}' released for task ID {}", derivedLockNameForCluster, taskConfig.getTaskId());
                 }
                 // Send notification after final log state is set (or determined)
                 if (savedLog != null && savedLog.getLogId() != null) {
@@ -288,7 +313,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
      * @return A reason string if excluded, {@code null} otherwise.
      */
     private String checkDateExclusions(TaskConfig taskConfig) {
-        java.util.Date now = new java.util.Date(); 
+        java.util.Date now = new java.util.Date();
         if (taskConfig.getStartDate() != null && taskConfig.getStartDate().after(now)) {
             return "Skipped: Start date " + taskConfig.getStartDate() + " is in the future.";
         }
@@ -307,16 +332,16 @@ public class CoreSchedulerService implements SchedulingConfigurer {
      */
     private String checkCalendarExclusions(TaskConfig taskConfig) {
         if (!StringUtils.hasText(taskConfig.getTaskCalendarGroup())) {
-            return null; 
+            return null;
         }
         return taskCalendarDao.findCalendarByName(taskConfig.getTaskCalendarGroup())
             .flatMap(calendar -> {
                 java.sql.Date today = java.sql.Date.valueOf(java.time.LocalDate.now());
                 return taskCalendarDao.findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), today)
-                    .filter(calendarDay -> !calendarDay.isWorkingDay()) 
+                    .filter(calendarDay -> !calendarDay.isWorkingDay())
                     .map(nonWorkingDay -> "Skipped: Current date " + today + " is a non-working day (" + nonWorkingDay.getDescription() + ") in calendar group '" + taskConfig.getTaskCalendarGroup() + "'.");
             })
-            .orElse(null); 
+            .orElse(null);
     }
 
     /**
@@ -327,7 +352,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
      */
     private String checkTimeExclusions(TaskConfig taskConfig) {
         if (!StringUtils.hasText(taskConfig.getTaskExcludeTimes())) {
-            return null; 
+            return null;
         }
         java.time.LocalTime currentTime = java.time.LocalTime.now();
         String[] ranges = taskConfig.getTaskExcludeTimes().split(",");
@@ -390,9 +415,9 @@ public class CoreSchedulerService implements SchedulingConfigurer {
             return false;
         }
         logger.info("Attempting to reschedule task ID: {}", taskConfig.getTaskId());
-        
+
         // Always cancel first, even if it's to change cron expression or activity status
-        boolean wasCancelled = cancelTask(taskConfig.getTaskId()); 
+        boolean wasCancelled = cancelTask(taskConfig.getTaskId());
         if (wasCancelled) {
              logger.info("Task {} was running or scheduled and has been cancelled for rescheduling.", taskConfig.getTaskId());
         } else {
@@ -421,7 +446,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
     public void triggerTaskManually(Integer taskId) {
         TaskConfig taskConfig = taskConfigDao.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found with ID: " + taskId + " for manual trigger."));
-        
+
         // Log if triggering an inactive task, but still proceed as manual trigger implies override of schedule.
         // The execution runnable itself will check isActive for regular scheduling, but manual trigger might bypass this.
         // However, the current createTaskRunnable respects exclusions.
@@ -429,7 +454,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
             logger.warn("Manual trigger requested for INACTIVE task ID: {}. It will attempt to run once if other conditions pass.", taskId);
         }
 
-        Runnable runnable = createTaskRunnable(taskConfig); 
+        Runnable runnable = createTaskRunnable(taskConfig);
         if (runnable != null) {
             // Task is run in a thread from the taskScheduler's pool
             taskScheduler.schedule(runnable, Instant.now());
@@ -443,7 +468,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
             log.setState("FAILED");
             log.setExMsg("Failed to create runnable for manual trigger");
             log.setInstanceId(distributedLockService.getSchedulerInstanceId());
-            log.setTaskPattern(taskConfig.getTaskType() == 3 ? "WORKFLOW_PARENT" : "NORMAL"); // Set pattern for consistency
+            log.setTaskPattern(taskConfig.getTaskType() == 10 ? "WORKFLOW_PARENT" : "NORMAL"); // 3 changed to 10 for consistency
             taskExecuteLogDao.save(log); // No notification for this pre-flight failure
         }
     }
@@ -459,7 +484,7 @@ public class CoreSchedulerService implements SchedulingConfigurer {
             scheduledTasks.keySet().forEach(this::cancelTask); // This already removes from scheduledTasks map
             // cronTasks.clear(); // Clear if it was used
         }
-        
+
         // If the taskScheduler is an instance of ThreadPoolTaskScheduler, it might need explicit shutdown.
         // However, Spring Boot usually manages the lifecycle of default TaskScheduler beans.
         if (this.taskScheduler instanceof org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler) {

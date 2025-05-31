@@ -2,6 +2,7 @@ package com.example.taskscheduler.dao;
 
 import com.example.taskscheduler.entity.TaskExecuteLog;
 import java.util.List;
+import java.util.Map; // Added import for Map
 import java.util.Optional;
 
 /**
@@ -44,7 +45,7 @@ public interface TaskExecuteLogDao {
      * @return The number of rows affected.
      */
     int update(TaskExecuteLog log);
-    
+
     /**
      * Specifically updates the status of a log entry, typically at the end of a task execution.
      * Sets the end time to the current timestamp, and updates the state and exception message.
@@ -54,4 +55,39 @@ public interface TaskExecuteLogDao {
      * @param exMsg An optional exception message if the task failed or timed out.
      */
     void updateLogStatus(Integer logId, String state, String exMsg);
+
+    // --- Statistics Methods ---
+    /**
+     * Gets the total counts for each execution state (SUCCESS, FAILED, etc.) across all logs.
+     * @return A list of maps, where each map has "state" and "count" keys.
+     */
+    List<Map<String, Object>> getOverallStatusCounts();
+
+    /**
+     * Gets the counts for each execution state for a specific task.
+     * @param taskId The ID of the task.
+     * @return A list of maps, where each map has "state" and "count" keys for the given task.
+     */
+    List<Map<String, Object>> getTaskStatusCounts(Integer taskId);
+
+    /**
+     * Gets the top N most frequently executed tasks.
+     * @param n The number of top tasks to retrieve.
+     * @return A list of maps, where each map contains "task_id", "task_name" (from task_config), and "execution_count".
+     */
+    List<Map<String, Object>> getTopNExecutedTasks(int n);
+
+    /**
+     * Calculates the average execution time (endTime - startTime) in milliseconds for successful runs of a specific task.
+     * @param taskId The ID of the task.
+     * @return The average execution time in milliseconds, or null if no successful runs are found or times are invalid.
+     */
+    Double getAverageExecutionTime(Integer taskId);
+
+    /**
+     * Gets the total number of runs (log entries) for a specific task.
+     * @param taskId The ID of the task.
+     * @return The total number of runs.
+     */
+    Long getTotalRuns(Integer taskId);
 }

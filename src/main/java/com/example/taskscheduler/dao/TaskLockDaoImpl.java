@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.dao.EmptyResultDataAccessException; 
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -31,7 +31,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
     private JdbcTemplate jdbcTemplate;
 
     private static final String SELECT_BY_LOCK_NAME_SQL = "SELECT lock_name, owner_instance_id, lock_acquired_time, lease_duration_ms, version FROM task_lock WHERE lock_name = ?";
-    
+
     // SQL to update an existing lock row if it's available (unowned, expired, or owned by the current instance).
     // The version increment helps in optimistic concurrency if needed elsewhere, or simply tracks changes.
     // Note: TIMESTAMPADD syntax is H2 specific. For MySQL, it would be DATE_ADD with INTERVAL.
@@ -45,7 +45,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
     private static final String RELEASE_LOCK_SQL =
         "UPDATE task_lock SET owner_instance_id = NULL, lock_acquired_time = NULL, lease_duration_ms = NULL, version = version + 1 " +
         "WHERE lock_name = ? AND owner_instance_id = ?";
-    
+
     private static final String SAVE_LOCK_SQL = "INSERT INTO task_lock (lock_name, owner_instance_id, lock_acquired_time, lease_duration_ms, version) VALUES (?, ?, ?, ?, ?)";
     private static final String UPDATE_LOCK_GENERAL_SQL = "UPDATE task_lock SET owner_instance_id=?, lock_acquired_time=?, lease_duration_ms=?, version=? WHERE lock_name=?";
 
@@ -59,7 +59,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
         lock.setVersion(rs.getObject("version", Integer.class));
         return lock;
     };
-    
+
     @Override
     public void save(TaskLock lock) {
         try {
@@ -73,7 +73,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
     public int update(TaskLock lock) {
         return jdbcTemplate.update(UPDATE_LOCK_GENERAL_SQL, lock.getOwnerInstanceId(), lock.getLockAcquiredTime(), lock.getLeaseDurationMs(), lock.getVersion(), lock.getLockName());
     }
-    
+
     @Override
     public void ensureLockRecordExists(String lockName) {
         Optional<TaskLock> existing = findByLockName(lockName);
@@ -95,15 +95,15 @@ public class TaskLockDaoImpl implements TaskLockDao {
     public Optional<TaskLock> findByLockName(String lockName) {
         try {
             return Optional.ofNullable(jdbcTemplate.queryForObject(SELECT_BY_LOCK_NAME_SQL, new Object[]{lockName}, rowMapper));
-        } catch (EmptyResultDataAccessException e) { 
+        } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE) 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public boolean tryAcquireOrRefreshLock(String lockName, String ownerInstanceId, int leaseDurationMsEffective) {
-        ensureLockRecordExists(lockName); 
+        ensureLockRecordExists(lockName);
 
         // The ACQUIRE_OR_REFRESH_LOCK_SQL attempts to update the lock atomically based on conditions.
         // It checks for null owner, same owner, or expired lock.
@@ -112,7 +112,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
         // SERIALIZABLE isolation helps ensure consistency.
         int rowsAffected = jdbcTemplate.update(ACQUIRE_OR_REFRESH_LOCK_SQL,
                 ownerInstanceId, leaseDurationMsEffective,
-                lockName, 
+                lockName,
                 ownerInstanceId // For the owner_instance_id = ? part of the OR condition
         );
 
@@ -121,7 +121,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
             return true;
         } else {
             // If no rows affected, it means the lock is actively held by another instance and is not expired.
-            TaskLock currentLock = findByLockName(lockName).orElse(null); 
+            TaskLock currentLock = findByLockName(lockName).orElse(null);
             if (currentLock != null && currentLock.getOwnerInstanceId() != null && !ownerInstanceId.equals(currentLock.getOwnerInstanceId())) {
                  Timestamp lockExpiryTime = null;
                  if (currentLock.getLockAcquiredTime() != null && currentLock.getLeaseDurationMs() != null) {

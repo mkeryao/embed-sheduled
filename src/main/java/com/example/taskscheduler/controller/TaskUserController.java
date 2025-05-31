@@ -60,7 +60,7 @@ public class TaskUserController {
         user.setUserId(null); // Ensure it's a new user
         // Hash the password before saving
         user.setPasswordHash(passwordUtil.hashPassword(userDto.getPassword(), userDto.getUsername()));
-        
+
         TaskUser savedUser = taskUserDao.save(user);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(savedUser));
     }

@@ -57,7 +57,7 @@ public class CoreSchedulerServiceTests {
     @Mock
     private WorkflowExecutionService workflowExecutionService;
     @Mock
-    private ScheduledFuture<Object> mockScheduledFuture;
+    private ScheduledFuture mockScheduledFuture; // Raw type
 
     @Captor
     private ArgumentCaptor<Runnable> runnableCaptor;
@@ -76,8 +76,8 @@ public class CoreSchedulerServiceTests {
         lenient().when(applicationContext.getBean(BeanTaskExecutor.class)).thenReturn(beanTaskExecutor);
         lenient().when(distributedLockService.getSchedulerInstanceId()).thenReturn("test-instance");
         // Mock taskScheduler.schedule to return our mockScheduledFuture
-        //lenient().when(taskScheduler.schedule(any(Runnable.class), any(Trigger.class)))
-          //      .thenReturn(mockScheduledFuture);
+        // Changed any(Trigger.class) to any(CustomTaskTrigger.class) for more specific matching
+        lenient().when(taskScheduler.schedule(any(Runnable.class), any(CustomTaskTrigger.class))).thenReturn(mockScheduledFuture);
     }
 
     private TaskConfig createTaskConfig(Integer id, String cron, boolean active) {
@@ -92,7 +92,7 @@ public class CoreSchedulerServiceTests {
         task.setExecuteTimeoutSeconds(0);
         return task;
     }
-    
+
     private TaskExecuteLog createDefaultLog() {
         TaskExecuteLog log = new TaskExecuteLog();
         log.setLogId(1);
@@ -104,7 +104,7 @@ public class CoreSchedulerServiceTests {
     }
 
     @Test
-    void testScheduleNewTask_Success() {
+    void testScheduleNewTask_Success() throws Exception { // Added throws Exception
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
         when(taskExecuteLogDao.save(any(TaskExecuteLog.class))).thenReturn(createDefaultLog());
         when(taskExecuteLogDao.findById(anyInt())).thenReturn(Optional.of(createDefaultLog()));
@@ -123,7 +123,7 @@ public class CoreSchedulerServiceTests {
         // verify(beanTaskExecutor).execute(task); // This would be part of the runnable's logic
         verify(notificationService).sendNotification(eq(task), any(TaskExecuteLog.class));
     }
-    
+
     @Test
     void testScheduleTask_WhenInactive_ShouldNotSchedule() {
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", false);
@@ -145,8 +145,7 @@ public class CoreSchedulerServiceTests {
     void testCancelTask_Success() {
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
         // First, schedule the task so it's in the scheduledTasks map
-
-        //lenient().when(taskScheduler.schedule(any(Runnable.class), any(Trigger.class))).thenReturn(mockScheduledFuture);
+        when(taskScheduler.schedule(any(Runnable.class), any(Trigger.class))).thenReturn(mockScheduledFuture);
         coreSchedulerService.scheduleTask(task);
 
         when(mockScheduledFuture.cancel(true)).thenReturn(true);
@@ -162,11 +161,11 @@ public class CoreSchedulerServiceTests {
         assertFalse(cancelled);
         verify(mockScheduledFuture, never()).cancel(anyBoolean());
     }
-    
+
     // --- Tests for task skipping logic ---
 
     @Test
-    void testTaskSkipping_StartDateInFuture() throws Exception {
+    void testTaskSkipping_StartDateInFuture() throws Exception { // Added throws Exception
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
         task.setStartDate(Date.valueOf(LocalDate.now().plusDays(1))); // Start date is tomorrow
 
@@ -184,7 +183,7 @@ public class CoreSchedulerServiceTests {
     }
 
     @Test
-    void testTaskSkipping_EndDateInPast() throws Exception {
+    void testTaskSkipping_EndDateInPast() throws Exception { // Added throws Exception
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
         task.setEndDate(Date.valueOf(LocalDate.now().minusDays(1)));
 
@@ -198,9 +197,9 @@ public class CoreSchedulerServiceTests {
         verify(taskExecuteLogDao).updateLogStatus(anyInt(), eq("SKIPPED"), contains("End date"));
         verify(beanTaskExecutor, never()).execute(any(TaskConfig.class));
     }
-    
+
     @Test
-    void testTaskSkipping_TimeExclusion() {
+    void testTaskSkipping_TimeExclusion() throws Exception { // Added throws Exception
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
         // Exclude a time range that includes the current time (this is tricky to test without fixing current time)
         // For simplicity, let's assume current time is 10:00 and exclude 09:00-11:00
@@ -211,7 +210,7 @@ public class CoreSchedulerServiceTests {
         // Let's mock LocalTime.now() if possible, or make the range very broad for testing.
         // For this example, we cannot easily mock LocalTime.now() without PowerMock or similar.
         // So, this test will focus on the logic path assuming the time check works.
-        
+
         LocalTime now = LocalTime.now(ZoneId.systemDefault());
         String excludeRange = String.format("%s-%s", now.minusMinutes(5).toString(), now.plusMinutes(5).toString());
         task.setTaskExcludeTimes(excludeRange);
@@ -225,9 +224,9 @@ public class CoreSchedulerServiceTests {
         runnableCaptor.getValue().run();
 
         verify(taskExecuteLogDao).updateLogStatus(anyInt(), eq("SKIPPED"), contains("within excluded range"));
-        // verify(beanTaskExecutor, never()).execute(any(TaskConfig.class));
+        verify(beanTaskExecutor, never()).execute(any(TaskConfig.class));
     }
-    
+
     // Test for loadAndScheduleInitialTasks
     @Test
     void testLoadAndScheduleInitialTasks() {
@@ -239,7 +238,7 @@ public class CoreSchedulerServiceTests {
         // Mock scheduleTask calls for these specific tasks to avoid NPEs if they try to schedule fully
         // This is tricky as scheduleTask is a public method of the class under test.
         // We can spy on coreSchedulerService, but let's try verifying taskScheduler.schedule directly.
-        
+
         // We need to ensure that when scheduleTask is called internally, its call to taskScheduler.schedule
         // is what we expect and returns mockScheduledFuture.
         // This is already handled by the lenient().when(taskScheduler.schedule(...)) in setUp.
@@ -250,20 +249,20 @@ public class CoreSchedulerServiceTests {
         verify(taskScheduler, times(2)).schedule(any(Runnable.class), any(Trigger.class));
         // More specific verification would require capturing arguments for each call.
     }
-    
+
     @Test
     void testTriggerTaskManually_TaskNotFound() {
         when(taskConfigDao.findById(999)).thenReturn(Optional.empty());
-        
+
         assertThrows(IllegalArgumentException.class, () -> {
             coreSchedulerService.triggerTaskManually(999);
         });
-        
+
         verify(taskScheduler, never()).schedule(any(Runnable.class), any(Instant.class));
     }
 
     @Test
-    void testTriggerTaskManually_Success() {
+    void testTriggerTaskManually_Success() throws Exception { // Added throws Exception
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
         when(taskConfigDao.findById(1)).thenReturn(Optional.of(task));
         when(taskExecuteLogDao.save(any(TaskExecuteLog.class))).thenReturn(createDefaultLog()); // For the runnable
@@ -279,7 +278,7 @@ public class CoreSchedulerServiceTests {
         // verify(beanTaskExecutor).execute(task); // Inside runnable
         verify(notificationService).sendNotification(eq(task), any(TaskExecuteLog.class));
     }
-    
+
     // Test for configureTasks - ensures taskRegistrar is set
     @Test
     void testConfigureTasks() {

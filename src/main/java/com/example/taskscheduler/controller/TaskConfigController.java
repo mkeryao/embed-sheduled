@@ -6,28 +6,27 @@ import com.example.taskscheduler.dto.workflow.WorkflowEdge;
 import com.example.taskscheduler.dto.workflow.WorkflowNode;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.scheduler.CoreSchedulerService;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.alibaba.fastjson.JSON; // Fastjson import
+import com.alibaba.fastjson.TypeReference; // Fastjson TypeReference
+import org.slf4j.Logger; // Added
+import org.slf4j.LoggerFactory; // Added
+import org.springframework.util.StringUtils; // Added
+import java.util.Map; // Added
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.fasterxml.jackson.core.* ;
+
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import org.springframework.util.StringUtils;
 
 @RestController
 @RequestMapping("/api/tasks")
 public class TaskConfigController {
-    private static final Logger logger =  LoggerFactory.getLogger(TaskConfigController.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(TaskConfigController.class); // Added logger
 
     @Autowired
     private TaskConfigDao taskConfigDao;
@@ -35,58 +34,55 @@ public class TaskConfigController {
     @Autowired
     private CoreSchedulerService coreSchedulerService;
 
-    @Autowired
-    private ObjectMapper objectMapper; // For JSON conversion
+    // ObjectMapper is no longer needed here if Fastjson is the primary via HttpMessageConverter
+    // @Autowired
+    // private ObjectMapper objectMapper;
 
     // --- DTO Mappers ---
     private TaskConfigDto convertToDto(TaskConfig taskConfig) {
-        if (taskConfig == null){
-            return null;
-        }
+        if (taskConfig == null) return null;
         TaskConfigDto dto = new TaskConfigDto();
         BeanUtils.copyProperties(taskConfig, dto, "workflowNodesJson", "workflowEdgesJson", "globalParametersJson");
 
         try {
             if (StringUtils.hasText(taskConfig.getWorkflowNodesJson())) {
-                dto.setWorkflowNodes(objectMapper.readValue(taskConfig.getWorkflowNodesJson(), new TypeReference<List<WorkflowNode>>() {}));
+                dto.setWorkflowNodes(JSON.parseArray(taskConfig.getWorkflowNodesJson(), WorkflowNode.class));
             }
             if (StringUtils.hasText(taskConfig.getWorkflowEdgesJson())) {
-                dto.setWorkflowEdges(objectMapper.readValue(taskConfig.getWorkflowEdgesJson(), new TypeReference<List<WorkflowEdge>>() {}));
+                dto.setWorkflowEdges(JSON.parseArray(taskConfig.getWorkflowEdgesJson(), WorkflowEdge.class));
             }
             if (StringUtils.hasText(taskConfig.getGlobalParametersJson())) {
-                dto.setGlobalParameters(objectMapper.readValue(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {}));
+                dto.setGlobalParameters(JSON.parseObject(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {}));
             }
-        } catch (Exception e) {
-            logger.error("Error parsing workflow/global params JSON to DTO for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
+        } catch (Exception e) { // Fastjson might throw different exceptions
+            logger.error("Error parsing workflow/global params JSON (Fastjson) to DTO for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
         }
         return dto;
     }
 
     private TaskConfig convertToEntity(TaskConfigDto dto) {
-        if (dto == null) {
-            return null;
-        }
+        if (dto == null) return null;
         TaskConfig entity = new TaskConfig();
         BeanUtils.copyProperties(dto, entity, "workflowNodes", "workflowEdges", "globalParameters");
 
         try {
             if (dto.getWorkflowNodes() != null && !dto.getWorkflowNodes().isEmpty()) {
-                entity.setWorkflowNodesJson(objectMapper.writeValueAsString(dto.getWorkflowNodes()));
+                entity.setWorkflowNodesJson(JSON.toJSONString(dto.getWorkflowNodes()));
             } else {
-                entity.setWorkflowNodesJson(null); // Ensure empty or null list results in null JSON
+                entity.setWorkflowNodesJson(null);
             }
             if (dto.getWorkflowEdges() != null && !dto.getWorkflowEdges().isEmpty()) {
-                entity.setWorkflowEdgesJson(objectMapper.writeValueAsString(dto.getWorkflowEdges()));
+                entity.setWorkflowEdgesJson(JSON.toJSONString(dto.getWorkflowEdges()));
             } else {
                 entity.setWorkflowEdgesJson(null);
             }
             if (dto.getGlobalParameters() != null && !dto.getGlobalParameters().isEmpty()) {
-                entity.setGlobalParametersJson(objectMapper.writeValueAsString(dto.getGlobalParameters()));
+                entity.setGlobalParametersJson(JSON.toJSONString(dto.getGlobalParameters()));
             } else {
                 entity.setGlobalParametersJson(null);
             }
-        } catch (Exception e) {
-            logger.error("Error stringifying workflow/global params DTO to JSON for entity (Task Name {}): {}", dto.getTaskName(), e.getMessage(), e);
+        } catch (Exception e) { // Fastjson might throw different exceptions
+            logger.error("Error stringifying workflow/global params DTO to JSON (Fastjson) for entity (Task Name {}): {}", dto.getTaskName(), e.getMessage(), e);
         }
         return entity;
     }
@@ -123,9 +119,7 @@ public class TaskConfigController {
 
     @PutMapping("/{id}")
     public ResponseEntity<TaskConfigDto> updateTask(@PathVariable Integer id, @RequestBody TaskConfigDto taskConfigDto) {
-        if (taskConfigDto == null) {
-            return ResponseEntity.badRequest().build();
-        }
+        if (taskConfigDto == null) return ResponseEntity.badRequest().build();
         Optional<TaskConfig> existingTaskOptional = taskConfigDao.findById(id);
         if (!existingTaskOptional.isPresent()) {
             return ResponseEntity.notFound().build();
@@ -138,7 +132,7 @@ public class TaskConfigController {
             // Should not happen if findById was successful, but as a safeguard
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
-        
+
         // Reschedule or cancel based on new state
         TaskConfig updatedTask = taskConfigDao.findById(id).orElse(taskConfigToUpdate); // Fetch the fully updated task
         coreSchedulerService.rescheduleTask(updatedTask); // rescheduleTask handles active/inactive logic

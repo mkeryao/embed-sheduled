@@ -2,6 +2,7 @@ package com.example.taskscheduler.dto;
 
 import com.example.taskscheduler.dto.workflow.WorkflowEdge;
 import com.example.taskscheduler.dto.workflow.WorkflowNode;
+import com.example.taskscheduler.enums.ExecutionMode; // Import the new enum
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -24,45 +25,68 @@ public class TaskConfigDto {
     private String cronExpression;
 
     /**
-     * Type of the task.
-     * 0: Bean task (executes a method on a Spring bean).
-     * 1: Shell script (executes a shell script).
-     * 2: HTTP task (makes an HTTP request).
-     * 3: Workflow task (orchestrates a series of other tasks).
+     * Type of the task, determining its execution behavior.
+     * <ul>
+     *   <li>{@code 0}: Bean Task - Executes a method on a specified Spring bean.</li>
+     *   <li>{@code 1}: (Legacy/Unused)</li>
+     *   <li>{@code 2}: HTTP Task - Makes an HTTP request.</li>
+     *   <li>{@code 4}: Shell Script Task - Executes a shell script.</li>
+     *   <li>{@code 10}: Workflow Task - Orchestrates a series of other tasks.</li>
+     * </ul>
      */
     private int taskType;
 
     // Fields for BEAN task_type (taskType=0)
     private String beanName;
     private String methodName;
-    /** 
+    /**
      * Generic parameters field, structure depends on taskType:
-     * - For BEAN (0): JSON string for bean method parameters.
-     * - For SHELL (1): JSON string of ShellTaskParameters DTO.
-     * - For HTTP (2): JSON string of HttpTaskParameters DTO.
-     * - For WORKFLOW (3): Can be null or used for initial context if needed by a specific workflow interpretation.
+     * <ul>
+     *   <li>For BEAN (0): JSON string representing parameters for the bean method.</li>
+     *   <li>For HTTP (2): JSON string representing {@link com.example.taskscheduler.dto.taskparams.HttpTaskParameters}.</li>
+     *   <li>For SHELL (4): JSON string representing {@link com.example.taskscheduler.dto.taskparams.ShellTaskParameters}.</li>
+     *   <li>For WORKFLOW (10): Typically null or empty for the parent workflow task itself, as parameters are usually defined within nodes or globally.</li>
+     * </ul>
      */
-    private String beanParameters; 
+    private String beanParameters;
 
     // Fields for HTTP task_type (taskType=2) are effectively covered by beanParameters storing HttpTaskParameters JSON.
     // These direct fields can be considered deprecated or for very simple HTTP tasks if not using HttpTaskParameters DTO.
     // For consistency, using beanParameters for complex types like HTTP and Shell is preferred.
-    private String httpUrl; // Example: Can be part of HttpTaskParameters stored in beanParameters
+    /** @deprecated Prefer storing HTTP URL within the JSON of {@code beanParameters} (as part of HttpTaskParameters). */
+    @Deprecated
+    private String httpUrl;
+    /** @deprecated Prefer storing HTTP Method within the JSON of {@code beanParameters}. */
+    @Deprecated
     private String httpMethod;
+    /** @deprecated Prefer storing HTTP Headers within the JSON of {@code beanParameters}. */
+    @Deprecated
     private String httpHeaders;
+    /** @deprecated Prefer storing HTTP Body within the JSON of {@code beanParameters}. */
+    @Deprecated
     private String httpBody;
 
-    // Fields for SHELL task_type (taskType=1) are covered by beanParameters storing ShellTaskParameters JSON.
+    // Fields for SHELL task_type (taskType=4, formerly 1) are covered by beanParameters storing ShellTaskParameters JSON.
     // These direct fields can be considered deprecated.
-    private String scriptPath; // Example: Can be part of ShellTaskParameters stored in beanParameters
+    /** @deprecated Prefer storing script path within the JSON of {@code beanParameters} (as part of ShellTaskParameters). */
+    @Deprecated
+    private String scriptPath;
+    /** @deprecated Prefer storing script arguments within the JSON of {@code beanParameters}. */
+    @Deprecated
     private String scriptParameters;
 
     private String description;
     private boolean isActive;
-    
-    // Distributed lock fields
-    private String taskLockName;
-    private Integer taskLockMostSeconds;
+
+    /**
+     * Defines how the task behaves in a cluster. Defaults to {@link ExecutionMode#BROADCAST}.
+     * <ul>
+     *   <li>{@link ExecutionMode#BROADCAST}: Task runs on all instances.</li>
+     *   <li>{@link ExecutionMode#CLUSTER}: Task attempts to acquire a distributed lock to run on a single instance.
+     *       The lock name is automatically derived (e.g., `task_lock_id_{taskId}`).</li>
+     * </ul>
+     */
+    private ExecutionMode executionMode = ExecutionMode.BROADCAST;
 
     // Advanced features
     /** Calendar group name (e.g., "NATIONAL_HOLIDAYS") to check for non-working days. */

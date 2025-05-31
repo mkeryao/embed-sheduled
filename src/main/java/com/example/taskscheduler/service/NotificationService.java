@@ -4,25 +4,27 @@ import com.example.taskscheduler.dao.TaskUserDao;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
 import com.example.taskscheduler.entity.TaskUser;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.taskscheduler.notification.NotificationChannel;
+import com.example.taskscheduler.notification.NotificationContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 /**
- * Service responsible for sending notifications based on task execution outcomes.
- * Notifications are sent via webhooks configured for users.
+ * Service responsible for orchestrating notifications based on task execution outcomes.
+ * <p>
+ * This service determines which users to notify based on task configuration
+ * ({@link TaskConfig#getNotifySuccessUserIds()} or {@link TaskConfig#getNotifyFailedUserIds()})
+ * and the execution result. It then iterates through available {@link NotificationChannel}
+ * implementations (e.g., Webhook, Email) and dispatches the notification if the user
+ * has appropriate preferences for that channel.
+ * </p>
  */
 @Service
 public class NotificationService {
@@ -32,71 +34,71 @@ public class NotificationService {
     @Autowired
     private TaskUserDao taskUserDao;
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final List<NotificationChannel> notificationChannels;
 
+    /**
+     * Constructs the NotificationService with a list of available notification channels.
+     * Spring's dependency injection provides all beans that implement {@link NotificationChannel}.
+     *
+     * @param notificationChannels A list of discovered notification channel implementations.
+     */
     @Autowired
-    private ObjectMapper objectMapper;
+    public NotificationService(List<NotificationChannel> notificationChannels) {
+        this.notificationChannels = notificationChannels;
+        if (notificationChannels != null) {
+            logger.info("NotificationService initialized with {} notification channel(s):", notificationChannels.size());
+            for(NotificationChannel channel : notificationChannels) {
+                logger.info("- Channel Type: {}", channel.getChannelType());
+            }
+        } else {
+            logger.warn("NotificationService initialized with no notification channels.");
+        }
+    }
 
     /**
      * Sends notifications to users based on the task's configuration and execution result.
      * <p>
-     * It checks {@link TaskConfig#getNotifySuccessUserIds()} or {@link TaskConfig#getNotifyFailedUserIds()}
-     * depending on the {@link TaskExecuteLog#getState()}. If user IDs are specified, it fetches each user's
-     * webhook address and sends a JSON payload with task execution details.
+     * It identifies target users from {@link TaskConfig#getNotifySuccessUserIds()} or
+     * {@link TaskConfig#getNotifyFailedUserIds()} based on the {@link TaskExecuteLog#getState()}.
+     * For each user, it creates a {@link NotificationContext} and iterates through the
+     * available {@link NotificationChannel}s. A notification is sent via a channel if the user
+     * has preferences matching that channel type (e.g., a webhook URL for the WEBHOOK channel).
      * </p>
      *
-     * @param task The configuration of the task that was executed.
+     * @param taskConfig The configuration of the task that was executed.
      * @param logEntry The execution log entry containing the result of the task.
      */
-    public void sendNotification(TaskConfig task, TaskExecuteLog logEntry) {
-        if (task == null || logEntry == null) {
+    public void sendNotification(TaskConfig taskConfig, TaskExecuteLog logEntry) {
+        if (taskConfig == null || logEntry == null) {
             logger.warn("TaskConfig or TaskExecuteLog is null, cannot send notification.");
             return;
         }
 
         String userIdsToNotifyRaw = null;
-        boolean isSuccess = "SUCCESS".equals(logEntry.getState());
-        // Consider FAILED, TIMED_OUT, and potentially SKIPPED (if configured) as failure conditions for notification
-        boolean isFailureOrTimeout = "FAILED".equals(logEntry.getState()) || "TIMED_OUT".equals(logEntry.getState());
-        // boolean isSkipped = "SKIPPED".equals(logEntry.getState()); // Example if SKIPPED needs notifications
+        boolean isSuccessNotification = "SUCCESS".equals(logEntry.getState());
+        boolean isFailureNotification = "FAILED".equals(logEntry.getState()) || "TIMED_OUT".equals(logEntry.getState());
 
-        if (isSuccess && StringUtils.hasText(task.getNotifySuccessUserIds())) {
-            userIdsToNotifyRaw = task.getNotifySuccessUserIds();
-            logger.info("Task '{}' (ID: {}) completed with status SUCCESS. Notifying success users: [{}]. Log ID: {}",
-                    task.getTaskName(), task.getTaskId(), userIdsToNotifyRaw, logEntry.getLogId());
-        } else if (isFailureOrTimeout && StringUtils.hasText(task.getNotifyFailedUserIds())) {
-            userIdsToNotifyRaw = task.getNotifyFailedUserIds();
-            logger.info("Task '{}' (ID: {}) completed with status {}. Notifying failure users: [{}]. Log ID: {}",
-                    task.getTaskName(), task.getTaskId(), logEntry.getState(), userIdsToNotifyRaw, logEntry.getLogId());
+        if (isSuccessNotification && StringUtils.hasText(taskConfig.getNotifySuccessUserIds())) {
+            userIdsToNotifyRaw = taskConfig.getNotifySuccessUserIds();
+            logger.info("Task '{}' (ID: {}) completed with status SUCCESS. Processing success notifications for users: [{}]. Log ID: {}",
+                    taskConfig.getTaskName(), taskConfig.getTaskId(), userIdsToNotifyRaw, logEntry.getLogId());
+        } else if (isFailureNotification && StringUtils.hasText(taskConfig.getNotifyFailedUserIds())) {
+            userIdsToNotifyRaw = taskConfig.getNotifyFailedUserIds();
+            logger.info("Task '{}' (ID: {}) completed with status {}. Processing failure notifications for users: [{}]. Log ID: {}",
+                    taskConfig.getTaskName(), taskConfig.getTaskId(), logEntry.getState(), userIdsToNotifyRaw, logEntry.getLogId());
         } else {
             logger.debug("No notification required for task '{}' (ID: {}) with status {} or no users specified for this outcome. Log ID: {}",
-                 task.getTaskName(), task.getTaskId(), logEntry.getState(), logEntry.getLogId());
+                 taskConfig.getTaskName(), taskConfig.getTaskId(), logEntry.getState(), logEntry.getLogId());
             return;
         }
 
         if (!StringUtils.hasText(userIdsToNotifyRaw)) {
+            logger.debug("User IDs string is empty for task '{}', no notifications will be sent.", taskConfig.getTaskName());
             return;
         }
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("taskName", task.getTaskName());
-        payload.put("taskId", task.getTaskId());
-        payload.put("status", logEntry.getState());
-        payload.put("startTime", logEntry.getStartTime() != null ? logEntry.getStartTime().toString() : null);
-        payload.put("endTime", logEntry.getEndTime() != null ? logEntry.getEndTime().toString() : null);
-        payload.put("message", logEntry.getExMsg()); // This is often the exception message for failures
-        payload.put("instanceId", logEntry.getInstanceId());
-        payload.put("logId", logEntry.getLogId());
-        payload.put("taskPattern", logEntry.getTaskPattern());
-        payload.put("parentLogId", logEntry.getParentLogId());
-
-
-        String jsonPayload;
-        try {
-            jsonPayload = objectMapper.writeValueAsString(payload);
-        } catch (Exception e) {
-            logger.error("Error creating JSON payload for notification (Task ID: {}): {}", task.getTaskId(), e.getMessage());
+        if (notificationChannels == null || notificationChannels.isEmpty()) {
+            logger.warn("No notification channels are configured. Cannot send notifications for task '{}'.", taskConfig.getTaskName());
             return;
         }
 
@@ -109,41 +111,45 @@ public class NotificationService {
                     Optional<TaskUser> userOptional = taskUserDao.findById(userId);
                     if (userOptional.isPresent()) {
                         TaskUser user = userOptional.get();
-                        if (StringUtils.hasText(user.getWebhookAddress())) {
-                            sendWebhook(user, jsonPayload, task.getTaskName());
-                        } else {
-                            logger.debug("User {} (ID: {}) has no webhook address configured for task {} notification.", user.getUsername(), userId, task.getTaskName());
+                        NotificationContext context = new NotificationContext(taskConfig, logEntry, user, isSuccessNotification);
+
+                        logger.debug("Processing notifications for user '{}' (ID: {}) for task '{}' (Status: {})",
+                                     user.getUsername(), userId, taskConfig.getTaskName(), logEntry.getState());
+
+                        boolean notificationSentForUser = false;
+                        for (NotificationChannel channel : notificationChannels) {
+                            // Basic check: if it's a WEBHOOK channel, does the user have a webhook address?
+                            // This will be expanded with UserNotificationPreference checks in the future.
+                            if (NotificationChannel.WEBHOOK_CHANNEL_TYPE.equals(channel.getChannelType())) { // Assuming WEBHOOK_CHANNEL_TYPE is defined or use "WEBHOOK" string
+                                if (StringUtils.hasText(user.getWebhookAddress())) {
+                                    logger.info("Attempting to send notification via channel '{}' for user '{}' for task '{}'",
+                                                channel.getChannelType(), user.getUsername(), taskConfig.getTaskName());
+                                    channel.sendNotification(context);
+                                    notificationSentForUser = true;
+                                } else {
+                                    logger.debug("User '{}' has no webhook address configured; skipping WEBHOOK channel for task '{}'.",
+                                                 user.getUsername(), taskConfig.getTaskName());
+                                }
+                            } else {
+                                // For other channel types (e.g., EMAIL), we'd need specific preference checks.
+                                // For now, this example doesn't implement other channels or detailed preferences.
+                                logger.debug("Channel type '{}' not yet fully supported with user preferences for user '{}', task '{}'.",
+                                             channel.getChannelType(), user.getUsername(), taskConfig.getTaskName());
+                            }
                         }
+                        if (!notificationSentForUser) {
+                             logger.info("No suitable notification channels found or configured for user '{}' for task '{}'.",
+                                         user.getUsername(), taskConfig.getTaskName());
+                        }
+
                     } else {
-                        logger.warn("User ID {} not found for task {} notification.", userId, task.getTaskName());
+                        logger.warn("User ID {} not found for task {} notification.", userId, taskConfig.getTaskName());
                     }
                 } catch (NumberFormatException e) {
-                    logger.warn("Invalid user ID format '{}' in notification list for task {}.", userIdStr, task.getTaskName());
+                    logger.warn("Invalid user ID format '{}' in notification list for task {}.", userIdStr, taskConfig.getTaskName());
+                } catch (Exception e) {
+                    logger.error("Error processing notification for user ID '{}', task '{}': {}", userIdStr, taskConfig.getTaskName(), e.getMessage(), e);
                 }
             });
-    }
-
-    /**
-     * Sends the JSON payload to the user's configured webhook address.
-     *
-     * @param user The user to notify, containing the webhook address.
-     * @param jsonPayload The JSON string payload to send.
-     * @param taskName The name of the task for logging purposes.
-     */
-    private void sendWebhook(TaskUser user, String jsonPayload, String taskName) {
-        String webhookUrl = user.getWebhookAddress();
-        logger.info("Attempting to send webhook notification for task '{}' to user '{}' at {}", taskName, user.getUsername(), webhookUrl);
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<String> entity = new HttpEntity<>(jsonPayload, headers);
-
-            // Consider adding timeout configurations for RestTemplate
-            restTemplate.postForEntity(webhookUrl, entity, String.class); 
-            logger.info("Webhook notification sent successfully for task '{}' to user '{}' at {}.", taskName, user.getUsername(), webhookUrl);
-        } catch (Exception e) {
-            logger.error("Failed to send webhook notification for task '{}' to user '{}' at {}: {}", taskName, user.getUsername(), webhookUrl, e.getMessage());
-            // For persistent errors, more specific error handling or retry logic might be needed.
-        }
     }
 }

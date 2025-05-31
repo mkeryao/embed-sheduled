@@ -64,7 +64,7 @@ public class CustomTaskTrigger implements Trigger {
                 logger.warn("Task ID {}: Searched for next execution time beyond {} years. Stopping search.", taskConfig.getTaskId(), MAX_YEARS_IN_FUTURE);
                 return null; // Safety break: too far in future
             }
-            
+
             // Convert to LocalDateTime for easier date/time checks
             LocalDateTime ldt = LocalDateTime.ofInstant(nextPotentialExecutionTime.toInstant(), ZoneId.systemDefault());
 
@@ -74,7 +74,7 @@ public class CustomTaskTrigger implements Trigger {
                 Date startDateAtMidnight = Date.from(taskConfig.getStartDate().toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
                 if (nextPotentialExecutionTime.before(startDateAtMidnight)) {
                     logger.debug("Task ID {}: Candidate time {} is before start date {}. Skipping.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getStartDate());
-                    continue; 
+                    continue;
                 }
             }
 

@@ -28,29 +28,30 @@ public class TaskExecuteLog {
     /** Timestamp of when the task execution ended. Null if still running or did not complete. */
     private Timestamp endTime;
 
-    /** 
+    /**
      * Current state of the task execution.
      * Examples: "RUNNING", "SUCCESS", "FAILED", "TIMED_OUT", "SKIPPED".
      */
     private String state;
 
+    /** Optional return message or short summary of execution, distinct from exception messages. */
+    private String rtnMsg;
+
     /** Optional message, typically used to store exception messages if the task failed or timed out. */
     private String exMsg;
-
-    private String rtnMsg ;
 
     /** Identifier of the scheduler instance that executed this task. Useful in distributed environments. */
     private String instanceId;
 
-    /** 
-     * If this log entry is for a step within a workflow, this field stores the {@link #logId} 
+    /**
+     * If this log entry is for a step within a workflow, this field stores the {@link #logId}
      * of the parent workflow's main log entry. Null for regular tasks or main workflow logs.
      * Corresponds to the `parent_execute_no` column in the database.
      */
     private Integer parentLogId;
 
-    /** 
-     * Describes the pattern of execution, e.g., "NORMAL" for regular tasks, 
+    /**
+     * Describes the pattern of execution, e.g., "NORMAL" for regular tasks,
      * "WORKFLOW_PARENT" for the main log of a workflow, or "WORKFLOW_STEP" for individual steps in a workflow.
      */
     private String taskPattern;

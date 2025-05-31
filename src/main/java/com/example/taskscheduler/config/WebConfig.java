@@ -16,7 +16,7 @@ public class WebConfig {
         FilterRegistrationBean<JwtRequestFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(jwtRequestFilter);
         // Apply this filter to all API paths
-        registrationBean.addUrlPatterns("/api/*"); 
+        registrationBean.addUrlPatterns("/api/*");
         // Exclude paths are handled within the filter itself.
         // If specific ordering is needed with other filters, setOrder() can be used.
         registrationBean.setOrder(1); // Example order

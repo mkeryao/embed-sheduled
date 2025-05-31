@@ -4,7 +4,7 @@ import com.example.taskscheduler.dao.TaskExecuteLogDao;
 import com.example.taskscheduler.dto.taskparams.ShellTaskParameters;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alibaba.fastjson.JSON; // Fastjson import
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,8 +50,9 @@ public class ShellTaskExecutor {
     private static final String TEMP_SCRIPT_PREFIX = "task_script_";
     private static final String DEFAULT_SHELL_EXTENSION = System.getProperty("os.name").toLowerCase().startsWith("windows") ? ".bat" : ".sh";
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    // ObjectMapper no longer needed
+    // @Autowired
+    // private ObjectMapper objectMapper;
 
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
@@ -88,7 +89,8 @@ public class ShellTaskExecutor {
             if (!StringUtils.hasText(taskConfig.getBeanParameters())) {
                 throw new IllegalArgumentException("Shell task parameters (beanParameters) are missing or empty for Task ID: " + taskConfig.getTaskId());
             }
-            params = objectMapper.readValue(taskConfig.getBeanParameters(), ShellTaskParameters.class);
+            // Replace with Fastjson parsing
+            params = JSON.parseObject(taskConfig.getBeanParameters(), ShellTaskParameters.class);
 
             if (!StringUtils.hasText(params.getScript())) {
                 throw new IllegalArgumentException("Script content/path is mandatory for shell tasks. Task ID: " + taskConfig.getTaskId());
@@ -153,13 +155,13 @@ public class ShellTaskExecutor {
             } catch (Exception e) {
                 logger.warn("Stderr gobbler for Task ID {} timed out or was interrupted while finishing. Error output may be incomplete.", taskConfig.getTaskId(), e);
             }
-            
+
             if (!timedOut) {
                 String finalStdout = outputBuilder.toString().trim();
                 String finalStderr = errorBuilder.toString().trim();
 
                 logEntry.setRtnMsg("Exit Code: " + exitCode + (StringUtils.hasText(finalStdout) ? "\nSTDOUT:\n" + finalStdout : ""));
-                
+
                 if (exitCode == 0) {
                     logEntry.setState("SUCCESS");
                     logEntry.setExMsg(StringUtils.hasText(finalStderr) ? "STDERR:\n" + finalStderr : null);
@@ -171,10 +173,14 @@ public class ShellTaskExecutor {
                         taskConfig.getTaskId(), exitCode, finalStdout.length(), finalStderr.length());
             }
 
-        } catch (IllegalArgumentException | com.fasterxml.jackson.core.JsonProcessingException e) {
+        } catch (IllegalArgumentException e) {
             logger.error("Shell Task ID {} configuration error: {}. Parameters: {}", taskConfig.getTaskId(), e.getMessage(), taskConfig.getBeanParameters(), e);
             logEntry.setState("FAILED");
             logEntry.setExMsg("Invalid task parameters: " + e.getMessage());
+        } catch (com.alibaba.fastjson.JSONException e) { // Fastjson parsing exception
+            logger.error("Shell Task ID {} JSON parsing error: {}. Parameters: {}", taskConfig.getTaskId(), e.getMessage(), taskConfig.getBeanParameters(), e);
+            logEntry.setState("FAILED");
+            logEntry.setExMsg("Invalid task parameters JSON format: " + e.getMessage());
         } catch (IOException e) {
             logger.error("Shell Task ID {} failed: IO error during execution (e.g., script not found, permission issue). {}", taskConfig.getTaskId(), e.getMessage(), e);
             logEntry.setState("FAILED");

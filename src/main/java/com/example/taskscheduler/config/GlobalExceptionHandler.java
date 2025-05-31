@@ -46,7 +46,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         errorResponse.put("message", "Bad request: " + ex.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
-    
+
     // Add more specific exception handlers as needed, for example:
     // @ExceptionHandler(ResourceNotFoundException.class)
     // @ResponseStatus(HttpStatus.NOT_FOUND)

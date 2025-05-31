@@ -34,7 +34,7 @@ public class MySampleTask {
         params.forEach((key, value) -> logger.info("Param: {} = {}", key, value));
         logger.info("MySampleTask.executeWithMap completed.");
     }
-    
+
     public void simpleExecute() {
         logger.info("MySampleTask.simpleExecute called. No parameters.");
         logger.info("MySampleTask.simpleExecute completed.");

@@ -36,7 +36,7 @@ public class TaskCalendarController {
         BeanUtils.copyProperties(dto, day);
         return day;
     }
-    
+
     private TaskCalendarDto convertCalendarToDto(TaskCalendar calendar, boolean fetchDays) {
         if (calendar == null) return null;
         TaskCalendarDto dto = new TaskCalendarDto();
@@ -96,7 +96,7 @@ public class TaskCalendarController {
         return calendarOptional.map(cal -> ResponseEntity.ok(convertCalendarToDto(cal, true)))
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
     // Changed from /group/{groupName} to /name/{calendarName} for clarity based on schema
     @GetMapping("/name/{calendarName}")
     public ResponseEntity<TaskCalendarDto> getCalendarByName(@PathVariable String calendarName) {

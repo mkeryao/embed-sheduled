@@ -77,7 +77,7 @@ public interface TaskCalendarDao {
      * @return A list of calendar day entries for the specified calendar.
      */
     List<TaskCalendarDay> findCalendarDaysByCalendarId(Integer calendarId);
-    
+
     /**
      * Finds a specific calendar day entry by its parent calendar ID and the event date.
      * @param calendarId The ID of the parent calendar.

@@ -147,7 +147,7 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
     public List<TaskCalendarDay> findCalendarDaysByCalendarId(Integer calendarId) {
         return jdbcTemplate.query(SELECT_CALENDAR_DAYS_BY_CALENDAR_ID_SQL, new Object[]{calendarId}, calendarDayRowMapper);
     }
-    
+
     @Override
     public Optional<TaskCalendarDay> findCalendarDayByCalendarIdAndDate(Integer calendarId, Date eventDate) {
         try {

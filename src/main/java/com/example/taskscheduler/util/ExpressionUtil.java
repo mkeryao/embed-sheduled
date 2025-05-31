@@ -36,8 +36,8 @@ public class ExpressionUtil {
      *
      * @param template The string containing the template.
      * @param contextData The map of data to resolve from.
-     * @return The resolved value as an Object (could be String, Number, Boolean, etc.), 
-     *         the original template string if the key is not found in context, 
+     * @return The resolved value as an Object (could be String, Number, Boolean, etc.),
+     *         the original template string if the key is not found in context,
      *         or the original input if it's not a template.
      */
     public Object resolveValue(String template, Map<String, Object> contextData) {
@@ -48,9 +48,9 @@ public class ExpressionUtil {
         Object value = getValueFromPath(contextData, keyPath);
         return value != null ? value : template; // Return template string if value not found
     }
-    
+
     /**
-     * Replaces all occurrences of ${variable.path} or ${variable} in a string 
+     * Replaces all occurrences of ${variable.path} or ${variable} in a string
      * with their corresponding values from the contextData.
      * If a template variable is not found in the context, it remains unresolved in the string.
      *
@@ -70,8 +70,8 @@ public class ExpressionUtil {
             if (value != null) {
                 matcher.appendReplacement(sb, Matcher.quoteReplacement(String.valueOf(value)));
             } else {
-                // Keep original template if value not found
-                matcher.appendReplacement(sb, matcher.group(0)); 
+                // Keep original template if value not found, ensuring it's properly quoted for appendReplacement
+                matcher.appendReplacement(sb, Matcher.quoteReplacement(matcher.group(0)));
                  logger.warn("Template variable '{}' not found in context, keeping original.", keyPath);
             }
         }
@@ -150,16 +150,23 @@ public class ExpressionUtil {
                 if (actualValue instanceof Boolean) {
                     return ((Boolean) actualValue).equals(Boolean.parseBoolean(expectedValueStr));
                 } else if (actualValue instanceof Number) {
-                    // Attempt to parse expectedValueStr as a number for numeric comparison
-                    // Handle potential floating point comparisons carefully if needed
                     return ((Number) actualValue).doubleValue() == Double.parseDouble(expectedValueStr);
                 } else { // Default to string comparison
+                    // If actual value is a String, the expected value must have been quoted in the expression
+                    if (equalityMatcher.group(2).isEmpty()) { // No quotes used for expectedValueStr
+                        logger.warn("Comparing String variable '{}' to unquoted literal '{}'. This is ambiguous and will evaluate to false.", keyPath, expectedValueStr);
+                        return false; // Unquoted literals are not treated as strings for string comparison
+                    }
                     return actualValue.toString().equals(expectedValueStr);
                 }
             } catch (NumberFormatException e) {
-                 // If expectedValueStr is not parseable as a number when actual is a number,
-                 // or if any other parsing issue occurs, fall back to string comparison.
-                return actualValue.toString().equals(expectedValueStr);
+                // If expectedValueStr cannot be parsed to match the type of actualValue (e.g. actual is Number, expected is non-numeric string)
+                // or if actualValue is a String and expectedValueStr was unquoted (handled above)
+                // then this comparison should typically be false.
+                // The original fallback to string comparison here might be too lenient.
+                // If actualValue is String, it's covered. If actualValue is Number and expectedValueStr is not a number, it's false.
+                logger.debug("NumberFormatException during equality check for key '{}', actual type '{}', expected string '{}'. Returning false.", keyPath, actualValue.getClass().getSimpleName(), expectedValueStr, e);
+                return false;
             }
         }
 
@@ -168,14 +175,14 @@ public class ExpressionUtil {
             String keyPath = existenceMatcher.group(1);
             String operator = existenceMatcher.group(2); // "exists" or "not exists"
             Object value = getValueFromPath(contextData, keyPath); // Check if path resolves to something non-null
-            
+
             if ("exists".equalsIgnoreCase(operator)) {
                 return value != null; // Key exists and its value is not null
             } else if ("not exists".equalsIgnoreCase(operator)) {
                 return value == null; // Key doesn't exist or its value is null
             }
         }
-        
+
         logger.warn("Expression '{}' did not match any supported pattern. Evaluating to false.", expression);
         return false; // Default if no pattern matches
     }

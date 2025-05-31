@@ -7,8 +7,8 @@ import com.example.taskscheduler.dto.workflow.WorkflowNode;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
 import com.example.taskscheduler.util.ExpressionUtil;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC; // Import MDC
@@ -40,8 +40,6 @@ public class WorkflowExecutionService {
     private static final Logger logger = LoggerFactory.getLogger(WorkflowExecutionService.class);
 
     @Autowired
-    private ObjectMapper objectMapper;
-    @Autowired
     private TaskConfigDao taskConfigDao;
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
@@ -55,14 +53,14 @@ public class WorkflowExecutionService {
     /**
      * Starts the execution of a workflow defined by the given {@link TaskConfig}.
      * This method is called by {@link com.example.taskscheduler.scheduler.CoreSchedulerService}
-     * when a task of type 'WORKFLOW' (type 3) is triggered.
+     * when a task of type 'WORKFLOW' (type 10) is triggered.
      *
      * @param workflowTaskConfig The configuration of the workflow task.
      * @param parentWorkflowLog The initial execution log entry created for this workflow instance.
      *                          This log's status will be updated based on the overall workflow outcome.
      */
     public void startWorkflow(TaskConfig workflowTaskConfig, TaskExecuteLog parentWorkflowLog) {
-        if (workflowTaskConfig == null || workflowTaskConfig.getTaskType() != 3) { // Type 3 is WORKFLOW
+        if (workflowTaskConfig == null || workflowTaskConfig.getTaskType() != 10) { // Type 10 is WORKFLOW (was 3)
             logger.error("Task {} (ID: {}) is not a valid workflow task or is null.",
                     workflowTaskConfig != null ? workflowTaskConfig.getTaskName() : "null",
                     workflowTaskConfig != null ? workflowTaskConfig.getTaskId() : "null");
@@ -79,7 +77,7 @@ public class WorkflowExecutionService {
         try {
             // Parse global parameters defined in the workflow task config
             if (StringUtils.hasText(workflowTaskConfig.getGlobalParametersJson())) {
-                Map<String, Object> globalParams = objectMapper.readValue(workflowTaskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {});
+                Map<String, Object> globalParams = JSON.parseObject(workflowTaskConfig.getGlobalParametersJson(), new com.alibaba.fastjson.TypeReference<Map<String, Object>>() {});
                 initialContextData.putAll(globalParams);
                 logger.info("Loaded global parameters for workflow {}: {}", workflowTaskConfig.getTaskName(), globalParams.keySet());
             }
@@ -94,15 +92,22 @@ public class WorkflowExecutionService {
                 updateWorkflowLog(parentWorkflowLog.getLogId(), "SUCCESS", "Workflow has no nodes to execute.");
                 return;
             }
-            nodes = objectMapper.readValue(workflowTaskConfig.getWorkflowNodesJson(), new TypeReference<List<WorkflowNode>>() {});
-            
+            nodes = JSON.parseArray(workflowTaskConfig.getWorkflowNodesJson(), WorkflowNode.class);
+
             if (!StringUtils.hasText(workflowTaskConfig.getWorkflowEdgesJson())) {
                 logger.warn("Workflow {} (ID: {}) has no edges defined. Cannot determine execution flow.",
                         workflowTaskConfig.getTaskName(), workflowTaskConfig.getTaskId());
                 updateWorkflowLog(parentWorkflowLog.getLogId(), "FAILED", "Workflow definition incomplete: missing edges.");
                 return;
             }
-            edges = objectMapper.readValue(workflowTaskConfig.getWorkflowEdgesJson(), new TypeReference<List<WorkflowEdge>>() {});
+            edges = JSON.parseArray(workflowTaskConfig.getWorkflowEdgesJson(), WorkflowEdge.class);
+            // Added check for empty edges list after parsing, if nodes are present
+            if (!CollectionUtils.isEmpty(nodes) && CollectionUtils.isEmpty(edges)) {
+                logger.warn("Workflow {} (ID: {}) has nodes but no edges defined after parsing. Execution flow cannot be determined.",
+                        workflowTaskConfig.getTaskName(), workflowTaskConfig.getTaskId());
+                updateWorkflowLog(parentWorkflowLog.getLogId(), "FAILED", "Workflow definition incomplete: nodes exist but no edges found after parsing.");
+                return;
+            }
 
         } catch (Exception e) {
             logger.error("Failed to parse workflow definition for workflow {} (ID: {}): {}",
@@ -156,7 +161,7 @@ public class WorkflowExecutionService {
      */
     private WorkflowNode findStartNode(List<WorkflowNode> nodes, List<WorkflowEdge> edges) {
         if (nodes.isEmpty()) return null;
-        
+
         Optional<WorkflowNode> predesignatedStartNode = nodes.stream()
                 .filter(n -> "start".equalsIgnoreCase(n.getNodeId()))
                 .findFirst();
@@ -211,7 +216,7 @@ public class WorkflowExecutionService {
         stepLog.setParentLogId(parentWorkflowLog.getLogId());
         stepLog.setTaskPattern("WORKFLOW_STEP");
         TaskExecuteLog savedStepLog = taskExecuteLogDao.save(stepLog);
-        
+
         String stepExecuteNo = String.valueOf(savedStepLog.getLogId());
         MDC.put("execute_no", stepExecuteNo); // Add step's execute_no to MDC
 
@@ -220,14 +225,14 @@ public class WorkflowExecutionService {
 
         try {
             Map<String, Object> resolvedParameters = prepareAndResolveParameters(referencedTaskConfig, currentNode, contextData);
-            
+
             TaskConfig effectiveTaskConfigForBean = new TaskConfig(); // Temporary TaskConfig for this specific execution
             BeanUtils.copyProperties(referencedTaskConfig, effectiveTaskConfigForBean); // Start with base config
             if (resolvedParameters != null && !resolvedParameters.isEmpty()) {
                 // Override beanParameters with resolved ones for this execution
-                effectiveTaskConfigForBean.setBeanParameters(objectMapper.writeValueAsString(resolvedParameters));
+                effectiveTaskConfigForBean.setBeanParameters(JSON.toJSONString(resolvedParameters));
             }
-            
+
             beanTaskExecutor.execute(effectiveTaskConfigForBean); // This may throw exceptions including TaskTimeoutException
             stepStatus = "SUCCESS";
             overallWorkflowMessage.append("Succeeded. ");
@@ -242,7 +247,7 @@ public class WorkflowExecutionService {
             stepMessage = e.getMessage();
             overallWorkflowMessage.append("Failed. ");
         }
-        
+
         taskExecuteLogDao.updateLogStatus(savedStepLog.getLogId(), stepStatus, stepMessage);
         contextData.put(currentNode.getNodeId() + "_status", stepStatus);
         // Future enhancement: capture actual output from beanTaskExecutor.execute (if it returns a value)
@@ -257,7 +262,7 @@ public class WorkflowExecutionService {
         if (outgoingEdges.isEmpty()) {
             overallWorkflowMessage.append("No outgoing edges from node '").append(currentNode.getNodeId()).append("'. Path ends.\n");
             // A path ending is not necessarily a workflow failure if the step itself was not a failure.
-            return "SUCCESS".equals(stepStatus) || "TIMED_OUT".equals(stepStatus); 
+            return "SUCCESS".equals(stepStatus) || "TIMED_OUT".equals(stepStatus);
         }
 
         for (WorkflowEdge edge : outgoingEdges) {
@@ -267,7 +272,7 @@ public class WorkflowExecutionService {
                 conditionMet = expressionUtil.evaluate(evaluatedExpression, contextData);
                 logger.debug("Edge from '{}' to '{}': expression/condition '{}' (stepStatus='{}') evaluated to {}",
                     edge.getFromNodeId(), edge.getToNodeId(), evaluatedExpression, stepStatus, conditionMet);
-            } else { 
+            } else {
                 // No expression and no simple condition implies unconditional transition if current step was SUCCESSFUL
                 conditionMet = "SUCCESS".equals(stepStatus);
                  logger.debug("Edge from '{}' to '{}': no expression/condition, defaulting based on stepStatus='{}', conditionMet={}",
@@ -289,13 +294,13 @@ public class WorkflowExecutionService {
                 return executeNodeRecursive(nextNode, parentWorkflowLog, nodeMap, allEdges, contextData, overallWorkflowMessage);
             }
         }
-        
+
         overallWorkflowMessage.append("No outgoing edge conditions met for node '").append(currentNode.getNodeId()).append("'. Workflow path ends.\n");
         // If no conditions met, this path of the workflow ends.
         // This is considered a successful completion of this path if the current node itself didn't fail.
-        return "SUCCESS".equals(stepStatus) || "TIMED_OUT".equals(stepStatus); 
+        return "SUCCESS".equals(stepStatus) || "TIMED_OUT".equals(stepStatus);
     }
-    
+
     /**
      * Prepares and resolves parameters for a workflow node execution.
      * It merges parameters defined in the referenced {@link TaskConfig} (bean task)
@@ -314,7 +319,7 @@ public class WorkflowExecutionService {
             if (StringUtils.hasText(referencedTaskConfig.getBeanParameters())) {
                 // Resolve templates in base parameters from the task config
                 String resolvedBaseParamsJson = expressionUtil.resolveTemplates(referencedTaskConfig.getBeanParameters(), contextData);
-                baseParams = objectMapper.readValue(resolvedBaseParamsJson, new TypeReference<Map<String, Object>>() {});
+                baseParams = JSON.parseObject(resolvedBaseParamsJson, new com.alibaba.fastjson.TypeReference<Map<String, Object>>() {});
             }
         } catch (Exception e) {
             logger.warn("Error parsing or resolving base parameters for task {} (ID: {}): {}",
@@ -332,11 +337,11 @@ public class WorkflowExecutionService {
                 }
             });
         }
-        
+
         // Merge: Node parameters override base parameters.
         Map<String, Object> mergedParams = new HashMap<>(baseParams);
-        mergedParams.putAll(nodeParams); 
-        
+        mergedParams.putAll(nodeParams);
+
         logger.debug("Resolved parameters for node '{}' (Task ID: {}): {}",
                 node.getNodeId(), referencedTaskConfig.getTaskId(), mergedParams);
         return mergedParams;

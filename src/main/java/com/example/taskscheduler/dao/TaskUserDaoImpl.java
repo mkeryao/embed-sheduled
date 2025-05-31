@@ -26,9 +26,9 @@ public class TaskUserDaoImpl implements TaskUserDao {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private static final String USER_COLUMNS = "user_id, username, password_hash, email, is_admin, create_time, webhook_address";
-    private static final String INSERT_SQL = "INSERT INTO task_user (username, password_hash, email, is_admin, webhook_address, create_time) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
-    private static final String UPDATE_SQL = "UPDATE task_user SET username=?, password_hash=?, email=?, is_admin=?, webhook_address=? WHERE user_id=?";
+    private static final String USER_COLUMNS = "user_id, username, password_hash, email, is_admin, create_time, webhook_address, notification_preferences_json";
+    private static final String INSERT_SQL = "INSERT INTO task_user (username, password_hash, email, is_admin, webhook_address, notification_preferences_json, create_time) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+    private static final String UPDATE_SQL = "UPDATE task_user SET username=?, password_hash=?, email=?, is_admin=?, webhook_address=?, notification_preferences_json=? WHERE user_id=?";
     private static final String SELECT_BY_ID_SQL = "SELECT " + USER_COLUMNS + " FROM task_user WHERE user_id=?";
     private static final String SELECT_BY_USERNAME_SQL = "SELECT " + USER_COLUMNS + " FROM task_user WHERE username=?";
     private static final String SELECT_ALL_SQL = "SELECT " + USER_COLUMNS + " FROM task_user";
@@ -43,6 +43,7 @@ public class TaskUserDaoImpl implements TaskUserDao {
         user.setAdmin(rs.getBoolean("is_admin"));
         user.setCreateTime(rs.getTimestamp("create_time"));
         user.setWebhookAddress(rs.getString("webhook_address"));
+        user.setNotificationPreferencesJson(rs.getString("notification_preferences_json"));
         return user;
     };
 
@@ -56,6 +57,7 @@ public class TaskUserDaoImpl implements TaskUserDao {
             ps.setString(3, user.getEmail());
             ps.setBoolean(4, user.isAdmin());
             ps.setString(5, user.getWebhookAddress());
+            ps.setString(6, user.getNotificationPreferencesJson());
             return ps;
         }, keyHolder);
 
@@ -92,7 +94,8 @@ public class TaskUserDaoImpl implements TaskUserDao {
     public int update(TaskUser user) {
         return jdbcTemplate.update(UPDATE_SQL,
                 user.getUsername(), user.getPasswordHash(), user.getEmail(),
-                user.isAdmin(), user.getWebhookAddress(), user.getUserId());
+                user.isAdmin(), user.getWebhookAddress(), user.getNotificationPreferencesJson(),
+                user.getUserId());
     }
 
     @Override

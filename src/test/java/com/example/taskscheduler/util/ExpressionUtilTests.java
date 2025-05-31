@@ -51,7 +51,7 @@ public class ExpressionUtilTests {
     void testResolveTemplateWithNonExistingKey() {
         assertEquals("${nonExistingKey}", expressionUtil.resolveTemplates("${nonExistingKey}", contextData));
     }
-    
+
     @Test
     void testResolveTemplateWithNonExistingNestedKey() {
         assertEquals("${user.nonExisting}", expressionUtil.resolveTemplates("${user.nonExisting}", contextData));
@@ -72,7 +72,7 @@ public class ExpressionUtilTests {
     void testResolveTemplateWithEmptyContext() {
         assertEquals("Template: ${user.name}", expressionUtil.resolveTemplates("Template: ${user.name}", Collections.emptyMap()));
     }
-    
+
     @Test
     void testResolveNonTemplateString() {
         assertEquals("This is a plain string.", expressionUtil.resolveTemplates("This is a plain string.", contextData));
@@ -98,10 +98,10 @@ public class ExpressionUtilTests {
     void testResolveValueNonTemplate() {
         assertEquals("status", expressionUtil.resolveValue("status", contextData));
     }
-    
+
     @Test
     void testResolveValueNonExistent() {
-         assertNull(expressionUtil.resolveValue("${nonExistent.key}", contextData));
+         assertEquals("${nonExistent.key}", expressionUtil.resolveValue("${nonExistent.key}", contextData));
     }
 
 
@@ -133,7 +133,7 @@ public class ExpressionUtilTests {
         assertFalse(expressionUtil.evaluate("${nonExistentKey} == 'value'", contextData)); // Non-existent implies null
         assertTrue(expressionUtil.evaluate("${nonExistentKey} == null", contextData));
     }
-    
+
     @ParameterizedTest
     @CsvSource({
             "${status} exists, true",
@@ -160,7 +160,7 @@ public class ExpressionUtilTests {
     void testEvaluateFailureKeyword(String expression) {
         assertFalse(expressionUtil.evaluate(expression, contextData));
     }
-    
+
     @Test
     void testEvaluateInvalidExpression() {
         assertFalse(expressionUtil.evaluate("${status} = 'ACTIVE'", contextData)); // Single equals

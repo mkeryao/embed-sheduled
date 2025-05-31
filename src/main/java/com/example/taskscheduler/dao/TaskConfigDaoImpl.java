@@ -1,6 +1,7 @@
 package com.example.taskscheduler.dao;
 
 import com.example.taskscheduler.entity.TaskConfig;
+import com.example.taskscheduler.enums.ExecutionMode; // Import ExecutionMode
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -26,18 +27,23 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private static final String BASE_COLUMNS = "task_id, task_name, task_group, cron_expression, task_type, bean_name, method_name, bean_parameters, http_url, http_method, http_headers, http_body, script_path, script_parameters, description, is_active, task_lock_name, task_lock_most_seconds, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
-    private static final String WORKFLOW_JSON_COLUMNS = ", workflow_nodes, workflow_edges, global_parameters"; // schema: workflow_nodes, workflow_edges, global_parameters
+    // BASE_COLUMNS: removed task_lock_name, task_lock_most_seconds; added execution_mode. Now removing http/shell direct fields.
+    private static final String BASE_COLUMNS = "task_id, task_name, task_group, cron_expression, task_type, bean_name, method_name, bean_parameters, description, is_active, execution_mode, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
+    private static final String WORKFLOW_JSON_COLUMNS = ", workflow_nodes, workflow_edges, global_parameters";
     private static final String TIMESTAMP_COLUMNS = ", create_time, update_time";
     private static final String FULL_COLUMN_LIST = BASE_COLUMNS + WORKFLOW_JSON_COLUMNS + TIMESTAMP_COLUMNS;
-    
-    private static final String INSERT_BASE_COLUMNS = "task_name, task_group, cron_expression, task_type, bean_name, method_name, bean_parameters, http_url, http_method, http_headers, http_body, script_path, script_parameters, description, is_active, task_lock_name, task_lock_most_seconds, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
+
+    // INSERT_BASE_COLUMNS: removed http/shell direct fields.
+    // Original count: task_name to notify_failed_user_ids (23 fields) - 6 http/shell fields = 17 fields.
+    private static final String INSERT_BASE_COLUMNS = "task_name, task_group, cron_expression, task_type, bean_name, method_name, bean_parameters, description, is_active, execution_mode, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
     private static final String INSERT_WORKFLOW_JSON_COLUMNS = ", workflow_nodes, workflow_edges, global_parameters";
     private static final String INSERT_COLUMNS = INSERT_BASE_COLUMNS + INSERT_WORKFLOW_JSON_COLUMNS + ", create_time, update_time";
-    private static final String INSERT_PLACEHOLDERS = "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP"; // 27 placeholders now
-    private static final String INSERT_SQL = "INSERT INTO task_config (" + INSERT_COLUMNS + ") VALUES (" + INSERT_PLACEHOLDERS + ")";
-    
-    private static final String UPDATE_BASE_SETTERS = "task_name=?, task_group=?, cron_expression=?, task_type=?, bean_name=?, method_name=?, bean_parameters=?, http_url=?, http_method=?, http_headers=?, http_body=?, script_path=?, script_parameters=?, description=?, is_active=?, task_lock_name=?, task_lock_most_seconds=?, task_calendar_group=?, task_exclude_times=?, start_date=?, end_date=?, execute_timeout_seconds=?, notify_success_user_ids=?, notify_failed_user_ids=?";
+    // Placeholders: 17 base fields + 3 workflow fields = 20 fields.
+    private static final String ACTUAL_INSERT_PLACEHOLDERS = String.join(",", java.util.Collections.nCopies(20, "?")) + ", CURRENT_TIMESTAMP, CURRENT_TIMESTAMP";
+    private static final String INSERT_SQL = "INSERT INTO task_config (" + INSERT_COLUMNS + ") VALUES (" + ACTUAL_INSERT_PLACEHOLDERS + ")";
+
+    // UPDATE_BASE_SETTERS: removed http/shell direct fields.
+    private static final String UPDATE_BASE_SETTERS = "task_name=?, task_group=?, cron_expression=?, task_type=?, bean_name=?, method_name=?, bean_parameters=?, description=?, is_active=?, execution_mode=?, task_calendar_group=?, task_exclude_times=?, start_date=?, end_date=?, execute_timeout_seconds=?, notify_success_user_ids=?, notify_failed_user_ids=?";
     private static final String UPDATE_WORKFLOW_JSON_SETTERS = ", workflow_nodes=?, workflow_edges=?, global_parameters=?";
     private static final String UPDATE_SETTERS = UPDATE_BASE_SETTERS + UPDATE_WORKFLOW_JSON_SETTERS + ", update_time=CURRENT_TIMESTAMP";
     private static final String UPDATE_SQL = "UPDATE task_config SET " + UPDATE_SETTERS + " WHERE task_id=?";
@@ -60,16 +66,23 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
         task.setBeanName(rs.getString("bean_name"));
         task.setMethodName(rs.getString("method_name"));
         task.setBeanParameters(rs.getString("bean_parameters"));
-        task.setHttpUrl(rs.getString("http_url"));
-        task.setHttpMethod(rs.getString("http_method"));
-        task.setHttpHeaders(rs.getString("http_headers"));
-        task.setHttpBody(rs.getString("http_body"));
-        task.setScriptPath(rs.getString("script_path"));
-        task.setScriptParameters(rs.getString("script_parameters"));
+        // httpUrl, httpMethod, httpHeaders, httpBody, scriptPath, scriptParameters are removed
         task.setDescription(rs.getString("description"));
         task.setActive(rs.getBoolean("is_active"));
-        task.setTaskLockName(rs.getString("task_lock_name"));
-        task.setTaskLockMostSeconds(rs.getObject("task_lock_most_seconds", Integer.class));
+        // Handle ExecutionMode enum
+        String executionModeStr = rs.getString("execution_mode");
+        if (executionModeStr != null) {
+            try {
+                task.setExecutionMode(ExecutionMode.valueOf(executionModeStr.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                // Log error or set a default, for now, let it be null if invalid
+                // Or throw a more specific exception if strict data integrity is required
+                task.setExecutionMode(ExecutionMode.BROADCAST); // Default fallback
+                // Consider logging this: logger.warn("Invalid execution_mode value '{}' in database for task_id {}", executionModeStr, task.getTaskId());
+            }
+        } else {
+             task.setExecutionMode(ExecutionMode.BROADCAST); // Default if null in DB
+        }
         task.setTaskCalendarGroup(rs.getString("task_calendar_group"));
         task.setTaskExcludeTimes(rs.getString("task_exclude_times"));
         task.setStartDate(rs.getDate("start_date"));
@@ -97,26 +110,21 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
             ps.setString(5, taskConfig.getBeanName());
             ps.setString(6, taskConfig.getMethodName());
             ps.setString(7, taskConfig.getBeanParameters());
-            ps.setString(8, taskConfig.getHttpUrl());
-            ps.setString(9, taskConfig.getHttpMethod());
-            ps.setString(10, taskConfig.getHttpHeaders());
-            ps.setString(11, taskConfig.getHttpBody());
-            ps.setString(12, taskConfig.getScriptPath());
-            ps.setString(13, taskConfig.getScriptParameters());
-            ps.setString(14, taskConfig.getDescription());
-            ps.setBoolean(15, taskConfig.isActive());
-            ps.setString(16, taskConfig.getTaskLockName());
-            setObjectOrNull(ps, 17, taskConfig.getTaskLockMostSeconds(), java.sql.Types.INTEGER);
-            ps.setString(18, taskConfig.getTaskCalendarGroup());
-            ps.setString(19, taskConfig.getTaskExcludeTimes());
-            ps.setDate(20, taskConfig.getStartDate());
-            ps.setDate(21, taskConfig.getEndDate());
-            setObjectOrNull(ps, 22, taskConfig.getExecuteTimeoutSeconds(), java.sql.Types.INTEGER);
-            ps.setString(23, taskConfig.getNotifySuccessUserIds());
-            ps.setString(24, taskConfig.getNotifyFailedUserIds());
-            ps.setString(25, taskConfig.getWorkflowNodesJson());
-            ps.setString(26, taskConfig.getWorkflowEdgesJson());
-            ps.setString(27, taskConfig.getGlobalParametersJson());
+            // Indices shift here: http/shell fields removed (were 8-13)
+            ps.setString(8, taskConfig.getDescription());
+            ps.setBoolean(9, taskConfig.isActive());
+            ps.setString(10, taskConfig.getExecutionMode() != null ? taskConfig.getExecutionMode().name() : ExecutionMode.BROADCAST.name());
+            ps.setString(11, taskConfig.getTaskCalendarGroup());
+            ps.setString(12, taskConfig.getTaskExcludeTimes());
+            ps.setDate(13, taskConfig.getStartDate());
+            ps.setDate(14, taskConfig.getEndDate());
+            setObjectOrNull(ps, 15, taskConfig.getExecuteTimeoutSeconds(), java.sql.Types.INTEGER);
+            ps.setString(16, taskConfig.getNotifySuccessUserIds());
+            ps.setString(17, taskConfig.getNotifyFailedUserIds());
+            // Workflow fields start at 18
+            ps.setString(18, taskConfig.getWorkflowNodesJson());
+            ps.setString(19, taskConfig.getWorkflowEdgesJson());
+            ps.setString(20, taskConfig.getGlobalParametersJson());
             return ps;
         }, keyHolder);
 
@@ -159,10 +167,10 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
         return jdbcTemplate.update(UPDATE_SQL,
                 taskConfig.getTaskName(), taskConfig.getTaskGroup(), taskConfig.getCronExpression(),
                 taskConfig.getTaskType(), taskConfig.getBeanName(), taskConfig.getMethodName(),
-                taskConfig.getBeanParameters(), taskConfig.getHttpUrl(), taskConfig.getHttpMethod(),
-                taskConfig.getHttpHeaders(), taskConfig.getHttpBody(), taskConfig.getScriptPath(),
-                taskConfig.getScriptParameters(), taskConfig.getDescription(), taskConfig.isActive(),
-                taskConfig.getTaskLockName(), taskConfig.getTaskLockMostSeconds(),
+                taskConfig.getBeanParameters(),
+                // http/shell fields removed
+                taskConfig.getDescription(), taskConfig.isActive(),
+                taskConfig.getExecutionMode() != null ? taskConfig.getExecutionMode().name() : ExecutionMode.BROADCAST.name(),
                 taskConfig.getTaskCalendarGroup(), taskConfig.getTaskExcludeTimes(),
                 taskConfig.getStartDate(), taskConfig.getEndDate(), taskConfig.getExecuteTimeoutSeconds(),
                 taskConfig.getNotifySuccessUserIds(), taskConfig.getNotifyFailedUserIds(),

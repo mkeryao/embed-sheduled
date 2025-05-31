@@ -16,7 +16,7 @@ public interface TaskLockDao {
      * @return An {@link Optional} containing the lock if found, or empty otherwise.
      */
     Optional<TaskLock> findByLockName(String lockName);
-    
+
     /**
      * Attempts to acquire or refresh an existing lock.
      * This method tries to update the lock record in the database, setting the current instance as the owner
@@ -42,7 +42,7 @@ public interface TaskLockDao {
      *
      * @param lockName The name of the lock.
      * @param ownerInstanceId The ID of the instance that currently owns the lock.
-     * @return {@code true} if the lock was successfully released, {@code false} otherwise 
+     * @return {@code true} if the lock was successfully released, {@code false} otherwise
      *         (e.g., lock not found, or not owned by this instance).
      */
     boolean releaseLock(String lockName, String ownerInstanceId);

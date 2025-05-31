@@ -83,7 +83,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             // Do not proceed with the filter chain
         }
     }
-    
+
     private boolean isPathExcluded(String requestURI) {
         // Direct match
         if (EXCLUDED_PATHS.contains(requestURI)) {

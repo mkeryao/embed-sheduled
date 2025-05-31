@@ -8,9 +8,11 @@ A lightweight, standalone task scheduling system built with Java and Spring Boot
 *   **Multiple Task Types**:
     *   **Bean Tasks**: Execute methods on specified Spring beans.
     *   **HTTP Tasks**: Make HTTP requests to specified URLs with configurable method, headers, body, and timeouts.
-    *   **Workflow Tasks**: Orchestrate a sequence of other tasks (primarily bean tasks).
-    *   (Shell tasks are defined in the schema but not implemented for execution yet).
-*   **Distributed Lock Management**: Ensures tasks configured with a lock name run on only one instance in a multi-instance setup. Includes retry mechanism for lock acquisition.
+    *   **Workflow Tasks**: Orchestrate a sequence of other tasks (primarily bean tasks). (Type 10)
+    *   **Shell Tasks**: Execute shell scripts. Parameters (script content/path, arguments, working directory) are stored in `beanParameters` as a JSON string. (Type 4)
+*   **Execution Modes**:
+    *   **BROADCAST**: Task runs on all scheduler instances.
+    *   **CLUSTER**: Task runs on only one instance at a time using a distributed lock (lock name automatically derived from task ID, lease time is internally managed).
 *   **REST API**: Comprehensive API for managing tasks, users, logs, and calendars.
 *   **Web UI**: User-friendly interface for:
     *   User authentication (JWT-based).
@@ -37,6 +39,7 @@ A lightweight, standalone task scheduling system built with Java and Spring Boot
 *   **Backend**:
     *   Java 8
     *   Spring Boot (Web, JDBC, Scheduling)
+    *   Fastjson (for JSON processing, replacing default Jackson)
     *   Maven (Build Tool)
     *   Logback (for logging, with MDC)
 *   **Frontend**:
@@ -97,7 +100,7 @@ Key properties to configure:
 *   **Distributed Lock Retry Settings**:
     *   `scheduler.lock.retry.maxAttempts`: Default 3.
     *   `scheduler.lock.retry.delayMs`: Default 1000ms.
-    
+
 *   **Task Scheduling Pool Size**:
     *   `spring.task.scheduling.pool.size`: Default 10.
 
@@ -162,12 +165,17 @@ The application exposes RESTful APIs for managing its resources. All API endpoin
 This is the central entity for defining a schedulable job.
 *   **Task Types** (`taskType` field):
     *   `0`: **Bean Task**: Executes `methodName` on a Spring `beanName`. Parameters via `beanParameters` (JSON string).
-    *   `1`: **Shell Task**: (Schema placeholder, execution not implemented yet).
+    *   `1`: **(Legacy/Unused)**
     *   `2`: **HTTP Task**: Makes an HTTP request. Parameters (URL, method, headers, body, timeouts) are stored in `beanParameters` as a JSON string matching `HttpTaskParameters` DTO.
-    *   `3`: **Workflow Task**: Orchestrates a series of other tasks (primarily bean tasks).
+    *   `4`: **Shell Task**: Executes a shell script. Parameters (script content/path, arguments, working directory) are stored in `beanParameters` as a JSON string matching `ShellTaskParameters` DTO.
+    *   `10`: **Workflow Task**: Orchestrates a series of other tasks (primarily bean tasks).
 *   **Key Scheduling Fields**: `cronExpression`, `isActive`, `startDate`, `endDate`, `taskCalendarGroup`, `taskExcludeTimes`.
-*   **Execution Control**: `taskLockName`, `taskLockMostSeconds`, `executeTimeoutSeconds`.
-*   **Notifications**: `notifySuccessUserIds`, `notifyFailedUserIds` (comma-separated User IDs). Users need `webhookAddress` configured.
+*   **Execution Control**:
+    *   `executionMode`: Defines behavior in a cluster.
+        *   `BROADCAST` (default): Task runs on all instances.
+        *   `CLUSTER`: Task runs on only one instance using a distributed lock (lock name is automatically derived, e.g., `task_lock_id_{taskId}`). Lease duration is internally managed (e.g., 60 seconds).
+    *   `executeTimeoutSeconds`.
+*   **Notifications**: `notifySuccessUserIds`, `notifyFailedUserIds` (comma-separated User IDs). Configuration is per-user.
 
 ### Bean Tasks
 1.  Define a Spring component (e.g., `@Component("yourBeanName")`).
@@ -180,28 +188,35 @@ This is the central entity for defining a schedulable job.
     *   Example: `{"url":"https://api.example.com/data", "method":"POST", "headers":{"Content-Type":"application/json"}, "body":"{\"key\":\"value\"}", "connectTimeout":5000, "readTimeout":10000}`
 
 ### Workflow Tasks
-*   `taskType = 3`.
+*   `taskType = 10`.
 *   `globalParametersJson`: JSON map for global parameters, accessible via templating (e.g., `${global_param}`).
 *   `workflowNodesJson`: JSON array of `WorkflowNode` objects. Each node specifies a `taskConfigId` (must be a Bean task) and can override parameters using templating.
 *   `workflowEdgesJson`: JSON array of `WorkflowEdge` objects. Each edge defines `fromNodeId`, `toNodeId`, `priority`, and an `expression` (e.g., `"${nodeA_status} == 'SUCCESS'"`) for conditional transitions. Context for expressions includes global parameters and `nodeId_status` from previous nodes.
 
 ### Distributed Locks
-*   Set `taskLockName` and `taskLockMostSeconds` in `TaskConfig`.
-*   Locks expire, allowing takeover by other instances if the holder crashes.
-*   Retry mechanism for lock acquisition is configurable.
+*   For `CLUSTER` mode, a distributed lock is automatically managed. The lock name is derived from the task ID.
+*   The lock lease duration is internally managed by the `DistributedLockService` (e.g., default 60 seconds).
+*   Retry mechanism for lock acquisition is configurable via `application.properties`.
 
-### Notifications
-*   Users configure a `webhookAddress`.
-*   Tasks specify `notifySuccessUserIds` / `notifyFailedUserIds`.
-*   A JSON payload with execution details is POSTed to webhooks.
+### Notifications (Extensible System)
+*   Notifications are managed via a channel-based system (`NotificationChannel` interface).
+*   **Webhook Channel**: This is the primary implemented channel.
+    *   Users configure their webhook endpoint(s) in the `webhookAddress` field of their user profile. This field can be a single URL string or a JSON array of URL strings (e.g., `["http://url1.com", "http://url2.com"]`).
+    *   Tasks specify `notifySuccessUserIds` / `notifyFailedUserIds` (comma-separated User IDs).
+    *   A JSON payload (generated by Fastjson) with execution details is POSTed to the configured webhook(s).
+*   **Future Extensibility**:
+    *   The `TaskUser` entity has a `notificationPreferencesJson` field intended for future use, allowing users to specify preferences for different channels (e.g., email, Slack) and their respective details (e.g., `{"EMAIL": {"emailAddress": "user@example.com", "enabled": true}}`).
+    *   Developers can add new notification methods by implementing the `NotificationChannel` interface and registering it as a Spring bean. `NotificationService` will automatically pick it up.
 
 ## UI Guide
 
 *   **Login (`/login.html`)**: Default `admin`/`password`.
-*   **Tasks (`/tasks.html`)**: CRUD operations. 
-    *   For "Bean Task", specify bean and method names, and JSON parameters.
-    *   For "HTTP Task", `beanParameters` field should contain the JSON for `HttpTaskParameters` (URL, method, headers, body, timeouts). The UI provides specific fields for these.
+*   **Tasks (`/tasks.html`)**: CRUD operations.
+    *   For "Bean Task", specify bean and method names, and JSON parameters in the "Bean Parameters" field.
+    *   For "HTTP Task", use the specific fields provided; these are consolidated into `beanParameters` (JSON) on the backend.
+    *   For "Shell Task", use the specific fields provided; these are consolidated into `beanParameters` (JSON) on the backend.
     *   For "Workflow Task", define nodes, edges, and global parameters as JSON in their respective textareas.
+    *   "Execution Mode" dropdown allows selecting `BROADCAST` or `CLUSTER`.
 *   **Logs (`/logs.html`)**: View execution history.
 *   **Calendars (`/calendars.html`)**: Manage calendars and non-working days.
 *   **Users (`/users.html`)**: Manage users and their webhook addresses.
