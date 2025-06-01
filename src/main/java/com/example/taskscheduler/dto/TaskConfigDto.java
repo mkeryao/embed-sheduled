@@ -79,6 +79,22 @@ public class TaskConfigDto {
     private boolean isActive;
 
     /**
+     * Explicit getter for isActive to ensure JSON serialization retains the isActive property name.
+     * @return true if the task is active, false otherwise
+     */
+    public boolean getIsActive() {
+        return isActive;
+    }
+
+    /**
+     * Standard boolean getter, required by the codebase.
+     * @return true if the task is active, false otherwise
+     */
+    public boolean isActive() {
+        return isActive;
+    }
+
+    /**
      * Defines how the task behaves in a cluster. Defaults to {@link ExecutionMode#BROADCAST}.
      * <ul>
      *   <li>{@link ExecutionMode#BROADCAST}: Task runs on all instances.</li>

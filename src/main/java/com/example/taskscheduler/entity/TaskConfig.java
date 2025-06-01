@@ -70,6 +70,22 @@ public class TaskConfig {
     /** Flag indicating if the task is active and should be scheduled. */
     private boolean isActive;
 
+    /**
+     * Explicit getter for isActive to ensure JSON serialization retains the isActive property name.
+     * @return true if the task is active, false otherwise
+     */
+    public boolean getIsActive() {
+        return isActive;
+    }
+
+    /**
+     * Standard boolean getter, required by the codebase.
+     * @return true if the task is active, false otherwise
+     */
+    public boolean isActive() {
+        return isActive;
+    }
+
     // --- Execution Mode ---
     /** Defines how the task behaves in a cluster: BROADCAST or CLUSTER (uses lock). */
     private ExecutionMode executionMode;

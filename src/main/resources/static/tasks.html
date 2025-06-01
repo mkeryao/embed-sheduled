@@ -3,6 +3,8 @@
 <head>    <meta charset="UTF-8">
     <title>任务管理 - 任务调度系统</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <!-- 添加Font Awesome图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -281,7 +283,10 @@
                         const tableBody = $('#tasks-table-body');
                         tableBody.empty();
                         tasks.forEach(function(task) {
-                            const status = task.isActive ? '<span class="badge badge-success">激活</span>' : '<span class="badge badge-secondary">未激活</span>';                            // 使用新的格式化函数构建有效时间范围显示
+                            // 兼容处理isActive字段，支持task.isActive和task.active两种情况
+                            const isActive = (task.isActive !== undefined) ? task.isActive : task.active;
+                            const status = isActive ? '<span class="badge badge-success"><i class="fas fa-check-circle"></i> 激活</span>' : '<span class="badge badge-secondary"><i class="fas fa-times-circle"></i> 未激活</span>';
+                            // 使用新的格式化函数构建有效时间范围显示
                             let validTimeRange = formatDateTimeRange(task.startDate, task.endDate);
                             // 为有开始和结束日期的任务添加更明显的样式
                             if (task.startDate && task.endDate) {
@@ -301,15 +306,13 @@
                                 <td>${getTaskTypeString(task.taskType)}</td>
                                 <td><small class="valid-time-range">${validTimeRange}</small></td>
                                 <td>${status}</td>
-                                <td>${task.executionMode || 'BROADCAST'}</td>
-                                <td class="action-buttons">
-                                    <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}">编辑</button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}">删除</button>
-                                    <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}">触发</button>
-                                    <button class="btn btn-sm btn-info view-logs-btn" data-id="${task.taskId}" data-task-name="${task.taskName}">查看日志</button>
-                                    ${task.isActive
-                                        ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}">禁用</button>`
-                                        : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}">启用</button>`
+                                <td>${task.executionMode || 'BROADCAST'}</td>                                <td class="action-buttons">
+                                    <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}"><i class="fas fa-edit"></i> 编辑</button>
+                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}"><i class="fas fa-trash"></i> 删除</button>
+                                    <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}"><i class="fas fa-play"></i> 触发</button>
+                                    <button class="btn btn-sm btn-info view-logs-btn" data-id="${task.taskId}" data-task-name="${task.taskName}"><i class="fas fa-clipboard-list"></i> 查看日志</button>                                    ${isActive
+                                        ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}"><i class="fas fa-ban"></i> 禁用</button>`
+                                        : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}"><i class="fas fa-check"></i> 启用</button>`
                                     }
                                 </td>
                             </tr>`;
@@ -777,7 +780,9 @@
                         $('#description').val(task.description);
                         $('#executionMode').val(task.executionMode || 'BROADCAST'); // Added, default to BROADCAST if null
                         $('#taskType').val(task.taskType.toString()).trigger('change');
-                        $('#isActive').prop('checked', task.isActive);
+                        // 兼容处理isActive字段，支持task.isActive和task.active两种情况
+                        const isActive = (task.isActive !== undefined) ? task.isActive : task.active;
+                        $('#isActive').prop('checked', isActive);
 
                         // Populate common bean fields first
                         $('#beanName').val(task.beanName);
