@@ -64,7 +64,7 @@
                         <h5 class="card-title mb-0">任务类型分布</h5>
                     </div>
                     <div class="card-body">
-                        <div id="task-type-chart" style="height: 300px;"></div>
+                        <canvas id="task-type-chart" style="height: 300px; width: 100%;"></canvas>
                     </div>
                 </div>
             </div>
@@ -74,7 +74,7 @@
                         <h5 class="card-title mb-0">执行状态分布</h5>
                     </div>
                     <div class="card-body">
-                        <div id="execution-status-chart" style="height: 300px;"></div>
+                        <canvas id="execution-status-chart" style="height: 300px; width: 100%;"></canvas>
                     </div>
                 </div>
             </div>
@@ -111,9 +111,74 @@
     <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 添加Chart.js，使用多个备用来源确保加载成功 -->
+    <script>
+        // 检查是否已经加载了Chart对象
+        window.chartJsLoaded = typeof Chart !== 'undefined';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script>
+        // 如果第一个CDN加载失败，尝试第二个
+        if (!window.chartJsLoaded && typeof Chart === 'undefined') {
+            console.warn('第一个Chart.js CDN加载失败，尝试备用源');
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"><\/script>');
+        }
+    </script>
+    <script>
+        // 如果两个CDN都失败，尝试本地文件
+        setTimeout(function() {
+            if (!window.chartJsLoaded && typeof Chart === 'undefined') {
+                console.warn('Chart.js CDN加载失败，尝试本地文件');
+                var script = document.createElement('script');
+                script.src = 'libs/chartjs/chart.min.js';
+                document.head.appendChild(script);
+            }
+        }, 1000); // 给予1秒时间让CDN加载
+    </script>
     <script src="js/main.js"></script>
     <script>
+        // 确保页面中有showFeedback函数，以防main.js中safeParseJSON使用它
+        function showFeedback(message, isError = false) {
+            // 在控制台中记录消息
+            if (isError) {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+            
+            // 如果页面中有反馈提示元素，使用它
+            const feedbackDiv = $('#feedback-message');
+            if (feedbackDiv.length) {
+                feedbackDiv.text(message)
+                       .removeClass(isError ? 'alert-success' : 'alert-danger')
+                       .addClass(isError ? 'alert-danger' : 'alert-success')
+                       .show();
+                setTimeout(() => feedbackDiv.hide(), 5000); // 5秒后隐藏
+            } else {
+                // 如果不存在反馈元素，创建一个临时的
+                const tempFeedback = $('<div>')
+                    .attr('id', 'temp-feedback')
+                    .addClass('alert')
+                    .addClass(isError ? 'alert-danger' : 'alert-success')
+                    .css({
+                        'position': 'fixed',
+                        'top': '10px',
+                        'right': '10px',
+                        'z-index': '9999',
+                        'padding': '10px 15px',
+                        'border-radius': '4px',
+                        'max-width': '80%'
+                    })
+                    .text(message);
+                
+                $('body').append(tempFeedback);
+                setTimeout(() => tempFeedback.fadeOut(400, function() { $(this).remove(); }), 5000);
+            }
+        }
+        
+        // 将函数暴露到全局，以便main.js中可以使用
+        window.showFeedback = showFeedback;
+        
         $(document).ready(function() {
             $("#navbar-container").load("_navbar.html", function() {
                 const currentUsername = localStorage.getItem('username');
@@ -135,25 +200,49 @@
             function loadStatistics() {
                 makeApiCall('GET', '/tasks/statistics', null,
                     function(data) {
-                        // 更新统计卡片
-                        $('#total-tasks').text(data.totalTasks || 0);
-                        $('#today-executions').text(data.todayExecutions || 0);
-                        $('#success-rate').text((data.successRate || 0) + '%');
-                        $('#failed-tasks').text(data.recentFailedTasks || 0);
-                        
-                        // 渲染任务类型图表
-                        if (data.taskTypeDistribution) {
-                            renderTaskTypeChart(data.taskTypeDistribution);
-                        }
-                        
-                        // 渲染执行状态图表
-                        if (data.executionStatusDistribution) {
-                            renderExecutionStatusChart(data.executionStatusDistribution);
+                        try {
+                            // 防御性编程，确保data是有效对象
+                            if (!data) {
+                                console.error('API返回的统计数据为空');
+                                showFeedback('无法加载统计数据：服务器返回空数据', true);
+                                return;
+                            }
+                            
+                            // 更新统计卡片
+                            $('#total-tasks').text(data.totalTasks || 0);
+                            $('#today-executions').text(data.todayExecutions || 0);
+                            $('#success-rate').text((data.successRate || 0) + '%');
+                            $('#failed-tasks').text(data.recentFailedTasks || 0);
+                            
+                            // 渲染任务类型图表
+                            if (data.taskTypeDistribution) {
+                                // 确保taskTypeDistribution是有效对象
+                                if (typeof data.taskTypeDistribution === 'object') {
+                                    renderTaskTypeChart(data.taskTypeDistribution);
+                                }
+                            }
+                            
+                            // 渲染执行状态图表
+                            if (data.executionStatusDistribution) {
+                                // 确保executionStatusDistribution是有效对象
+                                if (typeof data.executionStatusDistribution === 'object') {
+                                    renderExecutionStatusChart(data.executionStatusDistribution);
+                                }
+                            }
+                        } catch (err) {
+                            console.error('处理统计数据时出错:', err);
+                            showFeedback('处理统计数据时发生错误', true);
                         }
                     },
-                    function(jqXHR) {
-                        showFeedback('加载统计数据出错: ' + 
-                            (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                    function(jqXHR, textStatus, errorThrown) {
+                        console.error('加载统计数据出错:', textStatus, errorThrown);
+                        let errorMsg = textStatus;
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                            errorMsg = jqXHR.responseJSON.message;
+                        } else if (errorThrown) {
+                            errorMsg = errorThrown;
+                        }
+                        showFeedback('加载统计数据出错: ' + errorMsg, true);
                     }
                 );
             }
@@ -161,55 +250,88 @@
             function loadRecentExecutions() {
                 makeApiCall('GET', '/logs?page=0&size=10', null,
                     function(data) {
-                        const tbody = $('#recent-executions-tbody');
-                        tbody.empty();
-                        
-                        if (data && data.length > 0) {
-                            data.forEach(function(log) {
-                                let statusClass = '';
-                                switch(log.state) {
-                                    case 'SUCCESS': 
-                                        statusClass = 'badge-success';
-                                        break;
-                                    case 'FAILED':
-                                        statusClass = 'badge-danger';
-                                        break;
-                                    case 'RUNNING':
-                                        statusClass = 'badge-primary';
-                                        break;
-                                    case 'TIMED_OUT':
-                                        statusClass = 'badge-warning';
-                                        break;
-                                    case 'SKIPPED':
-                                        statusClass = 'badge-secondary';
-                                        break;
-                                    default:
-                                        statusClass = 'badge-info';
+                        try {
+                            const tbody = $('#recent-executions-tbody');
+                            tbody.empty();
+                            
+                            // 确保data是有效的数组
+                            if (!data) {
+                                console.error('日志数据为空');
+                                tbody.append('<tr><td colspan="7" class="text-center">无法加载执行记录</td></tr>');
+                                return;
+                            }
+                            
+                            // 如果返回的不是数组，尝试转换
+                            let logsData = data;
+                            if (!Array.isArray(logsData)) {
+                                // 如果是对象且有content字段，可能是分页响应
+                                if (logsData.content && Array.isArray(logsData.content)) {
+                                    logsData = logsData.content;
+                                } else {
+                                    // 其他情况尝试转成数组处理
+                                    console.warn('日志数据不是数组:', logsData);
+                                    logsData = [].concat(logsData);
                                 }
-                                
-                                const row = `<tr>
-                                    <td>${log.logId}</td>
-                                    <td>${log.taskName || 'Unknown'}</td>
-                                    <td>${formatDateTime(log.startTime)}</td>
-                                    <td>${formatDateTime(log.endTime) || '-'}</td>
-                                    <td><span class="badge ${statusClass}">${log.state}</span></td>
-                                    <td>${log.instanceId || '-'}</td>
-                                    <td>
-                                        <a href="logs.html?logId=${log.logId}" class="btn btn-sm btn-info">
-                                            <i class="fas fa-eye"></i> 查看详情
-                                        </a>
-                                    </td>
-                                </tr>`;
-                                
-                                tbody.append(row);
-                            });
-                        } else {
-                            tbody.append('<tr><td colspan="7" class="text-center">没有执行记录</td></tr>');
+                            }
+                            
+                            if (logsData && logsData.length > 0) {
+                                logsData.forEach(function(log) {
+                                    let statusClass = '';
+                                    switch(log.state) {
+                                        case 'SUCCESS': 
+                                            statusClass = 'badge-success';
+                                            break;
+                                        case 'FAILED':
+                                            statusClass = 'badge-danger';
+                                            break;
+                                        case 'RUNNING':
+                                            statusClass = 'badge-primary';
+                                            break;
+                                        case 'TIMED_OUT':
+                                            statusClass = 'badge-warning';
+                                            break;
+                                        case 'SKIPPED':
+                                            statusClass = 'badge-secondary';
+                                            break;
+                                        default:
+                                            statusClass = 'badge-info';
+                                    }
+                                    
+                                    const row = `<tr>
+                                        <td>${log.logId || '-'}</td>
+                                        <td>${log.taskName || 'Unknown'}</td>
+                                        <td>${formatDateTime(log.startTime)}</td>
+                                        <td>${formatDateTime(log.endTime) || '-'}</td>
+                                        <td><span class="badge ${statusClass}">${log.state || 'Unknown'}</span></td>
+                                        <td>${log.instanceId || '-'}</td>
+                                        <td>
+                                            <a href="logs.html?logId=${log.logId}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> 查看详情
+                                            </a>
+                                        </td>
+                                    </tr>`;
+                                    
+                                    tbody.append(row);
+                                });
+                            } else {
+                                tbody.append('<tr><td colspan="7" class="text-center">没有执行记录</td></tr>');
+                            }
+                        } catch (error) {
+                            console.error('处理日志数据时出错:', error);
+                            $('#recent-executions-tbody').html('<tr><td colspan="7" class="text-center text-danger">处理数据时出错</td></tr>');
+                            showFeedback('处理日志数据时发生错误', true);
                         }
                     },
-                    function(jqXHR) {
-                        showFeedback('加载最近执行记录出错: ' + 
-                            (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                    function(jqXHR, textStatus, errorThrown) {
+                        console.error('加载日志数据出错:', textStatus, errorThrown);
+                        let errorMsg = textStatus;
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                            errorMsg = jqXHR.responseJSON.message;
+                        } else if (errorThrown) {
+                            errorMsg = errorThrown;
+                        }
+                        $('#recent-executions-tbody').html('<tr><td colspan="7" class="text-center text-danger">加载失败</td></tr>');
+                        showFeedback('加载最近执行记录出错: ' + errorMsg, true);
                     }
                 );
             }
@@ -234,80 +356,453 @@
             }
             
             function renderTaskTypeChart(data) {
-                const ctx = document.getElementById('task-type-chart').getContext('2d');
-                
-                const labels = Object.keys(data).map(type => {
-                    switch(parseInt(type)) {
-                        case 0: return 'Bean任务';
-                        case 2: return 'HTTP任务';
-                        case 4: return 'Shell脚本';
-                        case 10: return '工作流';
-                        default: return `类型 ${type}`;
+                try {
+                    // 首先检查Chart.js是否可用
+                    if (typeof Chart === 'undefined') {
+                        console.error('Chart.js库未加载，使用备用表格显示');
+                        renderTaskTypeAsTable(data);
+                        return;
                     }
-                });
-                
-                const values = Object.values(data);
-                
-                new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: [
-                                '#28a745', // Bean - Green
-                                '#17a2b8', // HTTP - Cyan
-                                '#6610f2', // Shell - Purple
-                                '#fd7e14'  // Workflow - Orange
-                            ],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        legend: {
-                            position: 'bottom'
+                    
+                    const chartElement = document.getElementById('task-type-chart');
+                    if (!chartElement) {
+                        console.error('找不到任务类型图表容器元素');
+                        return;
+                    }
+                    
+                    // 确保是Canvas元素
+                    let ctx;
+                    try {
+                        ctx = chartElement.getContext('2d');
+                    } catch (e) {
+                        console.error('无法获取Canvas上下文，可能不是Canvas元素:', e);
+                        // 替换为Canvas元素
+                        const parentElement = chartElement.parentElement;
+                        const newCanvas = document.createElement('canvas');
+                        newCanvas.id = 'task-type-chart';
+                        newCanvas.style.height = '300px';
+                        newCanvas.style.width = '100%';
+                        if (parentElement) {
+                            parentElement.replaceChild(newCanvas, chartElement);
+                            try {
+                                ctx = newCanvas.getContext('2d');
+                            } catch (err) {
+                                console.error('替换后仍无法获取Canvas上下文，切换到表格显示:', err);
+                                renderTaskTypeAsTable(data);
+                                return;
+                            }
+                        } else {
+                            console.error('无法找到父元素来替换图表元素');
+                            return;
                         }
                     }
-                });
+                    
+                    // 确保data是有效对象，如果是字符串尝试解析
+                    let chartData = data;
+                    if (typeof data === 'string') {
+                        try {
+                            chartData = JSON.parse(data);
+                        } catch (e) {
+                            console.error('无法解析任务类型分布数据:', e);
+                            showErrorInChartContainer('task-type-chart', '数据解析失败');
+                            return;
+                        }
+                    }
+                    
+                    // 如果是数组，尝试转换为对象格式
+                    if (Array.isArray(chartData)) {
+                        const objData = {};
+                        chartData.forEach(item => {
+                            if (item && item.key !== undefined && item.value !== undefined) {
+                                objData[item.key] = item.value;
+                            }
+                        });
+                        chartData = objData;
+                    }
+                    
+                    // 确保我们有键值对可使用
+                    if (!chartData || typeof chartData !== 'object') {
+                        console.error('任务类型数据格式错误:', chartData);
+                        showErrorInChartContainer('task-type-chart', '数据格式错误');
+                        return;
+                    }
+                    
+                    // 修复数字键不带引号的问题，将整数键转换为字符串
+                    if (typeof chartData === 'object' && !Array.isArray(chartData)) {
+                        const fixedData = {};
+                        Object.keys(chartData).forEach(key => {
+                            fixedData[String(key)] = chartData[key];
+                        });
+                        chartData = fixedData;
+                    }
+                    
+                    const labels = Object.keys(chartData).map(type => {
+                        switch(parseInt(type)) {
+                            case 0: return 'Bean任务';
+                            case 2: return 'HTTP任务';
+                            case 4: return 'Shell脚本';
+                            case 10: return '工作流';
+                            default: return `类型 ${type}`;
+                        }
+                    });
+                    
+                    const values = Object.values(chartData);
+                    
+                    if (labels.length === 0 || values.length === 0) {
+                        console.warn('任务类型数据为空');
+                        showErrorInChartContainer('task-type-chart', '无可用数据');
+                        return;
+                    }
+                    
+                    // 检查是否已有图表实例，如有则销毁
+                    if (window.taskTypeChart) {
+                        window.taskTypeChart.destroy();
+                    }
+                    
+                    // 创建新的图表实例
+                    window.taskTypeChart = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: values,
+                                backgroundColor: [
+                                    '#28a745', // Bean - Green
+                                    '#17a2b8', // HTTP - Cyan
+                                    '#6610f2', // Shell - Purple
+                                    '#fd7e14'  // Workflow - Orange
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error('渲染任务类型图表时出错:', err);
+                    showErrorInChartContainer('task-type-chart', '图表渲染失败');
+                }
+            }
+            
+            // 辅助函数：在图表容器中显示错误信息
+            function showErrorInChartContainer(containerId, message) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                // 保存原始容器ID和样式
+                const originalId = container.id;
+                const originalStyle = container.getAttribute('style');
+                
+                // 创建一个div来替换canvas
+                const errorDiv = document.createElement('div');
+                errorDiv.id = originalId;
+                if (originalStyle) {
+                    errorDiv.setAttribute('style', originalStyle);
+                }
+                errorDiv.className = 'chart-error-container';
+                errorDiv.innerHTML = `<div class="text-center text-danger">${message}</div>`;
+                
+                // 替换容器
+                if (container.parentNode) {
+                    container.parentNode.replaceChild(errorDiv, container);
+                }
+            }
+            
+            // 辅助函数：将任务类型数据渲染为HTML表格
+            function renderTaskTypeAsTable(data) {
+                try {
+                    // 确保data是有效对象
+                    let chartData = data;
+                    if (typeof data === 'string') {
+                        try {
+                            chartData = JSON.parse(data);
+                        } catch (e) {
+                            console.error('渲染表格时无法解析任务类型分布数据:', e);
+                            showErrorInChartContainer('task-type-chart', '数据解析失败');
+                            return;
+                        }
+                    }
+                    
+                    // 如果是数组，尝试转换为对象格式
+                    if (Array.isArray(chartData)) {
+                        const objData = {};
+                        chartData.forEach(item => {
+                            if (item && item.key !== undefined && item.value !== undefined) {
+                                objData[item.key] = item.value;
+                            }
+                        });
+                        chartData = objData;
+                    }
+                    
+                    // 确保我们有键值对可使用
+                    if (!chartData || typeof chartData !== 'object') {
+                        console.error('任务类型数据格式错误:', chartData);
+                        showErrorInChartContainer('task-type-chart', '数据格式错误');
+                        return;
+                    }
+                    
+                    const chartElement = document.getElementById('task-type-chart');
+                    const parent = chartElement.parentElement;
+                    
+                    // 创建表格
+                    const table = document.createElement('table');
+                    table.className = 'table table-bordered table-hover';
+                    table.id = 'task-type-table';
+                    table.innerHTML = `
+                        <thead class="thead-light">
+                            <tr>
+                                <th>任务类型</th>
+                                <th>数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    `;
+                    
+                    const tbody = table.querySelector('tbody');
+                    
+                    // 添加数据行
+                    Object.keys(chartData).forEach(type => {
+                        let typeName;
+                        switch(parseInt(type)) {
+                            case 0: typeName = 'Bean任务'; break;
+                            case 2: typeName = 'HTTP任务'; break;
+                            case 4: typeName = 'Shell脚本'; break;
+                            case 10: typeName = '工作流'; break;
+                            default: typeName = `类型 ${type}`; break;
+                        }
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${typeName}</td>
+                            <td>${chartData[type]}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    
+                    // 替换图表元素
+                    if (parent) {
+                        parent.replaceChild(table, chartElement);
+                    }
+                } catch (err) {
+                    console.error('渲染任务类型表格时出错:', err);
+                    showErrorInChartContainer('task-type-chart', '表格渲染失败');
+                }
+            }
+            
+            // 辅助函数：将执行状态数据渲染为HTML表格
+            function renderExecutionStatusAsTable(data) {
+                try {
+                    // 确保data是有效对象
+                    let chartData = data;
+                    if (typeof data === 'string') {
+                        try {
+                            chartData = JSON.parse(data);
+                        } catch (e) {
+                            console.error('渲染表格时无法解析执行状态分布数据:', e);
+                            showErrorInChartContainer('execution-status-chart', '数据解析失败');
+                            return;
+                        }
+                    }
+                    
+                    // 如果是数组，尝试转换为对象格式
+                    if (Array.isArray(chartData)) {
+                        const objData = {};
+                        chartData.forEach(item => {
+                            if (item && item.key !== undefined && item.value !== undefined) {
+                                objData[item.key] = item.value;
+                            }
+                        });
+                        chartData = objData;
+                    }
+                    
+                    // 确保我们有键值对可使用
+                    if (!chartData || typeof chartData !== 'object') {
+                        console.error('执行状态数据格式错误:', chartData);
+                        showErrorInChartContainer('execution-status-chart', '数据格式错误');
+                        return;
+                    }
+                    
+                    const chartElement = document.getElementById('execution-status-chart');
+                    const parent = chartElement.parentElement;
+                    
+                    // 创建表格
+                    const table = document.createElement('table');
+                    table.className = 'table table-bordered table-hover';
+                    table.id = 'execution-status-table';
+                    table.innerHTML = `
+                        <thead class="thead-light">
+                            <tr>
+                                <th>执行状态</th>
+                                <th>数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    `;
+                    
+                    const tbody = table.querySelector('tbody');
+                    
+                    // 添加数据行
+                    Object.keys(chartData).forEach(status => {
+                        const row = document.createElement('tr');
+                        let statusClass;
+                        
+                        switch(status) {
+                            case 'SUCCESS': statusClass = 'text-success'; break;
+                            case 'FAILED': statusClass = 'text-danger'; break;
+                            case 'RUNNING': statusClass = 'text-primary'; break;
+                            case 'TIMED_OUT': statusClass = 'text-warning'; break;
+                            case 'SKIPPED': statusClass = 'text-secondary'; break;
+                            default: statusClass = 'text-info'; break;
+                        }
+                        
+                        row.innerHTML = `
+                            <td><span class="${statusClass}">${status}</span></td>
+                            <td>${chartData[status]}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    
+                    // 替换图表元素
+                    if (parent) {
+                        parent.replaceChild(table, chartElement);
+                    }
+                } catch (err) {
+                    console.error('渲染执行状态表格时出错:', err);
+                    showErrorInChartContainer('execution-status-chart', '表格渲染失败');
+                }
             }
             
             function renderExecutionStatusChart(data) {
-                const ctx = document.getElementById('execution-status-chart').getContext('2d');
-                
-                const labels = Object.keys(data);
-                const values = Object.values(data);
-                
-                const backgroundColors = labels.map(status => {
-                    switch(status) {
-                        case 'SUCCESS': return '#28a745';
-                        case 'FAILED': return '#dc3545';
-                        case 'RUNNING': return '#007bff';
-                        case 'TIMED_OUT': return '#ffc107';
-                        case 'SKIPPED': return '#6c757d';
-                        default: return '#17a2b8';
+                try {
+                    // 首先检查Chart.js是否可用
+                    if (typeof Chart === 'undefined') {
+                        console.error('Chart.js库未加载，使用备用表格显示');
+                        renderExecutionStatusAsTable(data);
+                        return;
                     }
-                });
-                
-                new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: backgroundColors,
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        legend: {
-                            position: 'bottom'
+                    
+                    const chartElement = document.getElementById('execution-status-chart');
+                    if (!chartElement) {
+                        console.error('找不到执行状态图表容器元素');
+                        return;
+                    }
+                    
+                    // 确保是Canvas元素
+                    let ctx;
+                    try {
+                        ctx = chartElement.getContext('2d');
+                    } catch (e) {
+                        console.error('无法获取Canvas上下文，可能不是Canvas元素:', e);
+                        // 替换为Canvas元素
+                        const parentElement = chartElement.parentElement;
+                        const newCanvas = document.createElement('canvas');
+                        newCanvas.id = 'execution-status-chart';
+                        newCanvas.style.height = '300px';
+                        newCanvas.style.width = '100%';
+                        if (parentElement) {
+                            parentElement.replaceChild(newCanvas, chartElement);
+                            try {
+                                ctx = newCanvas.getContext('2d');
+                            } catch (err) {
+                                console.error('替换后仍无法获取Canvas上下文，切换到表格显示:', err);
+                                renderExecutionStatusAsTable(data);
+                                return;
+                            }
+                        } else {
+                            console.error('无法找到父元素来替换图表元素');
+                            return;
                         }
                     }
-                });
+                    
+                    // 确保data是有效对象，如果是字符串尝试解析
+                    let chartData = data;
+                    if (typeof data === 'string') {
+                        try {
+                            chartData = JSON.parse(data);
+                        } catch (e) {
+                            console.error('无法解析执行状态分布数据:', e);
+                            showErrorInChartContainer('execution-status-chart', '数据解析失败');
+                            return;
+                        }
+                    }
+                    
+                    // 如果是数组，尝试转换为对象格式
+                    if (Array.isArray(chartData)) {
+                        const objData = {};
+                        chartData.forEach(item => {
+                            if (item && item.key !== undefined && item.value !== undefined) {
+                                objData[item.key] = item.value;
+                            }
+                        });
+                        chartData = objData;
+                    }
+                    
+                    // 确保我们有键值对可使用
+                    if (!chartData || typeof chartData !== 'object') {
+                        console.error('执行状态数据格式错误:', chartData);
+                        showErrorInChartContainer('execution-status-chart', '数据格式错误');
+                        return;
+                    }
+                    
+                    const labels = Object.keys(chartData);
+                    const values = Object.values(chartData);
+                    
+                    if (labels.length === 0 || values.length === 0) {
+                        console.warn('执行状态数据为空');
+                        showErrorInChartContainer('execution-status-chart', '无可用数据');
+                        return;
+                    }
+                    
+                    const backgroundColors = labels.map(status => {
+                        switch(status) {
+                            case 'SUCCESS': return '#28a745';
+                            case 'FAILED': return '#dc3545';
+                            case 'RUNNING': return '#007bff';
+                            case 'TIMED_OUT': return '#ffc107';
+                            case 'SKIPPED': return '#6c757d';
+                            default: return '#17a2b8';
+                        }
+                    });
+                    
+                    // 检查是否已有图表实例，如有则销毁
+                    if (window.executionStatusChart) {
+                        window.executionStatusChart.destroy();
+                    }
+                    
+                    // 创建新的图表实例
+                    window.executionStatusChart = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: values,
+                                backgroundColor: backgroundColors,
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error('渲染执行状态图表时出错:', err);
+                    showErrorInChartContainer('execution-status-chart', '图表渲染失败');
+                }
             }
         });
     </script>

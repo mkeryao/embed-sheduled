@@ -27,9 +27,7 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
             apiUrl = '/' + apiUrl;
         }
         apiUrl = API_BASE_URL + apiUrl;
-    }
-
-    $.ajax({
+    }    $.ajax({
         url: apiUrl,
         method: method,
         contentType: 'application/json',
@@ -37,7 +35,36 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
         headers: {
             'Authorization': 'Bearer ' + token
         },
-        success: onSuccess,
+        dataType: 'text', // 设置为text而不是json，以便手动解析
+        success: function(responseText, textStatus, jqXHR) {
+            // 尝试安全解析JSON
+            if (responseText) {
+                try {
+                    // 先尝试标准解析
+                    const parsedData = JSON.parse(responseText);
+                    onSuccess(parsedData);
+                } catch(parseError) {
+                    // 如果标准解析失败，尝试使用safeParseJSON
+                    console.warn('JSON解析失败，尝试修复并解析:', parseError);
+                    const safeParsed = safeParseJSON(responseText);
+                    if (safeParsed) {
+                        console.log('已成功修复并解析JSON');
+                        onSuccess(safeParsed);
+                    } else {
+                        // 如果安全解析也失败，则报错
+                        console.error('无法解析响应数据:', responseText);
+                        if (onError) {
+                            onError(jqXHR, 'parsererror', '无法解析服务器响应');
+                        } else {
+                            alert('数据解析错误: 服务器响应格式无效');
+                        }
+                    }
+                }
+            } else {
+                // 空响应但请求成功，一些API可能不返回内容
+                onSuccess(null);
+            }
+        },
         error: function(jqXHR, textStatus, errorThrown) {
             if (jqXHR.status === 401 && window.location.pathname !== '/login.html') { // Unauthorized
                 // Token might be invalid or expired
@@ -315,29 +342,117 @@ function safeParseJSON(jsonString, showFeedback = true) {
     try {
         return JSON.parse(jsonString);
     } catch (e) {
-        if (showFeedback) {
-            console.error('JSON解析错误:', e, 'JSON字符串:', jsonString);
+        console.error('JSON解析错误:', e, 'JSON字符串:', jsonString);
+        
+        // 输出错误位置信息，帮助调试
+        const errorPosition = e.message.match(/position (\d+)/);
+        if (errorPosition && errorPosition[1]) {
+            const position = parseInt(errorPosition[1]);
+            console.error(`错误位置附近的字符串: "${jsonString.substring(Math.max(0, position - 10), position)}👉${jsonString.substring(position, Math.min(jsonString.length, position + 10))}"`);
         }
         
         // 尝试修复常见的JSON格式问题
         let correctedJson = jsonString;
         
-        // 1. 修复缺少双引号的键
+        // 1. 修复数字键不带引号的问题，如 {0:1,2:2} => {"0":1,"2":2}
+        // 使用更精确的正则表达式来处理各种情况下的数字键
+        correctedJson = correctedJson.replace(/([{,])\s*(\d+)\s*:/g, '$1"$2":');
+        
+        // 2. 特别处理taskTypeDistribution对象中的数字键
+        const taskTypePattern = /"taskTypeDistribution"\s*:\s*{([^}]*)}/;
+        const taskTypeMatch = taskTypePattern.exec(correctedJson);
+        
+        if (taskTypeMatch && taskTypeMatch[1]) {
+            const originalContent = taskTypeMatch[1];
+            // 修复数字键
+            const fixedContent = originalContent.replace(/(\d+)\s*:/g, '"$1":');
+            // 替换回原始字符串
+            correctedJson = correctedJson.replace(taskTypePattern, `"taskTypeDistribution":{${fixedContent}}`);
+        }
+        
+        // 3. 修复缺少双引号的键
         correctedJson = correctedJson.replace(/(\s*?{\s*?|\s*?,\s*?)(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '$1"$3":');
         
-        // 2. 修复单引号替换为双引号
+        // 4. 修复单引号替换为双引号
         correctedJson = correctedJson.replace(/'/g, '"');
+        
+        // 5. 修复尾部可能的逗号问题
+        correctedJson = correctedJson.replace(/,\s*}/g, '}');
+        correctedJson = correctedJson.replace(/,\s*\]/g, ']');
+        
+        console.log('尝试修正后的JSON:', correctedJson);
         
         try {
             const parsed = JSON.parse(correctedJson);
-            if (showFeedback) {
-                console.log('JSON已自动修正并解析成功');
-                showFeedback('JSON格式已自动修正', false);
+            console.log('JSON已自动修正并解析成功', parsed);
+            
+            // 安全调用showFeedback函数，确保它存在
+            if (showFeedback && typeof window.showFeedback === 'function') {
+                window.showFeedback('JSON格式已自动修正', false);
             }
             return parsed;
         } catch(e2) {
-            if (showFeedback) {
-                showFeedback('JSON格式无效，请检查语法', true);
+            console.error('自动修正JSON失败:', e2, '尝试了以下字符串:', correctedJson);
+            
+            // 最后的尝试：完全重建taskTypeDistribution对象
+            try {
+                // 尝试提取主要信息并重建JSON
+                const successRateMatch = /"successRate"\s*:\s*(\d+)/.exec(jsonString);
+                const totalTasksMatch = /"totalTasks"\s*:\s*(\d+)/.exec(jsonString);
+                const todayExecutionsMatch = /"todayExecutions"\s*:\s*(\d+)/.exec(jsonString);
+                const recentFailedTasksMatch = /"recentFailedTasks"\s*:\s*(\d+)/.exec(jsonString);
+                
+                if (successRateMatch && totalTasksMatch && todayExecutionsMatch) {
+                    // 创建一个基本对象
+                    const reconstructed = {
+                        successRate: parseInt(successRateMatch[1]),
+                        totalTasks: parseInt(totalTasksMatch[1]),
+                        todayExecutions: parseInt(todayExecutionsMatch[1]),
+                        recentFailedTasks: recentFailedTasksMatch ? parseInt(recentFailedTasksMatch[1]) : 0,
+                        taskTypeDistribution: {},
+                        executionStatusDistribution: {}
+                    };
+                    
+                    // 尝试提取状态分布
+                    const statusPattern = /"executionStatusDistribution"\s*:\s*{([^}]*)}/;
+                    const statusMatch = statusPattern.exec(jsonString);
+                    if (statusMatch && statusMatch[1]) {
+                        const statusPairs = statusMatch[1].split(',');
+                        statusPairs.forEach(pair => {
+                            const keyValue = pair.split(':');
+                            if (keyValue.length === 2) {
+                                let key = keyValue[0].trim().replace(/"/g, '');
+                                let value = parseInt(keyValue[1].trim());
+                                reconstructed.executionStatusDistribution[key] = value;
+                            }
+                        });
+                    }
+                    
+                    // 尝试提取任务类型分布
+                    const taskPattern = /"taskTypeDistribution"\s*:\s*{([^}]*)}/;
+                    const taskMatch = taskPattern.exec(jsonString);
+                    if (taskMatch && taskMatch[1]) {
+                        const taskPairs = taskMatch[1].split(',');
+                        taskPairs.forEach(pair => {
+                            const keyValue = pair.split(':');
+                            if (keyValue.length === 2) {
+                                let key = keyValue[0].trim().replace(/"/g, '');
+                                let value = parseInt(keyValue[1].trim());
+                                reconstructed.taskTypeDistribution[key] = value;
+                            }
+                        });
+                    }
+                    
+                    console.log('完全重建的对象:', reconstructed);
+                    return reconstructed;
+                }
+            } catch(e3) {
+                console.error('尝试重建JSON对象失败:', e3);
+            }
+            
+            // 安全调用showFeedback函数，确保它存在
+            if (showFeedback && typeof window.showFeedback === 'function') {
+                window.showFeedback('JSON格式无效，请检查语法', true);
             }
             return null;
         }

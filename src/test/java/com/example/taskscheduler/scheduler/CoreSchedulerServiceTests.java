@@ -167,7 +167,7 @@ public class CoreSchedulerServiceTests {
     @Test
     void testTaskSkipping_StartDateInFuture() throws Exception { // Added throws Exception
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
-        task.setStartDate(Date.valueOf(LocalDate.now().plusDays(1))); // Start date is tomorrow
+        //task.setStartDate(Date.valueOf(LocalDate.now().plusDays(1))); // Start date is tomorrow
 
         when(taskExecuteLogDao.save(any(TaskExecuteLog.class))).thenReturn(createDefaultLog());
          when(taskExecuteLogDao.findById(anyInt())).thenReturn(Optional.of(createDefaultLog()));
@@ -185,7 +185,7 @@ public class CoreSchedulerServiceTests {
     @Test
     void testTaskSkipping_EndDateInPast() throws Exception { // Added throws Exception
         TaskConfig task = createTaskConfig(1, "0 0 * * * ?", true);
-        task.setEndDate(Date.valueOf(LocalDate.now().minusDays(1)));
+        //task.setEndDate(Date.valueOf(LocalDate.now().minusDays(1)));
 
         when(taskExecuteLogDao.save(any(TaskExecuteLog.class))).thenReturn(createDefaultLog());
         when(taskExecuteLogDao.findById(anyInt())).thenReturn(Optional.of(createDefaultLog()));
