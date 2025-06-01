@@ -24,6 +24,7 @@
                     <th>开始时间</th>
                     <th>结束时间</th>
                     <th>消息</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody id="logs-table-body">
@@ -61,9 +62,7 @@
             // 获取URL参数
             const urlParams = new URLSearchParams(window.location.search);
             const taskIdParam = urlParams.get('taskId');
-            const taskNameParam = urlParams.get('taskName');
-
-            function displayLogs(logsToDisplay) {
+            const taskNameParam = urlParams.get('taskName');            function displayLogs(logsToDisplay) {
                 const tableBody = $('#logs-table-body');
                 tableBody.empty();
 
@@ -72,13 +71,26 @@
                 const paginatedItems = logsToDisplay.slice(startIndex, endIndex);
 
                 paginatedItems.forEach(function(log) {
+                    // 检查是否为工作流类型的任务日志（通过 taskPattern 或 其他标识）
+                    const isWorkflow = log.taskPattern === 'WORKFLOW_PARENT';
+                    
+                    // 构建操作链接 - 如果是工作流则添加查看工作流的链接
+                    let actionsHtml = '';
+                    if (isWorkflow) {
+                        actionsHtml = `<a href="workflow-viewer.html?logId=${log.logId}" class="btn btn-sm btn-info" title="查看工作流">
+                            <i class="fas fa-project-diagram"></i> 查看工作流
+                        </a>`;
+                    }
+                    
                     const row = `<tr>
                         <td>${log.logId}</td>
                         <td>${log.taskId}</td>
                         <td><span class="badge ${getBadgeClass(log.state)}">${log.state || ''}</span></td>
-                        <td>${log.instanceId || ''}</td>                        <td>${formatDateTime(log.startTime)}</td>
+                        <td>${log.instanceId || ''}</td>
+                        <td>${formatDateTime(log.startTime)}</td>
                         <td>${formatDateTime(log.endTime)}</td>
                         <td><small>${log.exMsg || '-'}</small></td>
+                        <td>${actionsHtml}</td>
                     </tr>`;
                     tableBody.append(row);
                 });

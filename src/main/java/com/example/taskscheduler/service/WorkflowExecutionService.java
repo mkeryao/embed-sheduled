@@ -219,6 +219,7 @@ public class WorkflowExecutionService {
 
         String stepExecuteNo = String.valueOf(savedStepLog.getLogId());
         MDC.put("execute_no", "$"  + stepExecuteNo + "$"); // Add step's execute_no to MDC
+        MDC.put("uuid", "$"  + stepExecuteNo + "$");
 
         String stepStatus;
         String stepMessage = null;
@@ -266,7 +267,7 @@ public class WorkflowExecutionService {
         }
 
         for (WorkflowEdge edge : outgoingEdges) {
-            boolean conditionMet = false;
+            boolean conditionMet = true; // Default to true if no condition is defined
             String evaluatedExpression = StringUtils.hasText(edge.getExpression()) ? edge.getExpression() : edge.getCondition();
             if (StringUtils.hasText(evaluatedExpression)) {
                 conditionMet = expressionUtil.evaluate(evaluatedExpression, contextData);

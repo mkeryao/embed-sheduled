@@ -1,25 +1,13 @@
 package com.example.taskscheduler.service;
 
-import com.example.taskscheduler.dao.TaskExecuteLogDao;
-import com.example.taskscheduler.dto.taskparams.ShellTaskParameters;
-import com.example.taskscheduler.entity.TaskConfig;
-import com.example.taskscheduler.entity.TaskExecuteLog;
-import com.alibaba.fastjson.JSON; // Fastjson import
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.InputStreamReader; // Fastjson import
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -30,17 +18,30 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.alibaba.fastjson.JSON;
+import com.example.taskscheduler.dao.TaskExecuteLogDao;
+import com.example.taskscheduler.dto.taskparams.ShellTaskParameters;
+import com.example.taskscheduler.entity.TaskConfig;
+import com.example.taskscheduler.entity.TaskExecuteLog;
+
 /**
- * Service responsible for executing Shell Script tasks.
- * It parses {@link ShellTaskParameters} from the task configuration,
- * uses {@link ProcessBuilder} to run the script (either inline or from a file path),
- * captures standard output and standard error, handles execution timeouts,
- * and updates the {@link TaskExecuteLog} with the outcome.
+ * Service responsible for executing Shell Script tasks. It parses
+ * {@link ShellTaskParameters} from the task configuration, uses
+ * {@link ProcessBuilder} to run the script (either inline or from a file path),
+ * captures standard output and standard error, handles execution timeouts, and
+ * updates the {@link TaskExecuteLog} with the outcome.
  * <p>
- * **Security Note:** Executing arbitrary shell scripts can pose significant security risks.
- * Ensure that only trusted users can define or modify shell tasks, and that script inputs
- * are carefully validated or sanitized if they come from external sources.
- * The execution environment should also be appropriately secured.
+ * **Security Note:** Executing arbitrary shell scripts can pose significant
+ * security risks. Ensure that only trusted users can define or modify shell
+ * tasks, and that script inputs are carefully validated or sanitized if they
+ * come from external sources. The execution environment should also be
+ * appropriately secured.
  * </p>
  */
 @Service
@@ -53,7 +54,6 @@ public class ShellTaskExecutor {
     // ObjectMapper no longer needed
     // @Autowired
     // private ObjectMapper objectMapper;
-
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
 
@@ -68,13 +68,14 @@ public class ShellTaskExecutor {
     );
 
     /**
-     * Executes a shell script task based on its configuration.
-     * The {@link TaskConfig#beanParameters} field is expected to contain a JSON string
-     * representing {@link ShellTaskParameters}.
+     * Executes a shell script task based on its configuration. The
+     * {@link TaskConfig#beanParameters} field is expected to contain a JSON
+     * string representing {@link ShellTaskParameters}.
      *
      * @param taskConfig The configuration of the shell task to execute.
-     * @param logEntry   The execution log entry associated with this task run. Its status,
-     *                   return message (stdout), and exception message (stderr/errors) will be updated.
+     * @param logEntry The execution log entry associated with this task run.
+     * Its status, return message (stdout), and exception message
+     * (stderr/errors) will be updated.
      */
     public void execute(TaskConfig taskConfig, TaskExecuteLog logEntry) {
         ShellTaskParameters params;
@@ -221,8 +222,8 @@ public class ShellTaskExecutor {
     }
 
     /**
-     * Creates a temporary script file with the given content.
-     * On non-Windows systems, it attempts to set executable permissions.
+     * Creates a temporary script file with the given content. On non-Windows
+     * systems, it attempts to set executable permissions.
      *
      * @param scriptContent The content of the script.
      * @return The {@link Path} to the created temporary script file.
@@ -247,8 +248,8 @@ public class ShellTaskExecutor {
             } catch (UnsupportedOperationException e) {
                 logger.warn("POSIX file permissions not supported on temp file system for {}. Script may need to be called with an interpreter explicitly (e.g., 'sh {}').", tempFile, e);
             } catch (IOException e) {
-                 logger.error("Failed to set executable permission on temporary script file: {}. Error: {}", tempFile, e.getMessage());
-                 // Depending on system, execution might still work or might need 'sh /path/to/script'
+                logger.error("Failed to set executable permission on temporary script file: {}. Error: {}", tempFile, e.getMessage());
+                // Depending on system, execution might still work or might need 'sh /path/to/script'
             }
         }
         logger.debug("Created temporary script file: {}", tempFile.toAbsolutePath());
@@ -257,9 +258,11 @@ public class ShellTaskExecutor {
 
     /**
      * Helper class to consume and buffer an InputStream in a separate thread.
-     * This prevents the main thread from blocking if the process generates a lot of output.
+     * This prevents the main thread from blocking if the process generates a
+     * lot of output.
      */
     private static class StreamGobbler implements Runnable {
+
         private final InputStream inputStream;
         private final Consumer<String> lineConsumer; // Changed to consume line by line
 

@@ -96,7 +96,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         this.taskRegistrar = taskRegistrar;
         ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
         taskScheduler.setPoolSize(15); // 设置线程池大小
-        taskScheduler.setThreadNamePrefix("embed-sheduled-task-");
+        taskScheduler.setThreadNamePrefix("embed-sheduled-");
         taskScheduler.initialize();
         taskRegistrar.setScheduler(taskScheduler);
         this.taskScheduler = taskScheduler; // Use this for scheduling tasks
@@ -205,6 +205,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 savedLog = taskExecuteLogDao.save(log);
                 executeNo = String.valueOf(savedLog.getLogId());
                 MDC.put("execute_no", "$" + executeNo + "$");
+                MDC.put("uuid", "$" + executeNo + "$");
 
                 logger.info("Preparing to execute task: {} (ID: {}, Log ID: {})",
                         taskConfig.getTaskName(), taskConfig.getTaskId(), savedLog.getLogId());

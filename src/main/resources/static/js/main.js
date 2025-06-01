@@ -458,3 +458,150 @@ function safeParseJSON(jsonString, showFeedback = true) {
         }
     }
 }
+
+/**
+ * 特殊处理工作流JSON格式问题
+ * @param {string|object} input - 输入的JSON字符串或对象
+ * @param {string} type - 数据类型，可以是'nodes', 'edges'或'params'
+ * @returns {object} 处理后的JavaScript对象
+ */
+function formatWorkflowJSON(input, type) {
+    // 如果输入为空，返回适当的默认值
+    if (!input) {
+        return type === 'params' ? {} : [];
+    }
+    
+    // 如果已经是对象，进行安全检查后返回
+    if (typeof input === 'object') {
+        try {
+            // 检测循环引用
+            JSON.stringify(input);
+            return input;
+        } catch (e) {
+            // 如果存在循环引用，创建一个深拷贝（不带循环引用）
+            console.warn(`工作流${type}数据中检测到循环引用，正在处理...`);
+            return decycleObject(input);
+        }
+    }
+    
+    // 如果是字符串但长度异常，可能是损坏的数据
+    if (typeof input === 'string') {
+        const trimmed = input.trim();
+        // 检查明显的无效格式
+        if (trimmed.length < 2 || 
+            (type !== 'params' && !trimmed.startsWith('[') && !trimmed.startsWith('{')) ||
+            (type === 'params' && !trimmed.startsWith('{') && !trimmed.startsWith('['))) {
+            console.warn(`工作流${type}数据格式异常，返回默认值`);
+            return type === 'params' ? {} : [];
+        }
+    }
+    
+    // 尝试解析字符串
+    try {
+        return JSON.parse(input);
+    } catch (e) {
+        console.warn(`工作流${type}JSON解析出错，尝试修复:`, e);
+        
+        // 尝试修复常见问题
+        let fixed = input;
+        
+        try {
+            // 1. 处理单引号替换为双引号
+            fixed = fixed.replace(/'/g, '"');
+            
+            // 2. 确保对象属性键名有引号
+            fixed = fixed.replace(/(\s*?{\s*?|\s*?,\s*?)(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '$1"$3":');
+            
+            // 3. 修复特殊格式问题
+            if (type === 'nodes') {
+                // 确保节点ID是字符串
+                fixed = fixed.replace(/"nodeId"\s*:\s*(\d+)([,}])/g, '"nodeId":"$1"$2');
+                
+                // 确保taskConfigId是整数
+                fixed = fixed.replace(/"taskConfigId"\s*:\s*"(\d+)"([,}])/g, '"taskConfigId":$1$2');
+                
+                // 修复任何不完整的节点对象
+                fixed = fixed.replace(/{([^}]*?)([,\]])/g, function(match, p1, p2) {
+                    return p1.includes('"nodeId"') ? match : `{${p1}}${p2}`;
+                });
+            } else if (type === 'edges') {
+                // 确保fromNodeId和toNodeId是字符串
+                fixed = fixed.replace(/"fromNodeId"\s*:\s*(\d+)([,}])/g, '"fromNodeId":"$1"$2');
+                fixed = fixed.replace(/"toNodeId"\s*:\s*(\d+)([,}])/g, '"toNodeId":"$1"$2');
+                
+                // 确保priority是整数
+                fixed = fixed.replace(/"priority"\s*:\s*"(\d+)"([,}])/g, '"priority":$1$2');
+            }
+            
+            // 4. 修复前后缺少括号的问题
+            if (type === 'params') {
+                if (!fixed.trim().startsWith('{')) fixed = '{' + fixed.trim();
+                if (!fixed.trim().endsWith('}')) fixed = fixed.trim() + '}';
+            } else {
+                if (!fixed.trim().startsWith('[')) fixed = '[' + fixed.trim();
+                if (!fixed.trim().endsWith(']')) fixed = fixed.trim() + ']';
+            }
+            
+            // 5. 修复尾部多余的逗号
+            fixed = fixed.replace(/,\s*}/g, '}').replace(/,\s*\]/g, ']');
+            
+            // 6. 确保JSON格式正确
+            fixed = fixed.replace(/}\s*{/g, '},{');
+            
+            // 尝试解析修复后的JSON
+            const result = JSON.parse(fixed);
+            console.log(`工作流${type}JSON已修复:`, result);
+            
+            // 对结果进行验证
+            if (Array.isArray(result) && type !== 'params') {
+                // 验证数组中的每一项都是有效对象
+                for (let i = 0; i < result.length; i++) {
+                    if (!result[i] || typeof result[i] !== 'object') {
+                        console.warn(`工作流${type}数据中的第${i+1}项无效，移除该项`);
+                        result.splice(i, 1);
+                        i--;
+                    }
+                }
+            }
+            
+            return result;
+        } catch (e2) {
+            console.error(`工作流${type}JSON修复失败:`, e2);
+            // 在多次修复失败后，尝试一种更激进的修复方式
+            try {
+                // 尝试提取有效的JSON部分
+                const jsonRegex = type === 'params' ? /{.*}/ : /\[.*\]/;
+                const match = fixed.match(jsonRegex);
+                
+                if (match && match[0]) {
+                    const extractedJson = JSON.parse(match[0]);
+                    console.log(`通过正则提取，工作流${type}JSON修复成功`, extractedJson);
+                    return extractedJson;
+                }
+            } catch (e3) {
+                console.error(`工作流${type}JSON终极修复失败:`, e3);
+            }
+            
+            // 所有修复尝试都失败，返回安全的默认值
+            return type === 'params' ? {} : [];
+        }
+    }
+}
+
+/**
+ * 移除对象中的循环引用
+ * @param {object} obj - 要处理的对象
+ * @returns {object} 没有循环引用的对象
+ */
+function decycleObject(obj) {
+    const seen = new WeakSet();
+    return JSON.parse(JSON.stringify(obj, (key, value) => {
+        if (value !== null && typeof value === 'object') {
+            if (seen.has(value)) {
+                return '[Circular Reference]';
+            }
+            seen.add(value);
+        }
+        return value;
+    }));
+}

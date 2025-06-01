@@ -46,17 +46,18 @@ public class TaskConfigController {
 
     @Autowired
     private CoreSchedulerService coreSchedulerService;
-    
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     // ObjectMapper is no longer needed here if Fastjson is the primary via HttpMessageConverter
     // @Autowired
     // private ObjectMapper objectMapper;
-
     // --- DTO Mappers ---
     private TaskConfigDto convertToDto(TaskConfig taskConfig) {
-        if (taskConfig == null) return null;
+        if (taskConfig == null) {
+            return null;
+        }
         TaskConfigDto dto = new TaskConfigDto();
         BeanUtils.copyProperties(taskConfig, dto, "workflowNodesJson", "workflowEdgesJson", "globalParametersJson");
 
@@ -68,7 +69,8 @@ public class TaskConfigController {
                 dto.setWorkflowEdges(JSON.parseArray(taskConfig.getWorkflowEdgesJson(), WorkflowEdge.class));
             }
             if (StringUtils.hasText(taskConfig.getGlobalParametersJson())) {
-                dto.setGlobalParameters(JSON.parseObject(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {}));
+                dto.setGlobalParameters(JSON.parseObject(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {
+                }));
             }
         } catch (Exception e) { // Fastjson might throw different exceptions
             logger.error("Error parsing workflow/global params JSON (Fastjson) to DTO for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
@@ -77,7 +79,9 @@ public class TaskConfigController {
     }
 
     private TaskConfig convertToEntity(TaskConfigDto dto) {
-        if (dto == null) return null;
+        if (dto == null) {
+            return null;
+        }
         TaskConfig entity = new TaskConfig();
         BeanUtils.copyProperties(dto, entity, "workflowNodes", "workflowEdges", "globalParameters");
 
@@ -104,7 +108,6 @@ public class TaskConfigController {
     }
 
     // --- API Endpoints ---
-
     @PostMapping
     public ResponseEntity<TaskConfigDto> createTask(@RequestBody TaskConfigDto taskConfigDto) {
         if (taskConfigDto == null || taskConfigDto.getTaskName() == null || taskConfigDto.getCronExpression() == null) {
@@ -135,7 +138,9 @@ public class TaskConfigController {
 
     @PutMapping("/{id}")
     public ResponseEntity<TaskConfigDto> updateTask(@PathVariable Integer id, @RequestBody TaskConfigDto taskConfigDto) {
-        if (taskConfigDto == null) return ResponseEntity.badRequest().build();
+        if (taskConfigDto == null) {
+            return ResponseEntity.badRequest().build();
+        }
         Optional<TaskConfig> existingTaskOptional = taskConfigDao.findById(id);
         if (!existingTaskOptional.isPresent()) {
             return ResponseEntity.notFound().build();
@@ -177,7 +182,7 @@ public class TaskConfigController {
             coreSchedulerService.triggerTaskManually(id);
             return ResponseEntity.ok("Task " + id + " triggered successfully.");
         } catch (IllegalArgumentException e) {
-             return ResponseEntity.notFound().build(); // If task not found by triggerTaskManually
+            return ResponseEntity.notFound().build(); // If task not found by triggerTaskManually
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error triggering task " + id + ": " + e.getMessage());
         }
@@ -217,9 +222,11 @@ public class TaskConfigController {
 
     /**
      * 获取任务的未来5次执行时间
+     *
      * @param cronExpression Cron表达式
      * @return 未来5次执行时间列表
-     */    @GetMapping("/next-execution-times")
+     */
+    @GetMapping("/next-execution-times")
     public ResponseEntity<?> getNextExecutionTimes(@RequestParam String cronExpression) {
         try {
             if (!CronExpression.isValidExpression(cronExpression)) {
@@ -227,10 +234,10 @@ public class TaskConfigController {
                 response.put("message", "无效的Cron表达式: " + cronExpression);
                 return ResponseEntity.badRequest().body(response);
             }
-            
+
             CronExpression cron = CronExpression.parse(cronExpression);
             List<String> executionTimes = new ArrayList<>();
-            
+
             LocalDateTime nextTime = LocalDateTime.now();
             for (int i = 0; i < 5; i++) {
                 nextTime = cron.next(nextTime);
@@ -240,7 +247,7 @@ public class TaskConfigController {
                     break;
                 }
             }
-            
+
             return ResponseEntity.ok(executionTimes);
         } catch (Exception e) {
             logger.error("计算执行时间出错", e);
@@ -249,9 +256,10 @@ public class TaskConfigController {
             return ResponseEntity.badRequest().body(response);
         }
     }
-    
+
     /**
      * 验证Cron表达式是否有效
+     *
      * @param cronExpression Cron表达式
      * @return 验证结果
      */
@@ -261,29 +269,32 @@ public class TaskConfigController {
         Map<String, Boolean> response = new HashMap<>();
         response.put("valid", isValid);
         return ResponseEntity.ok(response);
-    }    /**
+    }
+
+    /**
      * 获取任务相关信息用于UI下拉框选择
+     *
      * @return 包含用户列表、日历列表等信息
      */
     @GetMapping("/form-data")
     public ResponseEntity<?> getFormData() {
         try {
             Map<String, Object> formData = new HashMap<>();
-            
+
             // 使用JdbcTemplate直接查询数据库
             List<Map<String, Object>> users = jdbcTemplate.queryForList(
-                "SELECT user_id, username FROM task_user");
-                
+                    "SELECT user_id, username FROM task_user");
+
             List<Map<String, Object>> calendars = jdbcTemplate.queryForList(
-                "SELECT calendar_id, calendar_name FROM task_calendar");
-                
+                    "SELECT calendar_id, calendar_name FROM task_calendar");
+
             List<Map<String, Object>> beanTasks = jdbcTemplate.queryForList(
-                "SELECT task_id, task_name, bean_name FROM task_config WHERE task_type=0");
-            
+                    "SELECT task_id, task_name, bean_name FROM task_config WHERE task_type=0");
+
             formData.put("users", users);
             formData.put("calendars", calendars);
             formData.put("beanTasks", beanTasks);
-            
+
             return ResponseEntity.ok(formData);
         } catch (Exception e) {
             logger.error("获取表单数据出错", e);

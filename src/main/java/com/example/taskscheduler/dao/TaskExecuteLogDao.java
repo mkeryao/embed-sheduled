@@ -102,6 +102,12 @@ public interface TaskExecuteLogDao {
     /**
      * Gets the list of tasks that failed recently (e.g., in the last 24 hours).
      * @return A list of maps with task information for failed tasks.
+     */    List<Map<String, Object>> getRecentFailedTaskCount();
+
+    /**
+     * 查询特定父日志ID的子任务执行日志（工作流步骤）
+     * @param parentLogId 父日志ID
+     * @return 子任务执行日志列表
      */
-    List<Map<String, Object>> getRecentFailedTaskCount();
+    List<TaskExecuteLog> findByParentLogId(Integer parentLogId);
 }

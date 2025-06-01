@@ -59,10 +59,11 @@ public class DistributedLockService {
         if (!StringUtils.hasText(schedulerInstanceId)) {
             //获取当前机器的IP和Name
             this.schedulerInstanceId = java.net.InetAddress.getLocalHost().getHostName()
+                    + ":" + java.net.InetAddress.getLocalHost().getHostAddress()
                     + ":" + java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-            logger.info("scheduler.instance.id not configured, hostName: {}", schedulerInstanceId);
+            logger.info("scheduler.instance.id not configured, instance id: {}", schedulerInstanceId);
         } else {
-            schedulerInstanceId = configuredInstanceId;
+            this.schedulerInstanceId = configuredInstanceId;
             logger.info("scheduler.instance.id configured as: {}", schedulerInstanceId);
         }
         logger.info("DistributedLockService initialized. Max lock attempts: {}, Retry delay: {}ms", maxLockAttempts, lockRetryDelayMs);

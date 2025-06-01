@@ -38,9 +38,7 @@ public class TaskExecuteLog {
     private String rtnMsg;
 
     /** Optional message, typically used to store exception messages if the task failed or timed out. */
-    private String exMsg;
-
-    /** Identifier of the scheduler instance that executed this task. Useful in distributed environments. */
+    private String exMsg;    /** Identifier of the scheduler instance that executed this task. Useful in distributed environments. */
     private String instanceId;
 
     /**
@@ -55,4 +53,9 @@ public class TaskExecuteLog {
      * "WORKFLOW_PARENT" for the main log of a workflow, or "WORKFLOW_STEP" for individual steps in a workflow.
      */
     private String taskPattern;
+    
+    /**
+     * JSON字符串，存储任务执行的参数信息，包括工作流节点信息等
+     */
+    private String params;
 }

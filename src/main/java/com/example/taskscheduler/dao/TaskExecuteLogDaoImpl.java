@@ -31,15 +31,14 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     private static final Logger logger = LoggerFactory.getLogger(TaskExecuteLogDaoImpl.class);
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    private static final String LOG_COLUMNS = "log_id, task_id, start_time, end_time, state, rtn_msg, ex_msg, instance_id, parent_execute_no, task_pattern";
+    private JdbcTemplate jdbcTemplate;    private static final String LOG_COLUMNS = "log_id, task_id, start_time, end_time, state, rtn_msg, ex_msg, instance_id, parent_execute_no, task_pattern";
     private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, start_time, state, instance_id, parent_execute_no, task_pattern, rtn_msg, ex_msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, instance_id=?, parent_execute_no=?, task_pattern=? WHERE log_id=?";
     private static final String SELECT_BY_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE log_id=?";
     private static final String SELECT_ALL_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log ORDER BY start_time DESC";
     private static final String SELECT_BY_TASK_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE task_id=? ORDER BY start_time DESC";
     private static final String UPDATE_LOG_STATUS_SQL = "UPDATE task_execute_log SET end_time=CURRENT_TIMESTAMP, state=?, rtn_msg=?, ex_msg=? WHERE log_id=?";
+    private static final String SELECT_BY_PARENT_LOG_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE parent_execute_no=? ORDER BY start_time ASC";
 
 
     private final RowMapper<TaskExecuteLog> rowMapper = (rs, rowNum) -> {
@@ -202,5 +201,11 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
                      "JOIN task_config tc ON tel.task_id = tc.task_id " +
                      "WHERE tel.state = 'FAILED' AND tel.start_time >= ?";
         return jdbcTemplate.queryForList(sql, oneDayAgo);
+    }
+    
+    @Override
+    public List<TaskExecuteLog> findByParentLogId(Integer parentLogId) {
+        logger.debug("Finding task execution logs by parent log ID: {}", parentLogId);
+        return jdbcTemplate.query(SELECT_BY_PARENT_LOG_ID_SQL, new Object[]{parentLogId}, rowMapper);
     }
 }

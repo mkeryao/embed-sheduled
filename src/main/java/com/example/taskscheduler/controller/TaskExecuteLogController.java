@@ -1,13 +1,21 @@
 package com.example.taskscheduler.controller;
 
+import com.example.taskscheduler.dao.TaskConfigDao;
 import com.example.taskscheduler.dao.TaskExecuteLogDao;
+import com.example.taskscheduler.dto.workflow.WorkflowEdge;
+import com.example.taskscheduler.dto.workflow.WorkflowExecutionDto;
+import com.example.taskscheduler.dto.workflow.WorkflowNode;
+import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
+import com.alibaba.fastjson.JSON;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/logs")
@@ -15,6 +23,9 @@ public class TaskExecuteLogController {
 
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
+    
+    @Autowired
+    private TaskConfigDao taskConfigDao;
 
     @GetMapping
     public ResponseEntity<List<TaskExecuteLog>> getAllLogs(
@@ -65,5 +76,58 @@ public class TaskExecuteLogController {
         return taskExecuteLogDao.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/workflow")
+    public ResponseEntity<WorkflowExecutionDto> getWorkflowExecution(@PathVariable Integer id) {
+        // 获取工作流主日志
+        Optional<TaskExecuteLog> workflowLogOpt = taskExecuteLogDao.findById(id);
+        if (!workflowLogOpt.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        TaskExecuteLog workflowLog = workflowLogOpt.get();
+        Integer taskId = workflowLog.getTaskId();
+        
+        // 获取工作流任务配置
+        Optional<TaskConfig> workflowTaskOpt = taskConfigDao.findById(taskId);
+        if (!workflowTaskOpt.isPresent() || workflowTaskOpt.get().getTaskType() != 10) { // 10是工作流类型
+            return ResponseEntity.badRequest().build();
+        }
+        
+        TaskConfig workflowTask = workflowTaskOpt.get();
+        
+        // 构建DTO对象
+        WorkflowExecutionDto dto = new WorkflowExecutionDto();
+        dto.setLogId(workflowLog.getLogId());
+        dto.setTaskId(taskId);
+        dto.setWorkflowName(workflowTask.getTaskName());
+        dto.setState(workflowLog.getState());
+        dto.setStartTime(workflowLog.getStartTime());
+        dto.setEndTime(workflowLog.getEndTime());
+        
+        // 解析全局参数
+        if (workflowTask.getGlobalParametersJson() != null && !workflowTask.getGlobalParametersJson().isEmpty()) {
+            Map<String, Object> globalParams = JSON.parseObject(workflowTask.getGlobalParametersJson(), 
+                    new com.alibaba.fastjson.TypeReference<Map<String, Object>>() {});
+            dto.setGlobalParameters(globalParams);
+        }
+        
+        // 解析节点和边
+        if (workflowTask.getWorkflowNodesJson() != null && !workflowTask.getWorkflowNodesJson().isEmpty()) {
+            List<WorkflowNode> nodes = JSON.parseArray(workflowTask.getWorkflowNodesJson(), WorkflowNode.class);
+            dto.setNodes(nodes);
+        }
+        
+        if (workflowTask.getWorkflowEdgesJson() != null && !workflowTask.getWorkflowEdgesJson().isEmpty()) {
+            List<WorkflowEdge> edges = JSON.parseArray(workflowTask.getWorkflowEdgesJson(), WorkflowEdge.class);
+            dto.setEdges(edges);
+        }
+        
+        // 获取工作流步骤执行日志
+        List<TaskExecuteLog> steps = taskExecuteLogDao.findByParentLogId(id);
+        dto.setSteps(steps);
+        
+        return ResponseEntity.ok(dto);
     }
 }
