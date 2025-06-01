@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Calendar Management - Task Scheduler</title>
+    <title>日历管理 - 任务调度系统</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -11,16 +11,16 @@
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center my-3">
-            <h2>Calendar Management</h2>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#calendarFormModal" id="addCalendarBtn">Add Calendar</button>
+            <h2>日历管理</h2>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#calendarFormModal" id="addCalendarBtn">添加日历</button>
         </div>
         <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
                     <th>ID</th>
-                    <th>Calendar Name (Group)</th>
-                    <th>Description (Remark)</th>
-                    <th>Actions</th>
+                    <th>日历名称 (组)</th>
+                    <th>描述 (备注)</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody id="calendars-table-body">
@@ -32,9 +32,8 @@
     <!-- Calendar Form Modal (for TaskCalendar) -->
     <div class="modal fade" id="calendarFormModal" tabindex="-1" role="dialog" aria-labelledby="calendarFormModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="calendarFormModalLabel">Add/Edit Calendar</h5>
+            <div class="modal-content">                <div class="modal-header">
+                    <h5 class="modal-title" id="calendarFormModalLabel">添加/编辑日历</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -43,14 +42,13 @@
                     <form id="calendar-form">
                         <input type="hidden" id="calendarId">
                         <div class="form-group">
-                            <label for="calendarName">Calendar Name (Group)</label>
+                            <label for="calendarName">日历名称 (组)</label>
                             <input type="text" class="form-control" id="calendarName" required>
                         </div>
                         <div class="form-group">
-                            <label for="calendarDescription">Description (Remark)</label>
+                            <label for="calendarDescription">描述 (备注)</label>
                             <textarea class="form-control" id="calendarDescription" rows="2"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-success">Save Calendar</button>
+                        </div>                        <button type="submit" class="btn btn-success">保存日历</button>
                     </form>
                 </div>
             </div>
@@ -62,40 +60,40 @@
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="calendarDaysModalLabel">Manage Calendar Days for <span id="daysModalCalendarName"></span></h5>
+                    <h5 class="modal-title" id="calendarDaysModalLabel">管理日历日期 - <span id="daysModalCalendarName"></span></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="currentCalendarIdForDays">
-                    <h5>Add New Day Entry</h5>
+                    <h5>添加新日期条目</h5>
                     <form id="calendar-day-form" class="form-inline mb-3">
                         <div class="form-group mr-2">
-                            <label for="eventDate" class="sr-only">Date</label>
-                            <input type="date" class="form-control" id="eventDate" placeholder="Event Date" required>
+                            <label for="eventDate" class="sr-only">日期</label>
+                            <input type="date" class="form-control" id="eventDate" placeholder="事件日期" required>
                         </div>
                         <div class="form-group mr-2">
-                            <label for="dayDescription" class="sr-only">Description</label>
-                            <input type="text" class="form-control" id="dayDescription" placeholder="Day Description">
+                            <label for="dayDescription" class="sr-only">描述</label>
+                            <input type="text" class="form-control" id="dayDescription" placeholder="日期描述">
                         </div>
                         <div class="form-check mr-2">
                             <input class="form-check-input" type="checkbox" id="isWorkingDay" checked>
                             <label class="form-check-label" for="isWorkingDay">
-                                Is Working Day?
+                                是工作日？
                             </label>
                         </div>
-                        <button type="submit" class="btn btn-primary">Add Day</button>
+                        <button type="submit" class="btn btn-primary">添加日期</button>
                     </form>
                     <hr/>
-                    <h5>Existing Days</h5>
+                    <h5>已有日期</h5>
                     <table class="table table-sm">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th>Working Day?</th>
-                                <th>Actions</th>
+                                <th>日期</th>
+                                <th>描述</th>
+                                <th>工作日？</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="calendar-days-list">
@@ -124,77 +122,70 @@
                     logout();
                 });
             });
-            loadCalendars();
-
-            function loadCalendars() {
+            loadCalendars();            function loadCalendars() {
                 makeApiCall('GET', '/calendars', null,
                     function(calendars) {
                         const tableBody = $('#calendars-table-body');
                         tableBody.empty();
-                        calendars.forEach(function(calendar) {
-                            const row = `<tr>
+                        calendars.forEach(function(calendar) {                            const row = `<tr>
                                 <td>${calendar.calendarId}</td>
                                 <td>${calendar.calendarName || ''}</td>
                                 <td>${calendar.description || ''}</td>
                                 <td class="action-buttons">
-                                    <button class="btn btn-sm btn-info manage-days-btn" data-id="${calendar.calendarId}" data-name="${calendar.calendarName}">Manage Days</button>
-                                    <button class="btn btn-sm btn-danger delete-calendar-btn" data-id="${calendar.calendarId}">Delete Calendar</button>
+                                    <button class="btn btn-sm btn-info manage-days-btn" data-id="${calendar.calendarId}" data-name="${calendar.calendarName}">管理日期</button>
+                                    <button class="btn btn-sm btn-danger delete-calendar-btn" data-id="${calendar.calendarId}">删除日历</button>
                                 </td>
                             </tr>`;
                             tableBody.append(row);
                         });
                     },
                     function(jqXHR) {
-                        showFeedback('Error loading calendars: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback('加载日历出错: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                     }
                 );
             }
 
             $('#addCalendarBtn').click(function() {
-                $('#calendarFormModalLabel').text('Add Calendar');
+                $('#calendarFormModalLabel').text('添加日历');
                 $('#calendar-form')[0].reset();
                 $('#calendarId').val('');
             });
 
             $('#calendar-form').submit(function(event) {
                 event.preventDefault();
-                const calendarId = $('#calendarId').val(); // Not currently using edit for calendars, only add.
+                const calendarId = $('#calendarId').val(); // 当前不使用编辑日历功能，仅添加。
                 const calendarData = {
                     calendarName: $('#calendarName').val(),
                     description: $('#calendarDescription').val(),
-                    // days: [] // Days are managed separately after calendar creation for simplicity here
+                    // days: [] // 日期在日历创建后单独管理，简化界面
                 };
 
-                // For this simplified UI, we are not supporting edit of calendar name/description.
-                // Only add. If edit was needed, it would be similar to tasks.
+                // 对于这个简化的UI，我们不支持编辑日历名称/描述。
+                // 只能添加。如果需要编辑，它将类似于任务。
                 if (calendarId) {
-                     showFeedback('Editing existing calendars is not supported in this UI version.', true);
-                     return;
-                }
-
+                     showFeedback('此UI版本不支持编辑现有日历。', true);
+                     return;                }                
                 makeApiCall('POST', '/calendars', calendarData,
                     function(response) {
                         $('#calendarFormModal').modal('hide');
-                        showFeedback('Calendar saved successfully!', false);
+                        showFeedback('日历保存成功！', false);
                         loadCalendars();
                     },
                     function(jqXHR) {
-                        showFeedback('Error saving calendar: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback('保存日历出错: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                     }
                 );
-            });
-
-            // Delete Calendar
+            });            // Delete Calendar
             $('#calendars-table-body').on('click', '.delete-calendar-btn', function() {
                 const calId = $(this).data('id');
-                if (confirm('Are you sure you want to delete calendar ' + calId + '? This will also delete all its day entries.')) {
+                if (confirm('您确定要删除日历 ' + calId + ' 吗？这也将删除其所有日期条目。')) {
                     makeApiCall('DELETE', `/calendars/${calId}`, null,
                         function() {
-                            showFeedback('Calendar deleted successfully!', false);
+                            showFeedback('日历删除成功！', false);
                             loadCalendars();
                         },
                         function(jqXHR) {
-                            showFeedback('Error deleting calendar: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                            showFeedback('删除日历出错: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                         }
                     );
                 }
@@ -210,9 +201,7 @@
                 $('#currentCalendarIdForDays').val(currentManagingCalendarId);
                 loadCalendarDays(currentManagingCalendarId);
                 $('#calendarDaysModal').modal('show');
-            });
-
-            function loadCalendarDays(calendarId) {
+            });            function loadCalendarDays(calendarId) {
                 makeApiCall('GET', `/calendars/${calendarId}/days`, null,
                     function(days) {
                         const daysList = $('#calendar-days-list');
@@ -222,18 +211,18 @@
                                 const row = `<tr>
                                     <td>${day.eventDate}</td>
                                     <td>${day.description || '-'}</td>
-                                    <td>${day.isWorkingDay ? 'Yes' : 'No'}</td>
-                                    <td><button class="btn btn-xs btn-danger delete-day-btn" data-day-id="${day.dayId}">Delete</button></td>
+                                    <td>${day.isWorkingDay ? '是' : '否'}</td>
+                                    <td><button class="btn btn-xs btn-danger delete-day-btn" data-day-id="${day.dayId}">删除</button></td>
                                 </tr>`;
                                 daysList.append(row);
                             });
                         } else {
-                            daysList.append('<tr><td colspan="4">No day entries found for this calendar.</td></tr>');
+                            daysList.append('<tr><td colspan="4">该日历没有日期条目。</td></tr>');
                         }
                     },
                     function(jqXHR) {
-                        $('#calendar-days-list').html('<tr><td colspan="4">Error loading days.</td></tr>');
-                        showFeedback('Error loading calendar days: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        $('#calendar-days-list').html('<tr><td colspan="4">加载日期出错。</td></tr>');
+                        showFeedback('加载日历日期出错: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                     }
                 );
             }

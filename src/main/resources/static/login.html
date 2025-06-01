@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Task Scheduler</title>
+    <title>登录 - 任务调度系统</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -12,18 +12,18 @@
             <div class="col-md-6 col-lg-4">
                 <div class="card mt-5">
                     <div class="card-body">
-                        <h3 class="card-title text-center">Login</h3>
+                        <h3 class="card-title text-center">用户登录</h3>
                         <div id="error-message" class="alert alert-danger" style="display: none;"></div>
                         <form id="login-form">
                             <div class="form-group">
-                                <label for="username">Username</label>
+                                <label for="username">用户名</label>
                                 <input type="text" class="form-control" id="username" name="username" required>
                             </div>
                             <div class="form-group">
-                                <label for="password">Password</label>
+                                <label for="password">密码</label>
                                 <input type="password" class="form-control" id="password" name="password" required>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-block">Login</button>
+                            <button type="submit" class="btn btn-primary btn-block">登录</button>
                         </form>
                     </div>
                 </div>
@@ -34,13 +34,15 @@
     <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
-    <script src="js/main.js"></script>
-    <script>
+    <script src="js/main.js"></script>    <script>
         $(document).ready(function() {
-            // If token exists, redirect to tasks.html
-            if (localStorage.getItem('jwtToken')) {
-                window.location.href = 'tasks.html';
-            }
+            // 防止登录页面闪烁
+            setTimeout(function() {
+                // If token exists, redirect to tasks.html
+                if (localStorage.getItem('jwtToken')) {
+                    window.location.href = 'tasks.html';
+                }
+            }, 100);
 
             $('#login-form').submit(function(event) {
                 event.preventDefault();
@@ -52,16 +54,17 @@
                         localStorage.setItem('jwtToken', response.token);
                         localStorage.setItem('username', response.username); // Store username if needed
                         window.location.href = 'tasks.html';
-                    },
-                    function(jqXHR) { // onError
-                        let message = 'Login failed. Please check your credentials.';
+                    },                    function(jqXHR) { // onError
+                        let message = '登录失败。请检查您的用户名和密码。';
                         if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
                             message = jqXHR.responseJSON.message;
                         } else if (jqXHR.responseText) {
                              try {
                                 const err = JSON.parse(jqXHR.responseText);
                                 if (err.message) message = err.message;
-                             } catch(e) { /* ignore parse error */ }
+                             } catch(e) {
+                                 /* ignore parse error */ 
+                                }
                         }
                         $('#error-message').text(message).show();
                     }

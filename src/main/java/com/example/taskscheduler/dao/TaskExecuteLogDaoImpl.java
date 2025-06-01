@@ -12,11 +12,10 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -125,6 +124,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         if (exMsg != null && exMsg.length() > 1950) {
             exMsg = exMsg.substring(0, 1950) + "...";
         }
+        
         jdbcTemplate.update(UPDATE_LOG_STATUS_SQL, state, rtnMsgForUpdate, exMsg, logId);
     }
 
@@ -154,18 +154,6 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
 
     @Override
     public Double getAverageExecutionTime(Integer taskId) {
-        // Calculate time difference in seconds for MySQL: TIMESTAMPDIFF(SECOND, start_time, end_time)
-        // For H2 (and standard SQL): (JULIANDAY(end_time) - JULIANDAY(start_time)) * 86400.0 for seconds
-        // Or more simply, if end_time and start_time are Epoch millis: (end_time_millis - start_time_millis) / 1000.0
-        // Assuming timestamps are convertible to epoch millis for simplicity or using DB specific functions:
-        // For H2/PostgreSQL: EXTRACT(EPOCH FROM (end_time - start_time)) * 1000
-        // For MySQL: UNIX_TIMESTAMP(end_time) * 1000 - UNIX_TIMESTAMP(start_time) * 1000
-        // The current schema uses TIMESTAMP, which can be tricky.
-        // A simpler approach for average of (end_time - start_time) if the DB supports direct subtraction resulting in an interval
-        // For now, let's assume a DB function or cast that gives milliseconds or seconds.
-        // Using AVG on direct subtraction might work on some DBs or need casting.
-        // This is a placeholder for a more robust cross-db solution or db-specific queries.
-        // Let's try with a common approach that might work for H2/Postgres.
         // For MySQL, it would be AVG(TIMESTAMPDIFF(MILLISECOND, start_time, end_time))
         String sql = "SELECT AVG(CAST(TIMESTAMPDIFF(MILLISECOND, start_time, end_time) AS DOUBLE)) " +
                      "FROM task_execute_log " +
@@ -192,19 +180,27 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
             }
         }
     }
-
+    
     @Override
-    public Long getTotalRuns(Integer taskId) {
-        String sql = "SELECT COUNT(*) FROM task_execute_log WHERE task_id = ?";
-        try {
-            Long count = jdbcTemplate.queryForObject(sql, new Object[]{taskId}, Long.class);
-            return count != null ? count : 0L;
-        } catch (EmptyResultDataAccessException e) {
-            // COUNT(*) should not throw this, it always returns a row.
-            return 0L;
-        } catch (Exception e) {
-            logger.error("Error getting total runs for task ID {}: {}", taskId, e.getMessage(), e);
-            return 0L;
-        }
+    public int countExecutionsSince(Timestamp since) {
+        String sql = "SELECT COUNT(*) FROM task_execute_log WHERE start_time >= ?";
+        return jdbcTemplate.queryForObject(sql, Integer.class, since);
+    }
+    
+    @Override
+    public List<Map<String, Object>> getStatusCountsSince(Timestamp since) {
+        String sql = "SELECT state, COUNT(*) as count FROM task_execute_log WHERE start_time >= ? GROUP BY state";
+        return jdbcTemplate.queryForList(sql, since);
+    }
+    
+    @Override
+    public List<Map<String, Object>> getRecentFailedTaskCount() {
+        // Get tasks that failed in the last 24 hours
+        Timestamp oneDayAgo = Timestamp.valueOf(LocalDateTime.now().minus(24, ChronoUnit.HOURS));
+        String sql = "SELECT DISTINCT tel.task_id, tc.task_name " +
+                     "FROM task_execute_log tel " +
+                     "JOIN task_config tc ON tel.task_id = tc.task_id " +
+                     "WHERE tel.state = 'FAILED' AND tel.start_time >= ?";
+        return jdbcTemplate.queryForList(sql, oneDayAgo);
     }
 }

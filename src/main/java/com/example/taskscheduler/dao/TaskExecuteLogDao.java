@@ -4,6 +4,7 @@ import com.example.taskscheduler.entity.TaskExecuteLog;
 import java.util.List;
 import java.util.Map; // Added import for Map
 import java.util.Optional;
+import java.sql.Timestamp;
 
 /**
  * Data Access Object interface for {@link TaskExecuteLog} entities.
@@ -85,9 +86,22 @@ public interface TaskExecuteLogDao {
     Double getAverageExecutionTime(Integer taskId);
 
     /**
-     * Gets the total number of runs (log entries) for a specific task.
-     * @param taskId The ID of the task.
-     * @return The total number of runs.
+     * Gets the total number of executions since the given timestamp.
+     * @param since The timestamp to count executions from.
+     * @return The count of executions since the given timestamp.
      */
-    Long getTotalRuns(Integer taskId);
+    int countExecutionsSince(Timestamp since);
+
+    /**
+     * Gets the status counts for executions since the given timestamp.
+     * @param since The timestamp to count statuses from.
+     * @return A list of maps with "state" and "count" fields.
+     */
+    List<Map<String, Object>> getStatusCountsSince(Timestamp since);
+
+    /**
+     * Gets the list of tasks that failed recently (e.g., in the last 24 hours).
+     * @return A list of maps with task information for failed tasks.
+     */
+    List<Map<String, Object>> getRecentFailedTaskCount();
 }

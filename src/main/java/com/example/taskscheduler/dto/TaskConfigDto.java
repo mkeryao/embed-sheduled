@@ -93,10 +93,10 @@ public class TaskConfigDto {
     private String taskCalendarGroup;
     /** Comma-separated time ranges for daily exclusion, e.g., "00:00-08:00,22:00-23:59". */
     private String taskExcludeTimes;
-    /** Task will not run before this date. */
-    private java.sql.Date startDate;
-    /** Task will not run after this date. */
-    private java.sql.Date endDate;
+    /** Task will not run before this date time. */
+    private java.sql.Timestamp startDate;
+    /** Task will not run after this date time. */
+    private java.sql.Timestamp endDate;
     /** Execution timeout in seconds for the task. 0 means no timeout. */
     private Integer executeTimeoutSeconds;
 

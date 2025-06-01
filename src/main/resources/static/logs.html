@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Task Logs - Task Scheduler</title>
+    <title>任务日志 - 任务调度系统</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -10,21 +10,20 @@
     <div id="navbar-container"></div>
 
     <div class="container">
-        <h2 class="my-3">Task Execution Logs</h2>
+        <h2 class="my-3">任务执行日志</h2>
         <div class="form-group">
-            <label for="taskIdFilter">Filter by Task ID (Optional):</label>
-            <input type="number" class="form-control" id="taskIdFilter" placeholder="Enter Task ID">
-        </div>
-        <table class="table table-striped table-hover">
+            <label for="taskIdFilter">按任务ID筛选 (可选):</label>
+            <input type="number" class="form-control" id="taskIdFilter" placeholder="输入任务ID">
+        </div>        <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
-                    <th>Log ID</th>
-                    <th>Task ID</th>
-                    <th>State</th>
-                    <th>Executed By (Instance)</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                    <th>Message</th>
+                    <th>日志ID</th>
+                    <th>任务ID</th>
+                    <th>状态</th>
+                    <th>执行实例</th>
+                    <th>开始时间</th>
+                    <th>结束时间</th>
+                    <th>消息</th>
                 </tr>
             </thead>
             <tbody id="logs-table-body">
@@ -42,8 +41,8 @@
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
     <script src="js/main.js"></script>
-    <script>
-        $(document).ready(function() {
+    <script>      
+     $(document).ready(function() {
             $("#navbar-container").load("_navbar.html", function() {
                  const currentUsername = localStorage.getItem('username');
                  if (currentUsername) {
@@ -58,6 +57,11 @@
             let allLogs = [];
             let currentPage = 1;
             const rowsPerPage = 10;
+            
+            // 获取URL参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskIdParam = urlParams.get('taskId');
+            const taskNameParam = urlParams.get('taskName');
 
             function displayLogs(logsToDisplay) {
                 const tableBody = $('#logs-table-body');
@@ -72,9 +76,8 @@
                         <td>${log.logId}</td>
                         <td>${log.taskId}</td>
                         <td><span class="badge ${getBadgeClass(log.state)}">${log.state || ''}</span></td>
-                        <td>${log.instanceId || ''}</td>
-                        <td>${log.startTime ? new Date(log.startTime).toLocaleString() : ''}</td>
-                        <td>${log.endTime ? new Date(log.endTime).toLocaleString() : ''}</td>
+                        <td>${log.instanceId || ''}</td>                        <td>${formatDateTime(log.startTime)}</td>
+                        <td>${formatDateTime(log.endTime)}</td>
                         <td><small>${log.exMsg || '-'}</small></td>
                     </tr>`;
                     tableBody.append(row);
@@ -103,7 +106,7 @@
                 // Previous button
                 paginationControls.append(
                     `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                        <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
+                        <a class="page-link" href="#" data-page="${currentPage - 1}">上一页</a>
                     </li>`
                 );
 
@@ -137,7 +140,7 @@
                 // Next button
                 paginationControls.append(
                     `<li class="page-item ${currentPage === pageCount ? 'disabled' : ''}">
-                        <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
+                        <a class="page-link" href="#" data-page="${currentPage + 1}">下一页</a>
                     </li>`
                 );
             }
@@ -151,10 +154,7 @@
                     const logsToDisplay = taskId ? allLogs.filter(log => log.taskId == taskId) : allLogs;
                     displayLogs(logsToDisplay);
                 }
-            });
-
-
-            function loadLogs(taskId = null) {
+            });            function loadLogs(taskId = null) {
                 currentPage = 1; // Reset to first page on new load/filter
                 const endpoint = taskId ? `/logs/task/${taskId}` : '/logs';
                 // The API as designed doesn't support server-side pagination for /logs or /logs/task/{taskId}
@@ -165,7 +165,7 @@
                         displayLogs(allLogs);
                     },
                     function(jqXHR) {
-                        showFeedback('Error loading logs: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback('加载日志出错: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                     }
                 );
             }
@@ -185,10 +185,19 @@
                         loadLogs(); // Load all if filter is cleared
                     }
                 }
-            });
-
-            // Initial load
-            loadLogs();
+            });            // 如果URL包含任务ID参数，直接填充过滤框
+            if (taskIdParam) {
+                $('#taskIdFilter').val(taskIdParam);
+                if (taskNameParam) {
+                    // 如果有任务名称，在页面标题中显示
+                    $('h2.my-3').text(`任务执行日志 - ${taskNameParam} (ID: ${taskIdParam})`);
+                }
+                // 加载特定任务的日志
+                loadLogs(taskIdParam);
+            } else {
+                // 初始加载所有日志
+                loadLogs();
+            }
         });
     </script>
 </body>

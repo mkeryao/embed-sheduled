@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>任务统计 - 任务调度系统</title>
+    <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container">
+        <div class="my-3">
+            <h2>Task Statistics</h2>
+            <p class="text-muted">任务执行统计信息</p>
+        </div>
+        
+        <!-- 统计卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">总任务数</div>
+                    <div class="stat-value text-primary" id="total-tasks">0</div>
+                    <div class="stat-footer">
+                        <i class="fas fa-tasks mr-1"></i> 系统中定义的所有任务
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">今日执行次数</div>
+                    <div class="stat-value text-success" id="today-executions">0</div>
+                    <div class="stat-footer">
+                        <i class="fas fa-calendar-check mr-1"></i> 今天执行的任务总次数
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">成功率</div>
+                    <div class="stat-value text-info" id="success-rate">0%</div>
+                    <div class="stat-footer">
+                        <i class="fas fa-chart-line mr-1"></i> 最近30天成功率
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-label">故障任务数</div>
+                    <div class="stat-value text-danger" id="failed-tasks">0</div>
+                    <div class="stat-footer">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> 最近失败的任务数量
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 任务类型分布 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">任务类型分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="task-type-chart" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">执行状态分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="execution-status-chart" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 最近执行的任务 -->
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">最近执行的任务</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>任务名称</th>
+                                <th>开始时间</th>
+                                <th>结束时间</th>
+                                <th>状态</th>
+                                <th>实例</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-executions-tbody">
+                            <!-- 最近执行的任务会通过JavaScript动态添加 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    <script src="libs/popperjs/popper.min.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#navbar-container").load("_navbar.html", function() {
+                const currentUsername = localStorage.getItem('username');
+                if (currentUsername) {
+                    $('#loggedInUser').text(currentUsername);
+                }
+                $('#logout-link').on('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+            });
+            
+            // 加载统计数据
+            loadStatistics();
+            
+            // 加载最近执行的任务
+            loadRecentExecutions();
+            
+            function loadStatistics() {
+                makeApiCall('GET', '/tasks/statistics', null,
+                    function(data) {
+                        // 更新统计卡片
+                        $('#total-tasks').text(data.totalTasks || 0);
+                        $('#today-executions').text(data.todayExecutions || 0);
+                        $('#success-rate').text((data.successRate || 0) + '%');
+                        $('#failed-tasks').text(data.recentFailedTasks || 0);
+                        
+                        // 渲染任务类型图表
+                        if (data.taskTypeDistribution) {
+                            renderTaskTypeChart(data.taskTypeDistribution);
+                        }
+                        
+                        // 渲染执行状态图表
+                        if (data.executionStatusDistribution) {
+                            renderExecutionStatusChart(data.executionStatusDistribution);
+                        }
+                    },
+                    function(jqXHR) {
+                        showFeedback('加载统计数据出错: ' + 
+                            (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                    }
+                );
+            }
+            
+            function loadRecentExecutions() {
+                makeApiCall('GET', '/logs?page=0&size=10', null,
+                    function(data) {
+                        const tbody = $('#recent-executions-tbody');
+                        tbody.empty();
+                        
+                        if (data && data.length > 0) {
+                            data.forEach(function(log) {
+                                let statusClass = '';
+                                switch(log.state) {
+                                    case 'SUCCESS': 
+                                        statusClass = 'badge-success';
+                                        break;
+                                    case 'FAILED':
+                                        statusClass = 'badge-danger';
+                                        break;
+                                    case 'RUNNING':
+                                        statusClass = 'badge-primary';
+                                        break;
+                                    case 'TIMED_OUT':
+                                        statusClass = 'badge-warning';
+                                        break;
+                                    case 'SKIPPED':
+                                        statusClass = 'badge-secondary';
+                                        break;
+                                    default:
+                                        statusClass = 'badge-info';
+                                }
+                                
+                                const row = `<tr>
+                                    <td>${log.logId}</td>
+                                    <td>${log.taskName || 'Unknown'}</td>
+                                    <td>${formatDateTime(log.startTime)}</td>
+                                    <td>${formatDateTime(log.endTime) || '-'}</td>
+                                    <td><span class="badge ${statusClass}">${log.state}</span></td>
+                                    <td>${log.instanceId || '-'}</td>
+                                    <td>
+                                        <a href="logs.html?logId=${log.logId}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i> 查看详情
+                                        </a>
+                                    </td>
+                                </tr>`;
+                                
+                                tbody.append(row);
+                            });
+                        } else {
+                            tbody.append('<tr><td colspan="7" class="text-center">没有执行记录</td></tr>');
+                        }
+                    },
+                    function(jqXHR) {
+                        showFeedback('加载最近执行记录出错: ' + 
+                            (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                    }
+                );
+            }
+            
+            // 复用main.js中定义的日期时间格式化函数
+            // 如果 formatDateTime 未定义，提供一个本地实现
+            function formatDateTime(dateTimeStr) {
+                if (window.formatDateTime) {
+                    return window.formatDateTime(dateTimeStr);
+                }
+                
+                if (!dateTimeStr) return '-';
+                
+                try {
+                    const date = new Date(dateTimeStr);
+                    if (isNaN(date.getTime())) return '-';
+                    return date.toLocaleString();
+                } catch (e) {
+                    console.error('日期显示格式化错误:', e);
+                    return '-';
+                }
+            }
+            
+            function renderTaskTypeChart(data) {
+                const ctx = document.getElementById('task-type-chart').getContext('2d');
+                
+                const labels = Object.keys(data).map(type => {
+                    switch(parseInt(type)) {
+                        case 0: return 'Bean任务';
+                        case 2: return 'HTTP任务';
+                        case 4: return 'Shell脚本';
+                        case 10: return '工作流';
+                        default: return `类型 ${type}`;
+                    }
+                });
+                
+                const values = Object.values(data);
+                
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: [
+                                '#28a745', // Bean - Green
+                                '#17a2b8', // HTTP - Cyan
+                                '#6610f2', // Shell - Purple
+                                '#fd7e14'  // Workflow - Orange
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                });
+            }
+            
+            function renderExecutionStatusChart(data) {
+                const ctx = document.getElementById('execution-status-chart').getContext('2d');
+                
+                const labels = Object.keys(data);
+                const values = Object.values(data);
+                
+                const backgroundColors = labels.map(status => {
+                    switch(status) {
+                        case 'SUCCESS': return '#28a745';
+                        case 'FAILED': return '#dc3545';
+                        case 'RUNNING': return '#007bff';
+                        case 'TIMED_OUT': return '#ffc107';
+                        case 'SKIPPED': return '#6c757d';
+                        default: return '#17a2b8';
+                    }
+                });
+                
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: backgroundColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

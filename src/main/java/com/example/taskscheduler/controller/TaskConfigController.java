@@ -1,38 +1,54 @@
 package com.example.taskscheduler.controller;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger; // Fastjson import
+import org.slf4j.LoggerFactory; // Fastjson TypeReference
+import org.springframework.beans.BeanUtils; // Added
+import org.springframework.beans.factory.annotation.Autowired; // Added
+import org.springframework.http.HttpStatus; // Added
+import org.springframework.http.ResponseEntity; // Added
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.support.CronExpression;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping; // 添加CronExpression导入
+import org.springframework.web.bind.annotation.PutMapping; // 添加LocalDateTime导入
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import com.example.taskscheduler.dao.TaskConfigDao;
 import com.example.taskscheduler.dto.TaskConfigDto;
 import com.example.taskscheduler.dto.workflow.WorkflowEdge;
 import com.example.taskscheduler.dto.workflow.WorkflowNode;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.scheduler.CoreSchedulerService;
-import com.alibaba.fastjson.JSON; // Fastjson import
-import com.alibaba.fastjson.TypeReference; // Fastjson TypeReference
-import org.slf4j.Logger; // Added
-import org.slf4j.LoggerFactory; // Added
-import org.springframework.util.StringUtils; // Added
-import java.util.Map; // Added
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tasks")
 public class TaskConfigController {
 
-    private static final Logger logger = LoggerFactory.getLogger(TaskConfigController.class); // Added logger
-
+    private static final Logger logger = LoggerFactory.getLogger(TaskConfigController.class); // Added logger    @Autowired
     @Autowired
     private TaskConfigDao taskConfigDao;
 
     @Autowired
     private CoreSchedulerService coreSchedulerService;
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     // ObjectMapper is no longer needed here if Fastjson is the primary via HttpMessageConverter
     // @Autowired
@@ -197,5 +213,83 @@ public class TaskConfigController {
         coreSchedulerService.cancelTask(id); // Cancel it from scheduler
         taskConfigDao.updateTaskStatus(id, false); // Then update DB
         return ResponseEntity.ok("Task " + id + " disabled successfully.");
+    }
+
+    /**
+     * 获取任务的未来5次执行时间
+     * @param cronExpression Cron表达式
+     * @return 未来5次执行时间列表
+     */    @GetMapping("/next-execution-times")
+    public ResponseEntity<?> getNextExecutionTimes(@RequestParam String cronExpression) {
+        try {
+            if (!CronExpression.isValidExpression(cronExpression)) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "无效的Cron表达式: " + cronExpression);
+                return ResponseEntity.badRequest().body(response);
+            }
+            
+            CronExpression cron = CronExpression.parse(cronExpression);
+            List<String> executionTimes = new ArrayList<>();
+            
+            LocalDateTime nextTime = LocalDateTime.now();
+            for (int i = 0; i < 5; i++) {
+                nextTime = cron.next(nextTime);
+                if (nextTime != null) {
+                    executionTimes.add(nextTime.toString());
+                } else {
+                    break;
+                }
+            }
+            
+            return ResponseEntity.ok(executionTimes);
+        } catch (Exception e) {
+            logger.error("计算执行时间出错", e);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "计算执行时间出错: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+    
+    /**
+     * 验证Cron表达式是否有效
+     * @param cronExpression Cron表达式
+     * @return 验证结果
+     */
+    @GetMapping("/validate-cron")
+    public ResponseEntity<?> validateCron(@RequestParam String cronExpression) {
+        boolean isValid = CronExpression.isValidExpression(cronExpression);
+        Map<String, Boolean> response = new HashMap<>();
+        response.put("valid", isValid);
+        return ResponseEntity.ok(response);
+    }    /**
+     * 获取任务相关信息用于UI下拉框选择
+     * @return 包含用户列表、日历列表等信息
+     */
+    @GetMapping("/form-data")
+    public ResponseEntity<?> getFormData() {
+        try {
+            Map<String, Object> formData = new HashMap<>();
+            
+            // 使用JdbcTemplate直接查询数据库
+            List<Map<String, Object>> users = jdbcTemplate.queryForList(
+                "SELECT user_id, username FROM task_user");
+                
+            List<Map<String, Object>> calendars = jdbcTemplate.queryForList(
+                "SELECT calendar_id, calendar_name FROM task_calendar");
+                
+            List<Map<String, Object>> beanTasks = jdbcTemplate.queryForList(
+                "SELECT task_id, task_name, bean_name FROM task_config WHERE task_type=0");
+            
+            formData.put("users", users);
+            formData.put("calendars", calendars);
+            formData.put("beanTasks", beanTasks);
+            
+            return ResponseEntity.ok(formData);
+        } catch (Exception e) {
+            logger.error("获取表单数据出错", e);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "获取表单数据出错: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
     }
 }

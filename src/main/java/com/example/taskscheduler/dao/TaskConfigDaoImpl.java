@@ -1,7 +1,12 @@
 package com.example.taskscheduler.dao;
 
-import com.example.taskscheduler.entity.TaskConfig;
-import com.example.taskscheduler.enums.ExecutionMode; // Import ExecutionMode
+import java.sql.PreparedStatement;
+import java.sql.SQLException; // Import ExecutionMode
+import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -9,12 +14,8 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.List;
-import java.util.Optional;
+import com.example.taskscheduler.entity.TaskConfig;
+import com.example.taskscheduler.enums.ExecutionMode;
 
 /**
  * JDBC implementation of the {@link TaskConfigDao} interface.
@@ -51,9 +52,10 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     private static final String SELECT_BY_ID_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE task_id=?";
     private static final String SELECT_ALL_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config";
     private static final String SELECT_ALL_ACTIVE_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE is_active=TRUE";
-    private static final String SELECT_BY_GROUP_AND_NAME_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE task_group=? AND task_name=?";
-    private static final String DELETE_BY_ID_SQL = "DELETE FROM task_config WHERE task_id=?";
+    private static final String SELECT_BY_GROUP_AND_NAME_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE task_group=? AND task_name=?";    private static final String DELETE_BY_ID_SQL = "DELETE FROM task_config WHERE task_id=?";
     private static final String UPDATE_STATUS_SQL = "UPDATE task_config SET is_active=?, update_time=CURRENT_TIMESTAMP WHERE task_id=?";
+    private static final String COUNT_ALL_TASKS_SQL = "SELECT COUNT(*) FROM task_config";
+    private static final String GET_TASK_TYPE_DISTRIBUTION_SQL = "SELECT task_type, COUNT(*) as count FROM task_config GROUP BY task_type";
 
 
     private final RowMapper<TaskConfig> rowMapper = (rs, rowNum) -> {
@@ -82,11 +84,10 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
             }
         } else {
              task.setExecutionMode(ExecutionMode.BROADCAST); // Default if null in DB
-        }
-        task.setTaskCalendarGroup(rs.getString("task_calendar_group"));
+        }        task.setTaskCalendarGroup(rs.getString("task_calendar_group"));
         task.setTaskExcludeTimes(rs.getString("task_exclude_times"));
-        task.setStartDate(rs.getDate("start_date"));
-        task.setEndDate(rs.getDate("end_date"));
+        task.setStartDate(rs.getTimestamp("start_date"));
+        task.setEndDate(rs.getTimestamp("end_date"));
         task.setExecuteTimeoutSeconds(rs.getObject("execute_timeout_seconds", Integer.class));
         task.setNotifySuccessUserIds(rs.getString("notify_success_user_ids"));
         task.setNotifyFailedUserIds(rs.getString("notify_failed_user_ids"));
@@ -112,12 +113,11 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
             ps.setString(7, taskConfig.getBeanParameters());
             // Indices shift here: http/shell fields removed (were 8-13)
             ps.setString(8, taskConfig.getDescription());
-            ps.setBoolean(9, taskConfig.isActive());
-            ps.setString(10, taskConfig.getExecutionMode() != null ? taskConfig.getExecutionMode().name() : ExecutionMode.BROADCAST.name());
+            ps.setBoolean(9, taskConfig.isActive());            ps.setString(10, taskConfig.getExecutionMode() != null ? taskConfig.getExecutionMode().name() : ExecutionMode.BROADCAST.name());
             ps.setString(11, taskConfig.getTaskCalendarGroup());
             ps.setString(12, taskConfig.getTaskExcludeTimes());
-            ps.setDate(13, taskConfig.getStartDate());
-            ps.setDate(14, taskConfig.getEndDate());
+            ps.setTimestamp(13, taskConfig.getStartDate());
+            ps.setTimestamp(14, taskConfig.getEndDate());
             setObjectOrNull(ps, 15, taskConfig.getExecuteTimeoutSeconds(), java.sql.Types.INTEGER);
             ps.setString(16, taskConfig.getNotifySuccessUserIds());
             ps.setString(17, taskConfig.getNotifyFailedUserIds());
@@ -195,5 +195,13 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     @Override
     public void updateTaskStatus(Integer taskId, boolean isActive) {
         jdbcTemplate.update(UPDATE_STATUS_SQL, isActive, taskId);
+    }      @Override
+    public int countAllTasks() {
+        return jdbcTemplate.queryForObject(COUNT_ALL_TASKS_SQL, Integer.class);
+    }
+
+    @Override
+    public List<Map<String, Object>> getTaskTypeDistribution() {
+        return jdbcTemplate.queryForList(GET_TASK_TYPE_DISTRIBUTION_SQL);
     }
 }

@@ -318,14 +318,13 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      * Checks if the task should be excluded based on its configured start and end dates.
      * @param taskConfig The task configuration.
      * @return A reason string if excluded, {@code null} otherwise.
-     */
-    private String checkDateExclusions(TaskConfig taskConfig) {
+     */    private String checkDateExclusions(TaskConfig taskConfig) {
         java.util.Date now = new java.util.Date();
-        if (taskConfig.getStartDate() != null && taskConfig.getStartDate().after(now)) {
-            return "Skipped: Start date " + taskConfig.getStartDate() + " is in the future.";
+        if (taskConfig.getStartDate() != null && taskConfig.getStartDate().getTime() > now.getTime()) {
+            return "Skipped: Start date time " + taskConfig.getStartDate() + " is in the future.";
         }
-        if (taskConfig.getEndDate() != null && taskConfig.getEndDate().before(now)) {
-            return "Skipped: End date " + taskConfig.getEndDate() + " is in the past.";
+        if (taskConfig.getEndDate() != null && taskConfig.getEndDate().getTime() < now.getTime()) {
+            return "Skipped: End date time " + taskConfig.getEndDate() + " is in the past.";
         }
         return null;
     }

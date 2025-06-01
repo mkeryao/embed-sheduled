@@ -1,6 +1,9 @@
 package com.example.taskscheduler.service;
 
-import com.example.taskscheduler.dao.TaskLockDao;
+import java.net.UnknownHostException;
+
+import javax.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,9 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.PostConstruct;
-import java.net.UnknownHostException;
-import java.util.UUID;
+import com.example.taskscheduler.dao.TaskLockDao;
 
 /**
  * Service for managing distributed locks using a database table (`task_lock`).
@@ -21,7 +22,8 @@ import java.util.UUID;
 public class DistributedLockService {
 
     private static final Logger logger = LoggerFactory.getLogger(DistributedLockService.class);
-    private static final int DEFAULT_CLUSTER_LOCK_LEASE_MS = 60000; // 60 seconds
+    private static final int DEFAULT_CLUSTER_LOCK_LEASE_SECONDS = 10; // 60 seconds
+    private static final int DEFAULT_CLUSTER_LOCK_LEASE_MS = DEFAULT_CLUSTER_LOCK_LEASE_SECONDS * 1000; // Convert to ms for internal use
 
     @Autowired
     private TaskLockDao taskLockDao;
@@ -84,16 +86,14 @@ public class DistributedLockService {
      * @param owner The identifier of the entity attempting to acquire the lock (typically the scheduler instance ID).
      * @return {@code true} if the lock was successfully acquired or refreshed, {@code false} otherwise.
      */
-    public boolean tryLock(String lockName, String owner) {
-        if ( !StringUtils.hasText(lockName) ||  !StringUtils.hasText(owner) ) {
+    public boolean tryLock(String lockName, String owner) {        if ( !StringUtils.hasText(lockName) ||  !StringUtils.hasText(owner) ) {
             logger.warn("Lock name or owner is null/empty. LockName: '{}', Owner: '{}'", lockName, owner);
             return false;
         }
-
-        int leaseDurationMs = DEFAULT_CLUSTER_LOCK_LEASE_MS;
-
-        logger.info("Attempting to acquire lock [{}] for owner [{}]. Lease: {}ms. Max attempts: {}. Retry delay: {}ms.",
-                lockName, owner, leaseDurationMs, maxLockAttempts, lockRetryDelayMs);
+        
+        int leaseDurationMs = DEFAULT_CLUSTER_LOCK_LEASE_MS;        
+        logger.info("Attempting to acquire lock [{}] for owner [{}]. Lease: {} seconds. Max attempts: {}. Retry delay: {}ms.",
+                lockName, owner, DEFAULT_CLUSTER_LOCK_LEASE_SECONDS, maxLockAttempts, lockRetryDelayMs);
 
         for (int attempt = 1; attempt <= maxLockAttempts; attempt++) {
             logger.debug("Lock acquisition attempt {}/{} for lock [{}] by owner [{}].", attempt, maxLockAttempts, lockName, owner);

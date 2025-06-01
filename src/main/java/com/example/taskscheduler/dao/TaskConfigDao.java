@@ -2,6 +2,7 @@ package com.example.taskscheduler.dao;
 
 import com.example.taskscheduler.entity.TaskConfig;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -25,6 +26,7 @@ public interface TaskConfigDao {
      * @return An {@link Optional} containing the task configuration if found, or empty otherwise.
      */
     Optional<TaskConfig> findById(Integer taskId);
+
     /**
      * Retrieves all task configurations.
      * @return A list of all task configurations.
@@ -65,4 +67,16 @@ public interface TaskConfigDao {
      * @param isActive The new active status (true for active, false for inactive).
      */
     void updateTaskStatus(Integer taskId, boolean isActive);
+    
+    /**
+     * Counts the total number of tasks in the system.
+     * @return The count of all tasks.
+     */
+    int countAllTasks();
+    
+    /**
+     * Gets the distribution of tasks by task type.
+     * @return A list of maps with "task_type" and "count" fields.
+     */
+    List<Map<String, Object>> getTaskTypeDistribution();
 }

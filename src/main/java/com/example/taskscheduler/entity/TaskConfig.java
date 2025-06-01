@@ -84,11 +84,10 @@ public class TaskConfig {
      * Comma-separated time ranges during which the task should NOT run (e.g., "00:00-08:00,22:00-23:59").
      * Applies daily based on the scheduler's local time.
      */
-    private String taskExcludeTimes;
-    /** The task will not run before this date (inclusive). */
-    private Date startDate;
-    /** The task will not run after this date (inclusive). */
-    private Date endDate;
+    private String taskExcludeTimes;    /** The task will not run before this date time (inclusive). */
+    private Timestamp startDate;
+    /** The task will not run after this date time (inclusive). */
+    private Timestamp endDate;
     /** Maximum execution time in seconds for the task. 0 or null means no timeout. */
     private Integer executeTimeoutSeconds;
 

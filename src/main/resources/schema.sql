@@ -14,8 +14,8 @@ CREATE TABLE task_config (
     -- Advanced features
     task_calendar_group VARCHAR(255), -- Name of the calendar group to check for exclusion days
     task_exclude_times TEXT, -- Comma-separated time ranges for exclusion, e.g., "00:00-08:00,22:00-23:59"
-    start_date DATE, -- Task will not run before this date
-    end_date DATE, -- Task will not run after this date
+    start_date datetime, -- Task will not run before this date
+    end_date datetime, -- Task will not run after this date
     execute_timeout_seconds INT DEFAULT 0, -- 0 means no timeout
 
     -- Notification settings

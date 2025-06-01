@@ -66,13 +66,11 @@ public class CustomTaskTrigger implements Trigger {
             }
 
             // Convert to LocalDateTime for easier date/time checks
-            LocalDateTime ldt = LocalDateTime.ofInstant(nextPotentialExecutionTime.toInstant(), ZoneId.systemDefault());
-
-            // 2. Check against taskConfig.startDate
+            LocalDateTime ldt = LocalDateTime.ofInstant(nextPotentialExecutionTime.toInstant(), ZoneId.systemDefault());            // 2. Check against taskConfig.startDate
             if (taskConfig.getStartDate() != null) {
-                // Convert java.sql.Date to LocalDate then to Date at start of day for comparison
-                Date startDateAtMidnight = Date.from(taskConfig.getStartDate().toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
-                if (nextPotentialExecutionTime.before(startDateAtMidnight)) {
+                // Convert java.sql.Timestamp to java.util.Date for comparison
+                Date startDate = new Date(taskConfig.getStartDate().getTime());
+                if (nextPotentialExecutionTime.before(startDate)) {
                     logger.debug("Task ID {}: Candidate time {} is before start date {}. Skipping.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getStartDate());
                     continue;
                 }
@@ -80,9 +78,9 @@ public class CustomTaskTrigger implements Trigger {
 
             // 3. Check against taskConfig.endDate
             if (taskConfig.getEndDate() != null) {
-                 // Convert java.sql.Date to LocalDate, then to Date at end of day for comparison
-                Date endDateAtEndOfDay = Date.from(taskConfig.getEndDate().toLocalDate().atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant());
-                if (nextPotentialExecutionTime.after(endDateAtEndOfDay)) {
+                 // Convert java.sql.Timestamp to java.util.Date for comparison
+                Date endDate = new Date(taskConfig.getEndDate().getTime());
+                if (nextPotentialExecutionTime.after(endDate)) {
                     logger.warn("Task ID {}: Candidate time {} is after end date {}. No further valid executions.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getEndDate());
                     return null; // No more valid executions
                 }
