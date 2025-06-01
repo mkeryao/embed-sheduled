@@ -2,7 +2,7 @@
 <Configuration status="debug" name="jyyj" monitorInterval="30">
 	<Properties>
 		<Property name="LOG_HOME">/embbed-scheduled/logs/</Property>
-		<Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%traceId][%execute_no] %c - %msg%n</Property>
+		<Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{uuid}][%X{execute_no}] %c - %msg%n</Property>
 		<Property name="LOG_PATTERN2">%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</Property>
 		<Property name="APP_NAME">jyyj</Property>
 		<Property name="FILE_INTERVEL">1</Property>

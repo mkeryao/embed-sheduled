@@ -204,7 +204,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 log.setTaskPattern(taskConfig.getTaskType() == 10 ? "WORKFLOW_PARENT" : "NORMAL"); // 3 changed to 10
                 savedLog = taskExecuteLogDao.save(log);
                 executeNo = String.valueOf(savedLog.getLogId());
-                MDC.put("execute_no", executeNo);
+                MDC.put("execute_no", "$" + executeNo + "$");
 
                 logger.info("Preparing to execute task: {} (ID: {}, Log ID: {})",
                         taskConfig.getTaskName(), taskConfig.getTaskId(), savedLog.getLogId());

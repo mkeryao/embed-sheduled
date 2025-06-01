@@ -218,7 +218,7 @@ public class WorkflowExecutionService {
         TaskExecuteLog savedStepLog = taskExecuteLogDao.save(stepLog);
 
         String stepExecuteNo = String.valueOf(savedStepLog.getLogId());
-        MDC.put("execute_no", stepExecuteNo); // Add step's execute_no to MDC
+        MDC.put("execute_no", "$"  + stepExecuteNo + "$"); // Add step's execute_no to MDC
 
         String stepStatus;
         String stepMessage = null;
