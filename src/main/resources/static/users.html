@@ -1,19 +1,26 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>    <meta charset="UTF-8">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>用户管理 - 任务调度系统</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
     <div id="navbar-container"></div>
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center my-3">
             <h2>用户管理</h2>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#userFormModal" id="addUserBtn">添加用户</button>
-        </div>        <table class="table table-striped table-hover">
+            <button class="btn btn-primary" data-toggle="modal" data-target="#userFormModal"
+                id="addUserBtn">添加用户</button>
+        </div>
+        <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
                     <th>ID</th>
@@ -32,9 +39,11 @@
     </div>
 
     <!-- User Form Modal -->
-    <div class="modal fade" id="userFormModal" tabindex="-1" role="dialog" aria-labelledby="userFormModalLabel" aria-hidden="true">
+    <div class="modal fade" id="userFormModal" tabindex="-1" role="dialog" aria-labelledby="userFormModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
-            <div class="modal-content">                <div class="modal-header">
+            <div class="modal-content">
+                <div class="modal-header">
                     <h5 class="modal-title" id="userFormModalLabel">添加/编辑用户</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
@@ -53,11 +62,13 @@
                         </div>
                         <div class="form-group">
                             <label for="webhookAddress">Webhook地址 (可选)</label>
-                            <input type="url" class="form-control" id="webhookAddress" placeholder="https://example.com/webhook 或 URL数组的JSON">
+                            <input type="url" class="form-control" id="webhookAddress"
+                                placeholder="https://example.com/webhook 或 URL数组的JSON">
                         </div>
                         <div class="form-group">
                             <label for="notificationPreferencesJson">通知偏好设置 (JSON - 可选)</label>
-                            <textarea class="form-control" id="notificationPreferencesJson" rows="3" placeholder='例如: {"EMAIL": {"emailAddress": "user@example.com", "enabled": true}}'></textarea>
+                            <textarea class="form-control" id="notificationPreferencesJson" rows="3"
+                                placeholder='例如: {"EMAIL": {"emailAddress": "user@example.com", "enabled": true}}'></textarea>
                             <small class="form-text text-muted">高级: 配置特定的通知渠道和详情。</small>
                         </div>
                         <div class="form-group" id="password-group">
@@ -81,13 +92,13 @@
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
     <script src="js/main.js"></script>
     <script>
-        $(document).ready(function() {
-            $("#navbar-container").load("_navbar.html", function() {
-                 const currentUsername = localStorage.getItem('username');
-                 if (currentUsername) {
+        $(document).ready(function () {
+            $("#navbar-container").load("_navbar.html", function () {
+                const currentUsername = localStorage.getItem('username');
+                if (currentUsername) {
                     $('#loggedInUser').text(currentUsername);
-                 }
-                 $('#logout-link').on('click', function(e) {
+                }
+                $('#logout-link').on('click', function (e) {
                     e.preventDefault();
                     logout();
                 });
@@ -96,10 +107,10 @@
 
             function loadUsers() {
                 makeApiCall('GET', '/users', null,
-                    function(users) {
+                    function (users) {
                         const tableBody = $('#users-table-body');
                         tableBody.empty();
-                        users.forEach(function(user) {
+                        users.forEach(function (user) {
                             const role = user.isAdmin ? '<span class="badge badge-danger">Admin</span>' : '<span class="badge badge-primary">User</span>';
                             const webhookDisplay = user.webhookAddress ? user.webhookAddress.substring(0, 30) + (user.webhookAddress.length > 30 ? '...' : '') : '-';
                             const row = `<tr>
@@ -117,13 +128,13 @@
                             tableBody.append(row);
                         });
                     },
-                    function(jqXHR) {
+                    function (jqXHR) {
                         showFeedback('Error loading users: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                     }
                 );
             }
 
-            $('#addUserBtn').click(function() {
+            $('#addUserBtn').click(function () {
                 $('#userFormModalLabel').text('Add User');
                 $('#user-form')[0].reset();
                 $('#userId').val('');
@@ -131,7 +142,7 @@
                 $('#passwordHelp').text('Required for new users.');
             });
 
-            $('#user-form').submit(function(event) {
+            $('#user-form').submit(function (event) {
                 event.preventDefault();
                 const userId = $('#userId').val();
                 const password = $('#password').val();
@@ -157,22 +168,22 @@
                 const endpoint = userId ? `/users/${userId}` : '/users';
 
                 makeApiCall(method, endpoint, userData,
-                    function(response) {
+                    function (response) {
                         $('#userFormModal').modal('hide');
                         showFeedback('User saved successfully!', false);
                         loadUsers();
                     },
-                    function(jqXHR) {
+                    function (jqXHR) {
                         showFeedback('Error saving user: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                     }
                 );
             });
 
             // Edit button
-            $('#users-table-body').on('click', '.edit-btn', function() {
+            $('#users-table-body').on('click', '.edit-btn', function () {
                 const userId = $(this).data('id');
                 makeApiCall('GET', `/users/${userId}`, null,
-                    function(user) {
+                    function (user) {
                         $('#userFormModalLabel').text('Edit User');
                         $('#userId').val(user.userId);
                         $('#username').val(user.username);
@@ -185,14 +196,14 @@
                         $('#passwordHelp').text('For existing users, leave blank to keep current password.');
                         $('#userFormModal').modal('show');
                     },
-                    function(jqXHR) {
+                    function (jqXHR) {
                         showFeedback('Error fetching user details: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                     }
                 );
             });
 
             // Delete button
-            $('#users-table-body').on('click', '.delete-btn', function() {
+            $('#users-table-body').on('click', '.delete-btn', function () {
                 const userId = $(this).data('id');
                 // Ideally, prevent self-deletion or deletion of the last admin user.
                 // This logic should be in the backend, but a frontend check can be a UX improvement.
@@ -205,11 +216,11 @@
 
                 if (confirm('Are you sure you want to delete user ' + userId + ' (' + usernameToDelete + ')?')) {
                     makeApiCall('DELETE', `/users/${userId}`, null,
-                        function() {
+                        function () {
                             showFeedback('User deleted successfully!', false);
                             loadUsers();
                         },
-                        function(jqXHR) {
+                        function (jqXHR) {
                             showFeedback('Error deleting user: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
                         }
                     );
@@ -218,4 +229,5 @@
         });
     </script>
 </body>
+
 </html>

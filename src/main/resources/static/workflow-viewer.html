@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>工作流查看器 - 任务调度系统</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/workflow-dag.css">
 </head>
+
 <body>
     <div id="navbar-container"></div>
 
@@ -16,7 +20,7 @@
             <h2>工作流查看器</h2>
             <a href="tasks.html" class="btn btn-outline-secondary">返回任务列表</a>
         </div>
-        
+
         <!-- 工作流信息卡 -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -43,7 +47,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- 工作流DAG图显示 -->
         <div class="card mb-4">
             <div class="card-header">
@@ -51,13 +55,13 @@
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> 
+                    <i class="fas fa-info-circle"></i>
                     下图展示工作流中所有任务的依赖关系和执行状态，点击节点可查看详细信息。
                 </div>
                 <div class="workflow-dag-container" id="workflow-dag-view"></div>
             </div>
         </div>
-        
+
         <!-- 工作流执行步骤列表 -->
         <div class="card mb-4">
             <div class="card-header">
@@ -84,9 +88,10 @@
                 </table>
             </div>
         </div>
-        
+
         <!-- 步骤详情模态框 -->
-        <div class="modal fade" id="stepDetailModal" tabindex="-1" role="dialog" aria-labelledby="stepDetailModalLabel" aria-hidden="true">
+        <div class="modal fade" id="stepDetailModal" tabindex="-1" role="dialog" aria-labelledby="stepDetailModalLabel"
+            aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -116,63 +121,66 @@
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
     <script src="libs/cytoscape/cytoscape.min.js"></script>
     <script src="libs/cytoscape/layout/cytoscape-dagre.js"></script>
+    <script src="js/cytoscape-setup.js"></script>
+    <script src="js/workflow-utils.js"></script>
     <script src="js/workflow-dag.js"></script>
+    <script src="js/workflow-initializer.js"></script>
     <script src="js/main.js"></script>
 
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             // 加载导航栏
-            $("#navbar-container").load("_navbar.html", function() {
+            $("#navbar-container").load("_navbar.html", function () {
                 // 设置当前页面的导航项为活跃状态
                 $(".nav-item a[href='tasks.html']").addClass("active");
             });
-            
+
             // 从URL获取日志ID
             const urlParams = new URLSearchParams(window.location.search);
             const logId = urlParams.get('logId');
-            
+
             if (!logId) {
                 showFeedback('未提供日志ID，无法查看工作流', true);
                 return;
             }
-            
+
             // 初始化DAG图
             let workflowDag = null;
-            
+
             // 加载工作流数据
             loadWorkflowData(logId);
-            
+
             // 加载工作流数据
             function loadWorkflowData(logId) {
                 // 调用API获取工作流执行数据
                 makeApiCall('GET', `/tasks/logs/${logId}/workflow`, null,
-                    function(data) {
+                    function (data) {
                         displayWorkflowData(data);
                     },
-                    function(error) {
+                    function (error) {
                         showFeedback(`加载工作流数据失败: ${error.statusText || '未知错误'}`, true);
                     }
                 );
             }
-            
+
             // 显示工作流数据
             function displayWorkflowData(data) {
                 if (!data) {
                     showFeedback('获取到的工作流数据为空', true);
                     return;
                 }
-                
+
                 // 填充工作流基本信息
                 $('#workflow-name').text(data.workflowName || '--');
                 $('#workflow-task-id').text(data.taskId || '--');
                 $('#workflow-log-id').text(data.logId || '--');
-                
+
                 // 格式化时间
                 const startTime = data.startTime ? new Date(data.startTime).toLocaleString() : '--';
                 const endTime = data.endTime ? new Date(data.endTime).toLocaleString() : '--';
                 $('#workflow-start-time').text(startTime);
                 $('#workflow-end-time').text(endTime);
-                
+
                 // 计算执行时长
                 if (data.startTime && data.endTime) {
                     const duration = (new Date(data.endTime) - new Date(data.startTime)) / 1000; // 秒
@@ -180,12 +188,12 @@
                 } else {
                     $('#workflow-duration').text('--');
                 }
-                
+
                 // 设置状态
                 const statusBadge = $('#workflow-status-badge');
                 statusBadge.text(data.state || '未知');
                 statusBadge.removeClass('badge-secondary badge-success badge-danger badge-warning badge-info');
-                
+
                 switch (data.state) {
                     case 'SUCCESS':
                         statusBadge.addClass('badge-success');
@@ -202,35 +210,35 @@
                     default:
                         statusBadge.addClass('badge-secondary');
                 }
-                
+
                 // 显示全局参数
                 if (data.globalParameters && Object.keys(data.globalParameters).length > 0) {
                     $('#workflow-globals').text(JSON.stringify(data.globalParameters, null, 2));
                 }
-                
+
                 // 填充步骤表格
                 displayWorkflowSteps(data.steps || []);
-                
+
                 // 初始化并更新DAG图
                 initWorkflowDag(data);
             }
-            
+
             // 显示工作流步骤
             function displayWorkflowSteps(steps) {
                 const tbody = $('#workflow-steps-table');
                 tbody.empty();
-                
+
                 if (!steps.length) {
                     tbody.html('<tr><td colspan="7" class="text-center">无执行步骤</td></tr>');
                     return;
                 }
-                
+
                 steps.forEach((step, index) => {
                     const startTime = step.startTime ? new Date(step.startTime).toLocaleString() : '--';
-                    const duration = (step.startTime && step.endTime) 
+                    const duration = (step.startTime && step.endTime)
                         ? formatDuration((new Date(step.endTime) - new Date(step.startTime)) / 1000)
                         : '--';
-                    
+
                     // 状态标签
                     let statusClass;
                     switch (step.state) {
@@ -240,7 +248,7 @@
                         case 'TIMED_OUT': statusClass = 'badge-warning'; break;
                         default: statusClass = 'badge-secondary';
                     }
-                    
+
                     const row = `
                         <tr data-step-id="${step.logId}" data-node-id="${step.nodeId}">
                             <td>${index + 1}</td>
@@ -256,18 +264,18 @@
                             </td>
                         </tr>
                     `;
-                    
+
                     tbody.append(row);
                 });
-                
+
                 // 绑定查看详情按钮事件
-                $('.view-step-details').on('click', function() {
+                $('.view-step-details').on('click', function () {
                     const stepLogId = $(this).data('log-id');
                     viewStepDetails(stepLogId);
                 });
-                
+
                 // 点击行高亮相应节点
-                $('#workflow-steps-table tr').on('click', function() {
+                $('#workflow-steps-table tr').on('click', function () {
                     const nodeId = $(this).data('node-id');
                     if (nodeId && workflowDag && workflowDag.cy) {
                         // 高亮节点
@@ -280,7 +288,7 @@
                     }
                 });
             }
-            
+
             // 查看步骤详情
             function viewStepDetails(stepLogId) {
                 $('#stepDetailModal').modal('show');
@@ -291,13 +299,13 @@
                         </div>
                     </div>
                 `);
-                
+
                 // 调用API获取步骤详情
                 makeApiCall('GET', `/tasks/logs/${stepLogId}`, null,
-                    function(data) {
+                    function (data) {
                         displayStepDetails(data);
                     },
-                    function(error) {
+                    function (error) {
                         $('#step-detail-content').html(`
                             <div class="alert alert-danger">
                                 <i class="fas fa-exclamation-circle"></i> 
@@ -307,7 +315,7 @@
                     }
                 );
             }
-            
+
             // 显示步骤详情
             function displayStepDetails(data) {
                 if (!data) {
@@ -318,11 +326,11 @@
                     `);
                     return;
                 }
-                
+
                 // 格式化时间
                 const startTime = data.startTime ? new Date(data.startTime).toLocaleString() : '--';
                 const endTime = data.endTime ? new Date(data.endTime).toLocaleString() : '--';
-                
+
                 // 构建详情HTML
                 let html = `
                     <div class="step-details">
@@ -342,7 +350,7 @@
                             </div>
                         </div>
                 `;
-                
+
                 // 添加输入参数
                 if (data.parameters) {
                     html += `
@@ -350,13 +358,13 @@
                         <pre class="bg-light p-2 rounded">${JSON.stringify(data.parameters, null, 2)}</pre>
                     `;
                 }
-                
+
                 // 添加执行信息
                 if (data.output || data.message) {
                     html += `
                         <h6 class="mt-3">执行结果</h6>
                     `;
-                    
+
                     if (data.output) {
                         html += `
                             <div class="mb-2">
@@ -365,7 +373,7 @@
                             </div>
                         `;
                     }
-                    
+
                     if (data.message) {
                         html += `
                             <div>
@@ -375,18 +383,18 @@
                         `;
                     }
                 }
-                
+
                 html += '</div>';
-                
+
                 $('#step-detail-content').html(html);
             }
-            
+
             // 初始化工作流DAG图
             function initWorkflowDag(data) {
                 // 解析节点和边
                 const nodes = data.nodes || [];
                 const edges = data.edges || [];
-                
+
                 // 准备节点状态映射
                 const nodeStatusMap = {};
                 if (data.steps && data.steps.length) {
@@ -396,18 +404,18 @@
                         }
                     });
                 }
-                
+
                 // 初始化DAG图
                 if (typeof WorkflowDagViewer !== 'undefined') {
                     workflowDag = new WorkflowDagViewer('workflow-dag-view', {
                         readOnly: true,
                         nodeStatusMap: nodeStatusMap,
-                        onNodeClick: function(nodeData) {
+                        onNodeClick: function (nodeData) {
                             // 查找对应的步骤并高亮表格行
                             const nodeId = nodeData.nodeId;
                             $(`#workflow-steps-table tr`).removeClass('table-active');
                             $(`#workflow-steps-table tr[data-node-id="${nodeId}"]`).addClass('table-active');
-                            
+
                             // 可以滚动到对应行
                             const row = $(`#workflow-steps-table tr[data-node-id="${nodeId}"]`)[0];
                             if (row) {
@@ -415,7 +423,7 @@
                             }
                         }
                     });
-                    
+
                     workflowDag.updateData(nodes, edges);
                 } else {
                     console.error('WorkflowDagViewer 未定义');
@@ -427,19 +435,19 @@
                     `);
                 }
             }
-            
+
             // 格式化持续时间，将秒转换为人类可读格式
             function formatDuration(seconds) {
                 if (isNaN(seconds) || seconds < 0) {
                     return '--';
                 }
-                
+
                 const hours = Math.floor(seconds / 3600);
                 const minutes = Math.floor((seconds % 3600) / 60);
                 const remainingSeconds = Math.floor(seconds % 60);
-                
+
                 let result = '';
-                
+
                 if (hours > 0) {
                     result += `${hours}小时 `;
                 }
@@ -447,10 +455,11 @@
                     result += `${minutes}分钟 `;
                 }
                 result += `${remainingSeconds}秒`;
-                
+
                 return result;
             }
         });
     </script>
 </body>
+
 </html>
