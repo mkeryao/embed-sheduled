@@ -122,6 +122,7 @@
     <script src="libs/cytoscape/cytoscape.min.js"></script>
     <script src="libs/cytoscape/layout/cytoscape-dagre.js"></script>
     <script src="js/cytoscape-setup.js"></script>
+    <script src="js/workflow-safety.js"></script>
     <script src="js/workflow-utils.js"></script>
     <script src="js/workflow-dag.js"></script>
     <script src="js/workflow-initializer.js"></script>
@@ -391,22 +392,37 @@
 
             // 初始化工作流DAG图
             function initWorkflowDag(data) {
-                // 解析节点和边
-                const nodes = data.nodes || [];
-                const edges = data.edges || [];
-
-                // 准备节点状态映射
-                const nodeStatusMap = {};
-                if (data.steps && data.steps.length) {
-                    data.steps.forEach(step => {
-                        if (step.nodeId) {
-                            nodeStatusMap[step.nodeId] = step.state || 'UNKNOWN';
-                        }
-                    });
-                }
-
-                // 初始化DAG图
-                if (typeof WorkflowDagViewer !== 'undefined') {
+                try {
+                    // 安全处理节点和边
+                    // 首先尝试使用安全解析工具
+                    let nodes = [], edges = [];
+                    
+                    if (typeof window.safeFormatWorkflowJSON === 'function') {
+                        console.log('使用安全JSON工具处理工作流图数据');
+                        nodes = window.safeFormatWorkflowJSON(data.nodes || [], 'nodes');
+                        edges = window.safeFormatWorkflowJSON(data.edges || [], 'edges');
+                    } else {
+                        console.log('使用标准方式处理工作流图数据');
+                        nodes = data.nodes || [];
+                        edges = data.edges || [];
+                    }
+                    
+                    // 防御性检查确保数据类型
+                    if (!Array.isArray(nodes)) nodes = [];
+                    if (!Array.isArray(edges)) edges = [];
+                    
+                    // 准备节点状态映射
+                    const nodeStatusMap = {};
+                    if (Array.isArray(data.steps) && data.steps.length) {
+                        data.steps.forEach(step => {
+                            if (step && step.nodeId) {
+                                nodeStatusMap[step.nodeId] = step.state || 'UNKNOWN';
+                            }
+                        });
+                    }
+                    
+                    // 初始化DAG图
+                    if (typeof WorkflowDagViewer !== 'undefined') {
                     workflowDag = new WorkflowDagViewer('workflow-dag-view', {
                         readOnly: true,
                         nodeStatusMap: nodeStatusMap,
@@ -431,6 +447,15 @@
                         <div class="alert alert-danger">
                             <i class="fas fa-exclamation-circle"></i> 
                             无法加载DAG图组件。请确认所有必要的JavaScript库已正确加载。
+                        </div>
+                    `);
+                }
+                } catch (e) {
+                    console.error('工作流DAG图初始化失败:', e);
+                    $('#workflow-dag-view').html(`
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle"></i> 
+                            工作流DAG图初始化失败: ${e.message || '未知错误'}
                         </div>
                     `);
                 }

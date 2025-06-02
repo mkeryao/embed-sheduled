@@ -155,18 +155,53 @@
                 
                 try {
                     if (nodesJson) {
-                        nodes = typeof window.formatWorkflowJSON === 'function' 
-                            ? window.formatWorkflowJSON(nodesJson, 'nodes') 
-                            : JSON.parse(nodesJson);
+                        // 优先使用安全包装函数
+                        if (typeof window.safeFormatWorkflowJSON === 'function') {
+                            nodes = window.safeFormatWorkflowJSON(nodesJson, 'nodes', {
+                                enableSizeRestriction: true,
+                                maxInputLength: 500000 // 更严格的限制
+                            });
+                        } else if (typeof window.formatWorkflowJSON === 'function') {
+                            nodes = window.formatWorkflowJSON(nodesJson, 'nodes');
+                        } else {
+                            // 简单的解析尝试
+                            try {
+                                nodes = JSON.parse(nodesJson);
+                            } catch (parseError) {
+                                console.warn('节点JSON解析失败，使用空数组:', parseError);
+                                nodes = [];
+                            }
+                        }
                     }
                     
                     if (edgesJson) {
-                        edges = typeof window.formatWorkflowJSON === 'function'
-                            ? window.formatWorkflowJSON(edgesJson, 'edges')
-                            : JSON.parse(edgesJson);
+                        // 优先使用安全包装函数
+                        if (typeof window.safeFormatWorkflowJSON === 'function') {
+                            edges = window.safeFormatWorkflowJSON(edgesJson, 'edges', {
+                                enableSizeRestriction: true,
+                                maxInputLength: 500000 // 更严格的限制
+                            });
+                        } else if (typeof window.formatWorkflowJSON === 'function') {
+                            edges = window.formatWorkflowJSON(edgesJson, 'edges');
+                        } else {
+                            // 简单的解析尝试
+                            try {
+                                edges = JSON.parse(edgesJson);
+                            } catch (parseError) {
+                                console.warn('边JSON解析失败，使用空数组:', parseError);
+                                edges = [];
+                            }
+                        }
                     }
+                    
+                    // 确保结果是数组
+                    if (!Array.isArray(nodes)) nodes = [];
+                    if (!Array.isArray(edges)) edges = [];
+                    
                 } catch (e) {
                     console.error('解析工作流JSON数据失败:', e);
+                    nodes = [];
+                    edges = [];
                 }
             }
             
