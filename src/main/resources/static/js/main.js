@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api'; // Adjust if your context path is different
+const API_BASE_URL = '/api'; // 前后端分离架构中的API前缀
 
 /**
  * Makes an authenticated API call.
@@ -16,17 +16,20 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
             logout(); // Clear any partial session data and redirect
             return;
         }
-    }    // 智能处理API路径：
+    }    // 统一API路径处理，确保所有API调用都是/api开头
     // 1. 如果已以'/api'开头，则直接使用
-    // 2. 如果不是以'/'开头，添加'/'
-    // 3. 然后添加API_BASE_URL前缀
-    let apiUrl = endpoint;
-    if (!apiUrl.startsWith('/api')) {
-        if (!apiUrl.startsWith('/')) {
-            apiUrl = '/' + apiUrl;
-        }
-        apiUrl = API_BASE_URL + apiUrl;
-    }    $.ajax({
+    // 2. 如果以'/'开头但不是'/api'开头，添加'/api'前缀
+    // 3. 如果不是以'/'开头，添加'/api/'前缀
+    let apiUrl;
+    if (endpoint.startsWith('/api')) {
+        apiUrl = endpoint;
+    } else if (endpoint.startsWith('/')) {
+        apiUrl = '/api' + endpoint;
+    } else {
+        apiUrl = '/api/' + endpoint;
+    }
+    
+    console.log(`准备请求API: ${method} ${apiUrl}`);$.ajax({
         url: apiUrl,
         method: method,
         contentType: 'application/json',

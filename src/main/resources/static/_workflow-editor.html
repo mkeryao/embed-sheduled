@@ -1,0 +1,81 @@
+<!-- 工作流编辑器组件 -->
+<ul class="nav nav-tabs" id="workflowEditorTabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="workflow-editor-tab" data-toggle="tab"
+            href="#workflow-editor-content" role="tab"
+            aria-controls="workflow-editor-content" aria-selected="true">
+            <i class="fas fa-edit"></i> 编辑器
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="workflow-dag-tab" data-toggle="tab"
+            href="#workflow-dag-content" role="tab" aria-controls="workflow-dag-content"
+            aria-selected="false">
+            <i class="fas fa-project-diagram"></i> DAG图
+        </a>
+    </li>
+</ul>
+
+<div class="tab-content" id="workflowEditorTabContent">
+    <!-- 编辑器选项卡内容 -->
+    <div class="tab-pane fade show active" id="workflow-editor-content" role="tabpanel"
+        aria-labelledby="workflow-editor-tab">
+        <!-- 工作流节点编辑器 -->
+        <div class="form-group">
+            <label>工作流节点</label>
+            <div class="workflow-editor" id="workflow-nodes-editor">
+                <div class="workflow-nodes-container">
+                    <!-- 节点会在这里动态添加 -->
+                </div>
+                <button type="button" class="btn btn-sm btn-primary mt-2"
+                    id="add-workflow-node-btn">
+                    <i class="fas fa-plus"></i> 添加节点
+                </button>
+            </div>
+            <!-- 保留原始JSON输入用于调试和高级编辑 -->
+            <textarea class="form-control d-none" id="workflowNodesJson"
+                name="workflowNodesJson" rows="5"
+                placeholder='[{"nodeId":"node1", "taskConfigId":1, "parameters": {"input": "${global_api_key}"} }]'></textarea>
+        </div>
+
+        <!-- 工作流边可视化编辑器 -->
+        <div class="form-group">
+            <label>工作流转换</label>
+            <div class="workflow-editor" id="workflow-edges-editor">
+                <div class="workflow-edges-container">
+                    <!-- 边会在这里动态添加 -->
+                </div>
+                <button type="button" class="btn btn-sm btn-primary mt-2"
+                    id="add-workflow-edge-btn">
+                    <i class="fas fa-plus"></i> 添加转换
+                </button>
+            </div>
+            <!-- 保留原始JSON输入用于调试和高级编辑 -->
+            <textarea class="form-control d-none" id="workflowEdgesJson"
+                name="workflowEdgesJson" rows="4"
+                placeholder='[{"fromNodeId":"node1", "toNodeId":"node2", "expression": "${node1_status} == ''SUCCESS''"}]'></textarea>
+        </div>
+    </div>
+
+    <!-- DAG图选项卡内容 -->
+    <div class="tab-pane fade" id="workflow-dag-content" role="tabpanel"
+        aria-labelledby="workflow-dag-tab">
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle"></i>
+            DAG图展示工作流中任务的依赖关系。在图中，您可以看到任务的执行流程和条件转换。
+        </div>
+        <!-- 状态提示DIV -->
+        <div id="workflow-dag-status" class="alert alert-info mt-2" style="display: none;"></div>
+        <!-- DAG图容器 -->
+        <div class="workflow-dag-container" id="workflow-dag-view"></div>
+
+        <!-- 图信息显示区 -->
+        <div class="workflow-dag-info">
+            <h5>图信息</h5>
+            <div id="workflow-dag-stats">
+                <p>节点数量: <span id="node-count">0</span></p>
+                <p>边数量: <span id="edge-count">0</span></p>
+            </div>
+        </div>
+    </div>
+</div>

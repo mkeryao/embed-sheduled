@@ -1,23 +1,26 @@
 package com.example.taskscheduler.config;
 
-import com.example.taskscheduler.util.JwtUtil;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import com.example.taskscheduler.util.JwtUtil;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureException;
 
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
@@ -26,23 +29,37 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
-
-    // Define paths to exclude from JWT validation
-    private static final Set<String> EXCLUDED_PATHS = new HashSet<>(Arrays.asList(
-            "/api/auth/login",
-            "/error" // Spring Boot's default error path
-            // Add other paths like H2 console if used, static resources, etc.
-            // "/h2-console/" (and paths under it if H2 console is enabled and needs to be public)
+    
+    // Define paths that require JWT validation
+    // 在前后端分离架构中，只有API请求需要JWT验证
+    private static final String API_PATH_PREFIX = "/api";
+    
+    // Define API paths to exclude from JWT validation
+    private static final Set<String> EXCLUDED_API_PATHS = new HashSet<>(Arrays.asList(
+            "/api/auth/login",  // 登录接口
+            "/api/auth/register", // 如果有注册接口
+            "/api/public"       // 如果有公共API
     ));
-
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    
+    @Override    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
         final String requestURI = request.getRequestURI();
+        
+        // 记录请求URI用于调试
+        logger.debug("Processing request: {}", requestURI);
 
-        // Check if the path is excluded
-        if (isPathExcluded(requestURI)) {
+        // 只拦截/api路径下的请求，其他全部放行
+        // 这是实现前后端分离的关键，静态资源请求不需要JWT验证
+        if (!requestURI.startsWith(API_PATH_PREFIX)) {
+            logger.debug("Non-API request detected, skipping JWT filter: {}", requestURI);
+            chain.doFilter(request, response);
+            return;
+        }
+        
+        // 排除不需要JWT验证的API路径
+        if (isExcludedApiPath(requestURI)) {
+            logger.debug("Excluded API path detected, skipping JWT filter: {}", requestURI);
             chain.doFilter(request, response);
             return;
         }
@@ -84,16 +101,24 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         }
     }
 
-    private boolean isPathExcluded(String requestURI) {
-        // Direct match
-        if (EXCLUDED_PATHS.contains(requestURI)) {
+    private boolean isExcludedApiPath(String requestURI) {
+        // Direct match with excluded API paths
+        if (EXCLUDED_API_PATHS.contains(requestURI)) {
             return true;
         }
-        // Pattern match (e.g., for /h2-console/*)
-        if (requestURI.startsWith("/h2-console")) { // Example if H2 console is used and public
-             return true;
+        
+        // Pattern match for excluded API paths
+        for (String excludedPath : EXCLUDED_API_PATHS) {
+            if (excludedPath.endsWith("/**") && requestURI.startsWith(excludedPath.substring(0, excludedPath.length() - 3))) {
+                return true;
+            }
         }
-        // Add more sophisticated matching if needed (e.g. AntPathMatcher)
+        
+        // H2控制台（如果有）
+        if (requestURI.startsWith("/h2-console")) {
+            return true;
+        }
+        
         return false;
     }
 }

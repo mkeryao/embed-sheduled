@@ -1,0 +1,189 @@
+<!-- Task Form Modal -->
+<div class="modal fade" id="taskFormModal" tabindex="-1" role="dialog" aria-labelledby="taskFormModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="taskFormModalLabel">添加/编辑任务</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="task-form">
+                    <input type="hidden" id="taskId">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="taskName">任务名称</label>
+                            <input type="text" class="form-control" id="taskName" name="taskName" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="taskGroup">任务组</label>
+                            <input type="text" class="form-control" id="taskGroup" name="taskGroup">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="cronExpression">CRON表达式</label>
+                            <input type="text" class="form-control" id="cronExpression" name="cronExpression" required
+                                placeholder="例如: 0 0/5 * * * ? 每5分钟执行一次">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="executionMode">执行模式</label>
+                            <select class="form-control" id="executionMode" name="executionMode">
+                                <option value="BROADCAST">广播模式（所有节点执行）</option>
+                                <option value="SINGLETON">单例模式（只有一个节点执行）</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="form-group">
+                        <label for="taskType">任务类型</label>
+                        <select class="form-control" id="taskType" name="taskType" required>
+                            <option value="">-- 选择任务类型 --</option>
+                            <option value="0">Bean任务</option>
+                            <option value="2">HTTP任务</option>
+                            <option value="4">Shell脚本</option>
+                            <option value="10">工作流</option>
+                        </select>
+                    </div>
+
+                    <!-- 不同任务类型的特定字段 -->
+                    <div id="typeSpecificFieldsContainer">
+                        <!-- Bean任务特定字段 -->
+                        <div id="beanTaskFields" class="type-specific-fields" style="display:none;">
+                            <div class="form-group">
+                                <label for="beanName">Bean名称</label>
+                                <input type="text" class="form-control" id="beanName" name="beanName"
+                                    placeholder="例如: userService">
+                            </div>
+                            <div class="form-group">
+                                <label for="methodName">方法名</label>
+                                <input type="text" class="form-control" id="methodName" name="methodName"
+                                    placeholder="例如: syncUserData">
+                            </div>
+                            <div class="form-group">
+                                <label for="methodParamsJson">方法参数（JSON格式）</label>
+                                <textarea class="form-control" id="methodParamsJson" name="methodParamsJson" rows="3"
+                                    placeholder='例如: ["param1", {"key": "value"}]'></textarea>
+                            </div>
+                        </div>
+
+                        <!-- HTTP任务特定字段 -->
+                        <div id="httpTaskFields" class="type-specific-fields" style="display:none;">
+                            <div class="form-group">
+                                <label for="httpUrl">URL</label>
+                                <input type="text" class="form-control" id="httpUrl" name="httpUrl"
+                                    placeholder="例如: https://api.example.com/endpoint">
+                            </div>
+                            <div class="form-group">
+                                <label for="httpMethod">HTTP方法</label>
+                                <select class="form-control" id="httpMethod" name="httpMethod">
+                                    <option value="GET">GET</option>
+                                    <option value="POST">POST</option>
+                                    <option value="PUT">PUT</option>
+                                    <option value="DELETE">DELETE</option>
+                                    <option value="PATCH">PATCH</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="httpHeaders">HTTP头信息（JSON格式）</label>
+                                <textarea class="form-control" id="httpHeaders" name="httpHeaders" rows="2"
+                                    placeholder='例如: {"Content-Type": "application/json", "Authorization": "Bearer token"}'></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="httpBody">请求体（JSON格式，仅用于POST/PUT/PATCH）</label>
+                                <textarea class="form-control" id="httpBody" name="httpBody" rows="3"
+                                    placeholder='例如: {"key": "value"}'></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Shell脚本特定字段 -->
+                        <div id="shellTaskFields" class="type-specific-fields" style="display:none;">
+                            <div class="form-group">
+                                <label for="shellCommand">Shell命令</label>
+                                <textarea class="form-control" id="shellCommand" name="shellCommand" rows="5"
+                                    placeholder="例如: echo 'Hello World'"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="shellWorkingDir">工作目录（可选）</label>
+                                <input type="text" class="form-control" id="shellWorkingDir" name="shellWorkingDir"
+                                    placeholder="例如: /home/user/scripts">
+                            </div>
+                            <div class="form-group">
+                                <label for="shellEnv">环境变量（JSON格式，可选）</label>
+                                <textarea class="form-control" id="shellEnv" name="shellEnv" rows="2"
+                                    placeholder='例如: {"API_KEY": "your-api-key", "DEBUG": "true"}'></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 工作流特定字段 -->
+                        <div id="workflowTaskFields" class="type-specific-fields" style="display:none;">
+                            <!-- 工作流编辑器组件加载 -->
+                            <div id="workflow-editor-container"></div>
+                        </div>
+                    </div> <!-- End of typeSpecificFieldsContainer -->
+
+                    <hr>
+                    <h5>高级设置</h5>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="startDate">开始日期时间 (可选)</label>
+                            <div class="datetime-control-group">
+                                <input type="datetime-local" class="form-control" id="startDate" name="startDate">
+                            </div>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="endDate">结束日期时间 (可选)</label>
+                            <div class="datetime-control-group">
+                                <input type="datetime-local" class="form-control" id="endDate" name="endDate">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 日期时间验证消息容器 -->
+                    <div id="dateRangeValidation" class="datetime-validation"></div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="taskCalendarGroup">排除时间日历组 (可选)</label>
+                            <select class="form-control" id="taskCalendarGroup" name="taskCalendarGroup">
+                                <option value="">-- 选择日历 --</option>
+                                <!-- 日历选项会通过JS动态加载 -->
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="taskExcludeTimes">排除时间段 (可选)</label>
+                            <input type="text" class="form-control" id="taskExcludeTimes" name="taskExcludeTimes"
+                                placeholder="例如: 00:00-08:00,22:00-23:59">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="executeTimeoutSeconds">执行超时 (秒, 0表示无超时)</label>
+                        <input type="number" class="form-control" id="executeTimeoutSeconds"
+                            name="executeTimeoutSeconds" value="0">
+                    </div>
+                    <hr>
+                    <h5>通知设置</h5>
+                    <div class="form-group">
+                        <label for="notifySuccessUserIds">成功时通知用户</label>
+                        <select class="form-control" id="notifySuccessUserIds" name="notifySuccessUserIds" multiple>
+                            <!-- 用户选项会通过JS动态加载 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="notifyFailedUserIds">失败/超时时通知用户</label>
+                        <select class="form-control" id="notifyFailedUserIds" name="notifyFailedUserIds" multiple>
+                            <!-- 用户选项会通过JS动态加载 -->
+                        </select>
+                    </div>
+
+                    <div class="form-group form-check mt-3">
+                        <input type="checkbox" class="form-check-input" id="isActive" name="isActive">
+                        <label class="form-check-label" for="isActive">激活</label>
+                    </div>
+                    <button type="submit" class="btn btn-success">保存任务</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

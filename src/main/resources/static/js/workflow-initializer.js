@@ -60,20 +60,120 @@
         if (!ensureDependencies()) {
             // 对于tasks.html页面的特殊处理
             if (window.location.pathname.indexOf('tasks.html') !== -1) {
-                // 尝试修复tasks.html中可能的依赖问题
-                console.log('检测到tasks.html页面，尝试加载核心依赖');
+                console.log('检测到tasks.html页面，尝试安全恢复而非刷新页面');
                 
-                // 确保jQuery加载
+                // 检查是否处于安全模式
+                if (sessionStorage.getItem('safeMode') === 'true') {
+                    console.warn('页面处于安全模式，不尝试自动加载依赖');
+                    
+                    // 显示错误信息但不刷新
+                    const containers = document.querySelectorAll('.workflow-dag-container, #workflow-dag-content, #workflow-dag-view');
+                    containers.forEach(container => {
+                        container.innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                工作流组件依赖缺失。请确保所有JS库已正确加载，然后重试。
+                                <button class="btn btn-sm btn-outline-primary load-workflow-deps-btn">
+                                    尝试加载依赖
+                                </button>
+                            </div>
+                        `;
+                    });
+                    
+                    // 绑定按钮事件以手动加载依赖
+                    setTimeout(() => {
+                        document.querySelectorAll('.load-workflow-deps-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                loadWorkflowDependencies();
+                            });
+                        });
+                    }, 500);
+                    
+                    return;
+                }
+                
+                // 尝试修复tasks.html中可能的依赖问题，但不刷新页面
+                console.log('检测到tasks.html页面，尝试手动加载核心依赖');
+                loadWorkflowDependencies();
+            }
+            
+            // 加载工作流依赖的函数
+            function loadWorkflowDependencies() {
+                // 检查jQuery
                 if (typeof jQuery === 'undefined') {
                     console.log('动态加载jQuery');
+                    loadScript('libs/jquery/jquery-3.5.1.min.js', function() {
+                        loadCytoscape();
+                    });
+                } else {
+                    loadCytoscape();
+                }
+                
+                // 加载Cytoscape
+                function loadCytoscape() {
+                    if (typeof cytoscape === 'undefined') {
+                        console.log('动态加载Cytoscape');
+                        loadScript('libs/cytoscape/cytoscape.min.js', function() {
+                            loadDagre();
+                        });
+                    } else {
+                        loadDagre();
+                    }
+                }
+                
+                // 加载Dagre
+                function loadDagre() {
+                    if (typeof dagre === 'undefined') {
+                        console.log('动态加载Dagre');
+                        loadScript('libs/cytoscape/dagre.min.js', function() {
+                            loadCytoscapeDagre();
+                        });
+                    } else {
+                        loadCytoscapeDagre();
+                    }
+                }
+                
+                // 加载Cytoscape-Dagre
+                function loadCytoscapeDagre() {
+                    if (typeof cytoscape.layouts.dagre === 'undefined') {
+                        console.log('动态加载Cytoscape-Dagre');
+                        loadScript('libs/cytoscape/layout/cytoscape-dagre.js', function() {
+                            console.log('所有依赖加载完成，尝试初始化工作流...');
+                            
+                            // 显示依赖已加载，但不刷新页面
+                            jQuery('.workflow-dag-container, #workflow-dag-content, #workflow-dag-view').each(function() {
+                                jQuery(this).html(`
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle"></i> 
+                                        工作流依赖已加载完成，可以使用DAG图功能。
+                                        <button class="btn btn-sm btn-primary refresh-dag-btn">
+                                            刷新DAG图
+                                        </button>
+                                    </div>
+                                `);
+                            });
+                            
+                            // 绑定按钮事件
+                            jQuery('.refresh-dag-btn').on('click', function() {
+                                if (typeof WorkflowInitializer !== 'undefined' && 
+                                    typeof WorkflowInitializer.initOrRefreshWorkflowDAG === 'function') {
+                                    WorkflowInitializer.initOrRefreshWorkflowDAG();
+                                }
+                            });
+                        });
+                    }
+                }
+                
+                // 通用脚本加载函数
+                function loadScript(url, callback) {
                     const script = document.createElement('script');
-                    script.src = 'libs/jquery/jquery-3.5.1.min.js';
-                    script.onload = function() {
-                        console.log('jQuery已加载，重新初始化');
-                        initialize();
+                    script.type = 'text/javascript';
+                    script.src = url;
+                    script.onload = callback;
+                    script.onerror = function() {
+                        console.error(`加载脚本失败: ${url}`);
                     };
                     document.head.appendChild(script);
-                    return;
                 }
             }
         }

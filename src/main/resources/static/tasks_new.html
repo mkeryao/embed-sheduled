@@ -39,11 +39,7 @@
         .hidden-component {
             display: none;
         }
-    </style>    <!-- 防无限刷新脚本 - 必须最先加载 -->
-    <script src="js/workflow-safe-reload.js"></script>
-    
-    <!-- 工作流组件加载器 - 确保依赖正确加载 -->
-    <script src="js/workflow-component-loader.js"></script>
+    </style>
     
     <!-- 全局错误处理脚本 -->
     <script>
@@ -51,6 +47,7 @@
         window.onerror = function(message, source, lineno, colno, error) {
             console.error(`全局错误: ${message} (${source}:${lineno}:${colno})`);
             const errorInfo = `错误: ${message}\n位置: ${source}:${lineno}:${colno}`;
+            
             // 如果错误发生在页面加载完成之后，显示错误信息
             if (document.readyState === 'complete') {
                 showErrorMessage(errorInfo);
@@ -128,23 +125,22 @@
             <i class="fas fa-spinner"></i> 正在加载表单组件...
         </div>
     </div>
-      <!-- 工作流编辑器组件容器（全局级别，用于工作流预览） -->
+    
+    <!-- 工作流编辑器组件容器（全局级别，用于工作流预览） -->
     <div id="workflow-editor-component" class="hidden-component">
         <div class="component-loader">
             <i class="fas fa-spinner"></i> 正在加载工作流编辑器...
         </div>
-    </div>    <!-- 脚本引用 -->
+    </div>
+    
+    <!-- 脚本引用 -->
     <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
-    
-    <!-- 前后端分离架构中，先加载核心功能脚本 -->
-    <script src="js/main.js"></script>  <!-- 核心API和认证功能 -->
+    <script src="js/main.js"></script>
     
     <!-- 工作流相关脚本 -->
     <script src="libs/cytoscape/cytoscape.min.js"></script>
-    <!-- 添加dagre依赖，必须在cytoscape-dagre.js之前加载 -->
-    <script src="libs/cytoscape/dagre.min.js"></script>
     <script src="libs/cytoscape/layout/cytoscape-dagre.js"></script>
     <script src="js/cytoscape-setup.js"></script>
     <script src="js/workflow-safety.js"></script>
@@ -157,10 +153,6 @@
     <script src="js/workflow-initializer.js"></script>
     
     <!-- 组件加载和业务逻辑脚本 -->
-    <script>
-        // 添加调试日志
-        console.log('页面正在加载，准备初始化tasks-script.js...');
-    </script>
     <script src="js/tasks-script.js"></script>
 </body>
 
