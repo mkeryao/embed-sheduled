@@ -9,14 +9,34 @@ const API_BASE_URL = '/api'; // 前后端分离架构中的API前缀
  * @param {function} onError - Callback on error
  */
 function makeApiCall(method, endpoint, data, onSuccess, onError) {
+    // 检查是否处于认证安全模式
+    if (sessionStorage.getItem('authSafeMode') === 'true' && endpoint !== '/auth/login') {
+        console.warn('处于认证安全模式，API调用将继续但不会触发自动跳转');
+    }
+    
     const token = localStorage.getItem('jwtToken');
     if (!token && endpoint !== '/auth/login') { // Allow login without token
         // No token, redirect to login, unless it's the login page itself trying to log in
-        if (window.location.pathname !== '/login.html' && window.location.pathname !== '/') {
-            logout(); // Clear any partial session data and redirect
+        if (window.location.pathname !== '/login.html' && window.location.pathname !== '/' && 
+            !sessionStorage.getItem('authSafeMode')) {
+            console.warn('未找到有效的认证Token，将清除登录状态并跳转');
+            const apiErrorEvent = new CustomEvent('api-auth-error', { 
+                detail: { message: '未找到有效的认证Token' }
+            });
+            window.dispatchEvent(apiErrorEvent);
+            
+            // 延迟处理，给事件处理器时间响应
+            setTimeout(function() {
+                logout(); // Clear any partial session data and redirect
+            }, 100);
             return;
+        } else if (sessionStorage.getItem('authSafeMode')) {
+            // 在安全模式下，仍然调用API但不做自动跳转
+            console.warn('安全模式：缺少认证Token，API调用可能失败');
         }
-    }    // 统一API路径处理，确保所有API调用都是/api开头
+    }
+    
+    // 统一API路径处理，确保所有API调用都是/api开头
     // 1. 如果已以'/api'开头，则直接使用
     // 2. 如果以'/'开头但不是'/api'开头，添加'/api'前缀
     // 3. 如果不是以'/'开头，添加'/api/'前缀
@@ -66,11 +86,54 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
                 // 空响应但请求成功，一些API可能不返回内容
                 onSuccess(null);
             }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
+        },        error: function(jqXHR, textStatus, errorThrown) {
             if (jqXHR.status === 401 && window.location.pathname !== '/login.html') { // Unauthorized
-                // Token might be invalid or expired
-                logout(); // Redirect to login
+                // 发出认证错误事件
+                const apiErrorEvent = new CustomEvent('api-auth-error', { 
+                    detail: { 
+                        status: 401,
+                        message: '认证令牌无效或已过期'
+                    }
+                });
+                window.dispatchEvent(apiErrorEvent);
+                
+                // 检查是否处于认证安全模式
+                if (sessionStorage.getItem('authSafeMode') === 'true') {
+                    console.error('安全模式：检测到401未授权错误，但不会自动跳转');
+                    // 仍然通知调用者有错误发生
+                    if (onError) {
+                        onError(jqXHR, textStatus, errorThrown);
+                    } else {
+                        alert('认证失败：您的登录状态已过期，但系统已阻止自动跳转。请手动刷新页面或返回登录页面。');
+                    }
+                } else {
+                    // 记录本次401错误，用于检测循环
+                    const last401Time = sessionStorage.getItem('last401Time');
+                    const now = Date.now();
+                    
+                    if (last401Time && (now - parseInt(last401Time) < 3000)) {
+                        console.warn('检测到频繁的401错误，可能存在认证循环');
+                        sessionStorage.setItem('auth401Count', 
+                            (parseInt(sessionStorage.getItem('auth401Count') || '0') + 1));
+                        
+                        // 如果短时间内多次收到401，启用安全模式
+                        if (parseInt(sessionStorage.getItem('auth401Count') || '0') >= 2) {
+                            console.error('短时间内多次401错误，激活认证安全模式');
+                            sessionStorage.setItem('authSafeMode', 'true');
+                            alert('检测到频繁的认证失败，系统已暂停自动跳转。请手动刷新页面或返回登录页面。');
+                            return;
+                        }
+                    } else {
+                        // 重置计数
+                        sessionStorage.removeItem('auth401Count');
+                    }
+                    
+                    // 更新最后401时间
+                    sessionStorage.setItem('last401Time', now);
+                    
+                    // 正常的401处理流程
+                    logout(); // Redirect to login
+                }
             } else if (onError) {
                 onError(jqXHR, textStatus, errorThrown);
             } else {                // Default error handling
@@ -98,6 +161,38 @@ function login(username, password, onSuccess, onError) {
 function logout() {
     localStorage.removeItem('jwtToken');
     localStorage.removeItem('username');
+    
+    // 检查是否存在认证循环，如果存在则不再跳转
+    if (sessionStorage.getItem('authSafeMode') === 'true') {
+        console.warn('检测到认证循环，阻止登出后的自动跳转');
+        // 显示信息告知用户
+        alert('登录状态已清除，但系统检测到可能的页面循环跳转。请手动刷新页面或点击浏览器的刷新按钮。');
+        return;
+    }
+    
+    // 记录本次登出操作
+    const lastLogout = sessionStorage.getItem('lastLogout');
+    const now = Date.now();
+    
+    if (lastLogout && (now - parseInt(lastLogout) < 3000)) {
+        console.warn('检测到频繁登出操作，可能存在循环跳转');
+        sessionStorage.setItem('logoutCount', (parseInt(sessionStorage.getItem('logoutCount') || '0') + 1));
+        
+        // 如果短时间内多次登出，启用安全模式
+        if (parseInt(sessionStorage.getItem('logoutCount') || '0') >= 2) {
+            console.error('多次登出操作，激活安全模式，阻止自动跳转');
+            sessionStorage.setItem('authSafeMode', 'true');
+            alert('检测到频繁的登录状态变化，系统已暂停自动跳转以防止浏览器崩溃。请手动刷新页面。');
+            return;
+        }
+    } else {
+        // 重置计数
+        sessionStorage.removeItem('logoutCount');
+    }
+    
+    // 更新最后登出时间
+    sessionStorage.setItem('lastLogout', now);
+    
     // 重定向到登录页面
     const currentPath = window.location.pathname;
     if (currentPath.endsWith('/login.html') || currentPath === '/' || currentPath.endsWith('/index.html')) {

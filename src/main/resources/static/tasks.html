@@ -42,6 +42,9 @@
     </style>    <!-- 防无限刷新脚本 - 必须最先加载 -->
     <script src="js/workflow-safe-reload.js"></script>
     
+    <!-- 认证循环预防脚本 -->
+    <script src="js/auth-loop-prevention.js"></script>
+    
     <!-- 工作流组件加载器 - 确保依赖正确加载 -->
     <script src="js/workflow-component-loader.js"></script>
     
@@ -155,11 +158,36 @@
     <script src="js/workflow-page-patch.js"></script>
     <script src="js/workflow-global-functions.js"></script>
     <script src="js/workflow-initializer.js"></script>
-    
-    <!-- 组件加载和业务逻辑脚本 -->
+      <!-- 组件加载和业务逻辑脚本 -->
     <script>
         // 添加调试日志
         console.log('页面正在加载，准备初始化tasks-script.js...');
+        
+        // 在加载主脚本前验证token，防止不必要的加载
+        (function() {
+            // 不在安全模式下才检查token
+            if (sessionStorage.getItem('authSafeMode') !== 'true') {
+                const token = localStorage.getItem('jwtToken');
+                if (!token) {
+                    console.warn('未找到认证令牌，将中断加载并跳转到登录页');
+                    // 使用延迟跳转以避免过快循环
+                    setTimeout(function() {
+                        if (confirm('检测到您尚未登录，是否跳转到登录页面？')) {
+                            window.location.href = 'login.html';
+                        }
+                    }, 500);
+                } else {
+                    console.log('已找到认证令牌，继续加载页面');
+                }
+            } else {
+                console.warn('处于认证安全模式，跳过令牌验证');
+            }
+            
+            // 监听API认证错误事件
+            window.addEventListener('api-auth-error', function(e) {
+                console.error('收到API认证错误: ', e.detail.message);
+            });
+        })();
     </script>
     <script src="js/tasks-script.js"></script>
 </body>

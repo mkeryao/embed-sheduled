@@ -34,21 +34,38 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    </div>    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+    <!-- 添加认证循环预防脚本，必须在main.js之前加载 -->
+    <script src="js/auth-loop-prevention.js"></script>
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function () {
-            // 防止登录页面闪烁
+            // 防止登录页面闪烁，加入安全检查
             setTimeout(function () {
-                // If token exists, redirect to tasks.html
-                if (localStorage.getItem('jwtToken')) {
-                    window.location.href = 'tasks.html';
+                // 检查是否处于认证安全模式
+                if (sessionStorage.getItem('authSafeMode') === 'true') {
+                    console.warn('处于认证安全模式，阻止自动跳转到tasks.html');
+                    return;
                 }
-            }, 100);
+                
+                // 如果token存在，并且不是刚刚的跳转，才跳到tasks.html
+                const token = localStorage.getItem('jwtToken');
+                if (token) {
+                    // 验证token是否看起来有效（至少有基本格式）
+                    if (token.split('.').length !== 3) {
+                        console.warn('Token格式无效，清除并留在登录页');
+                        localStorage.removeItem('jwtToken');
+                        return;
+                    }
+                    
+                    // 增加延迟以防止过快跳转
+                    setTimeout(function() {
+                        window.location.href = 'tasks.html';
+                    }, 300);
+                }
+            }, 500);
 
             $('#login-form').submit(function (event) {
                 event.preventDefault();
