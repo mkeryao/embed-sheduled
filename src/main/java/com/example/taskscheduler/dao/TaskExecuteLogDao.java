@@ -107,4 +107,12 @@ public interface TaskExecuteLogDao {
      * @return List of maps, e.g., {task_id, task_name, avg_duration_ms}
      */
     List<Map<String, Object>> getTopNAverageExecutionTimes(int limit);
+
+    /**
+     * Finds all log entries where parent_execute_no matches the given ID.
+     * This is used to retrieve all node execution logs for a specific workflow instance.
+     * @param parentExecuteNo The log_id of the parent workflow execution.
+     * @return A list of child log entries.
+     */
+    List<TaskExecuteLog> findByParentExecuteNo(long parentExecuteNo);
 }

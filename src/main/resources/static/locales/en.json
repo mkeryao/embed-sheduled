@@ -255,5 +255,82 @@
             "cannotDeleteSelf": "You cannot delete your own user account.",
             "confirmDeleteUser": "Are you sure you want to delete user {{userId}} ({{username}})?"
         }
+    },
+    "logsPage": {
+        "title": "Task Logs - Task Scheduler",
+        "header": "Task Execution Statistics",
+        "stats": {
+            "globalCountsHeader": "Global Counts",
+            "slowestTasksHeader": "Top 5 Slowest Tasks (Avg. Success Execution Time)",
+            "taskBreakdownHeader": "Per-Task Success/Failure Counts",
+            "loading": "Loading...",
+            "noGlobalStats": "No global statistics available.",
+            "noSlowestTasks": "No data for slowest tasks (or no successful executions recorded).",
+            "noTaskBreakdown": "No task breakdown data available.",
+            "taskNameIdHeader": "Task Name (ID)",
+            "successHeader": "Success",
+            "failedHeader": "Failed"
+        },
+        "detailedLogsHeader": "Detailed Logs",
+        "filters": {
+            "taskIdLabel": "Filter by Task ID:",
+            "taskIdPlaceholder": "Enter Task ID",
+            "statusLabel": "Filter by Status:",
+            "allStatuses": "All Statuses",
+            "applyBtn": "Apply Filters",
+            "resetBtn": "Reset Filters"
+        },
+        "logTable": {
+            "logId": "Log ID",
+            "taskId": "Task ID",
+            "taskName": "Task Name",
+            "status": "State",
+            "instanceId": "Executed By",
+            "startTime": "Start Time",
+            "endTime": "End Time",
+            "duration": "Duration",
+            "message": "Message / Actions",
+            "noLogsFound": "No logs found for the current filter."
+        },
+        "logDetailModal": {
+            "title": "Log Entry Details",
+            "messageLabel": "Message:",
+            "exceptionLabel": "Exception:"
+        },
+        "workflowInstanceModal": {
+            "title": "Workflow Instance Details",
+            "workflowName": "Workflow Name:",
+            "instanceLogId": "Instance Log ID:",
+            "noNodesDefined": "No nodes defined for this workflow.",
+            "selectedNodeHeader": "Selected Node Details:",
+            "nodeId": "Node ID:",
+            "nodeStatus": "Status:",
+            "nodeLastLogId": "Last Log ID:",
+            "nodeLastStartTime": "Last Start Time:",
+            "nodeLastEndTime": "Last End Time:",
+            "nodeLastMessage": "Last Message:"
+        },
+        "viewDetailsBtn": "Details",
+        "viewDetailsBtnTitle": "View Full Log Details",
+        "viewWorkflowBtn": "View Flow",
+        "viewWorkflowBtnTitle": "View Workflow Details",
+        "feedback": {
+            "errorLoadingLogs": "Error loading logs: {{error}}",
+            "errorLoadingGlobalStats": "Failed to load global stats.",
+            "errorLoadingSlowestTasks": "Failed to load slowest tasks data.",
+            "errorLoadingTaskBreakdown": "Failed to load task breakdown data.",
+            "errorLoadingWorkflowInstance": "Error loading workflow instance details."
+        },
+        "logStatuses": {
+            "success": "Success",
+            "failed": "Failed",
+            "running": "Running",
+            "timed_out": "Timed Out",
+            "skipped": "Skipped",
+            "cancelled": "Cancelled",
+            "not_executed": "Not Executed",
+            "not_configured": "Not Configured",
+            "unknown": "Unknown"
+        }
     }
 }

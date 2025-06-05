@@ -254,5 +254,82 @@
             "cannotDeleteSelf": "您不能删除自己的用户账户。",
             "confirmDeleteUser": "您确定要删除用户 {{userId}} ({{username}}) 吗？"
         }
+    },
+    "logsPage": {
+        "title": "任务日志 - 任务调度器",
+        "header": "任务执行统计",
+        "stats": {
+            "globalCountsHeader": "全局统计",
+            "slowestTasksHeader": "最慢的5个任务 (平均成功执行时间)",
+            "taskBreakdownHeader": "各任务成功/失败次数",
+            "loading": "加载中...",
+            "noGlobalStats": "暂无全局统计数据。",
+            "noSlowestTasks": "暂无最慢任务数据 (或无成功执行记录)。",
+            "noTaskBreakdown": "暂无各任务分解数据。",
+            "taskNameIdHeader": "任务名称 (ID)",
+            "successHeader": "成功",
+            "failedHeader": "失败"
+        },
+        "detailedLogsHeader": "详细日志",
+        "filters": {
+            "taskIdLabel": "按任务ID筛选:",
+            "taskIdPlaceholder": "输入任务ID",
+            "statusLabel": "按状态筛选:",
+            "allStatuses": "所有状态",
+            "applyBtn": "应用筛选",
+            "resetBtn": "重置筛选"
+        },
+        "logTable": {
+            "logId": "日志ID",
+            "taskId": "任务ID",
+            "taskName": "任务名称",
+            "status": "状态",
+            "instanceId": "执行实例",
+            "startTime": "开始时间",
+            "endTime": "结束时间",
+            "duration": "持续时间",
+            "message": "消息 / 操作",
+            "noLogsFound": "当前筛选条件下未找到日志。"
+        },
+        "logDetailModal": {
+            "title": "日志条目详情",
+            "messageLabel": "消息:",
+            "exceptionLabel": "异常:"
+        },
+        "workflowInstanceModal": {
+            "title": "工作流实例详情",
+            "workflowName": "工作流名称:",
+            "instanceLogId": "实例日志ID:",
+            "noNodesDefined": "此工作流未定义节点。",
+            "selectedNodeHeader": "选中节点详情:",
+            "nodeId": "节点ID:",
+            "nodeStatus": "状态:",
+            "nodeLastLogId": "最后日志ID:",
+            "nodeLastStartTime": "最后开始时间:",
+            "nodeLastEndTime": "最后结束时间:",
+            "nodeLastMessage": "最后消息:"
+        },
+        "viewDetailsBtn": "详情",
+        "viewDetailsBtnTitle": "查看完整日志详情",
+        "viewWorkflowBtn": "查看流程",
+        "viewWorkflowBtnTitle": "查看工作流详情",
+        "feedback": {
+            "errorLoadingLogs": "加载日志时出错: {{error}}",
+            "errorLoadingGlobalStats": "加载全局统计数据失败。",
+            "errorLoadingSlowestTasks": "加载最慢任务数据失败。",
+            "errorLoadingTaskBreakdown": "加载任务分解数据失败。",
+            "errorLoadingWorkflowInstance": "加载工作流实例详情失败。"
+        },
+        "logStatuses": {
+            "success": "成功",
+            "failed": "失败",
+            "running": "运行中",
+            "timed_out": "超时",
+            "skipped": "已跳过",
+            "cancelled": "已取消",
+            "not_executed": "未执行",
+            "not_configured": "未配置",
+            "unknown": "未知"
+        }
     }
 }
