@@ -6,8 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.taskscheduler.service.TaskStatisticsService; // Added
 import java.util.Collections;
 import java.util.List;
+import java.util.Map; // Added
 
 @RestController
 @RequestMapping("/api/logs")
@@ -15,6 +17,9 @@ public class TaskExecuteLogController {
 
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
+
+    @Autowired // Added
+    private TaskStatisticsService taskStatisticsService; // Added
 
     @GetMapping
     public ResponseEntity<List<TaskExecuteLog>> getAllLogs(
@@ -65,5 +70,22 @@ public class TaskExecuteLogController {
         return taskExecuteLogDao.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    // --- Statistics Endpoints ---
+
+    @GetMapping("/statistics/global-counts")
+    public ResponseEntity<Map<String, Long>> getGlobalCounts() { // Changed to specific Map type
+        return ResponseEntity.ok(taskStatisticsService.getGlobalExecutionStateCounts());
+    }
+
+    @GetMapping("/statistics/task-breakdown")
+    public ResponseEntity<List<Map<String, Object>>> getTaskBreakdown() { // Changed to specific List<Map> type
+        return ResponseEntity.ok(taskStatisticsService.getTaskBreakdownStatistics());
+    }
+
+    @GetMapping("/statistics/top-avg-execution-time")
+    public ResponseEntity<List<Map<String, Object>>> getTopAvgExecutionTime(@RequestParam(defaultValue = "5") int limit) { // Changed to specific List<Map> type
+        return ResponseEntity.ok(taskStatisticsService.getTopNTasksByAverageExecutionTime(limit));
     }
 }

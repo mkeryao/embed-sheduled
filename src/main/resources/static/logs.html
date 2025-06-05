@@ -10,7 +10,35 @@
     <div id="navbar-container"></div>
 
     <div class="container">
-        <h2 class="my-3">Task Execution Logs</h2>
+        <h2 class="my-3">Task Execution Statistics</h2>
+        <div class="row mb-4">
+            <!-- Global Counts Card -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Global Counts</div>
+                    <div class="card-body" id="globalStatsBody">
+                        <p class="text-muted">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Top N Slowest (Avg Time) Tasks Card -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">Top 5 Slowest Tasks (Avg. Success Execution Time)</div>
+                    <div class="card-body" id="topSlowestTasksBody">
+                        <p class="text-muted">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">Per-Task Success/Failure Counts</div>
+            <div class="card-body" id="taskBreakdownBody">
+                <p class="text-muted">Loading...</p>
+            </div>
+        </div>
+        <hr>
+        <h3 class="my-3">Detailed Logs</h3> <!-- Existing logs section title -->
         <div class="form-group">
             <label for="taskIdFilter">Filter by Task ID (Optional):</label>
             <input type="number" class="form-control" id="taskIdFilter" placeholder="Enter Task ID">
@@ -189,6 +217,98 @@
 
             // Initial load
             loadLogs();
+            loadGlobalStats();
+            loadTopSlowestTasks();
+            loadTaskBreakdownStats();
+
+            function loadGlobalStats() {
+                makeApiCall('GET', '/api/logs/statistics/global-counts', null,
+                    function(data) {
+                        let html = '';
+                        const statesOrder = ["SUCCESS", "FAILED", "RUNNING", "SKIPPED", "TIMED_OUT", "CANCELLED"]; // Define preferred order
+                        let foundStates = 0;
+                        statesOrder.forEach(state => {
+                            if (data.hasOwnProperty(state)) {
+                                html += `<p class="mb-1"><strong>${state}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
+                                foundStates++;
+                            }
+                        });
+                        // Add any other states not in preferred order
+                        for (const state in data) {
+                            if (!statesOrder.includes(state)) {
+                                html += `<p class="mb-1"><strong>${state}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
+                                foundStates++;
+                            }
+                        }
+                        $('#globalStatsBody').html(foundStates > 0 ? html : '<p>No global statistics available.</p>');
+                    },
+                    function(jqXHR) {
+                        $('#globalStatsBody').html('<p class="text-danger">Failed to load global stats.</p>');
+                        console.error("Error loading global stats: ", jqXHR);
+                    }
+                );
+            }
+
+            function loadTopSlowestTasks() {
+                makeApiCall('GET', '/api/logs/statistics/top-avg-execution-time?limit=5', null,
+                    function(tasks) {
+                        let html = '';
+                        if (tasks && tasks.length > 0) {
+                            html = '<ul class="list-group list-group-flush">';
+                            tasks.forEach(task => {
+                                html += `<li class="list-group-item d-flex justify-content-between align-items-center small p-2">
+                                            <span>${task.task_name} (ID: ${task.task_id})</span>
+                                            <span class="badge badge-primary badge-pill">${parseFloat(task.avg_duration_ms).toFixed(2)} ms</span>
+                                         </li>`;
+                            });
+                            html += '</ul>';
+                        } else {
+                            html = '<p>No data for slowest tasks (or no successful executions recorded).</p>';
+                        }
+                        $('#topSlowestTasksBody').html(html);
+                    },
+                    function(jqXHR) {
+                        $('#topSlowestTasksBody').html('<p class="text-danger">Failed to load slowest tasks data.</p>');
+                        console.error("Error loading top slowest tasks: ", jqXHR);
+                    }
+                );
+            }
+
+            function loadTaskBreakdownStats() {
+                makeApiCall('GET', '/api/logs/statistics/task-breakdown', null,
+                    function(tasks) {
+                        let html = '';
+                        if (tasks && tasks.length > 0) {
+                            html = `<div class="table-responsive">
+                                        <table class="table table-sm table-bordered table-hover" style="font-size: 0.85rem;">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th>Task Name (ID)</th>
+                                                    <th class="text-center">Success</th>
+                                                    <th class="text-center">Failed</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>`;
+                            tasks.forEach(task => {
+                                html += `<tr>
+                                            <td>${task.task_name} (ID: ${task.task_id})</td>
+                                            <td class="text-center"><span class="badge badge-success">${task.success_count}</span></td>
+                                            <td class="text-center"><span class="badge badge-danger">${task.failed_count}</span></td>
+                                         </tr>`;
+                            });
+                            html += '</tbody></table></div>';
+                        } else {
+                            html = '<p>No task breakdown data available.</p>';
+                        }
+                        $('#taskBreakdownBody').html(html);
+                    },
+                    function(jqXHR) {
+                        $('#taskBreakdownBody').html('<p class="text-danger">Failed to load task breakdown data.</p>');
+                        console.error("Error loading task breakdown stats: ", jqXHR);
+                    }
+                );
+            }
+
         });
     </script>
 </body>

@@ -90,4 +90,21 @@ public interface TaskExecuteLogDao {
      * @return The total number of runs.
      */
     Long getTotalRuns(Integer taskId);
+
+    // --- New Statistics Methods for Point 8 ---
+
+    /**
+     * Gets counts of SUCCESS and FAILED executions for each task.
+     * Includes task_id and task_name.
+     * @return List of maps, e.g., {task_id, task_name, success_count, failed_count}
+     */
+    List<Map<String, Object>> getPerTaskSuccessFailureCounts();
+
+    /**
+     * Gets the top N tasks by average execution time (in milliseconds) for successful runs.
+     * Includes task_id, task_name, and avg_duration_ms.
+     * @param limit The number of top tasks to retrieve.
+     * @return List of maps, e.g., {task_id, task_name, avg_duration_ms}
+     */
+    List<Map<String, Object>> getTopNAverageExecutionTimes(int limit);
 }

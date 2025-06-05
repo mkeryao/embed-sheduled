@@ -21,7 +21,7 @@ import java.util.UUID;
 public class DistributedLockService {
 
     private static final Logger logger = LoggerFactory.getLogger(DistributedLockService.class);
-    private static final int DEFAULT_CLUSTER_LOCK_LEASE_MS = 60000; // 60 seconds
+    private static final int DEFAULT_CLUSTER_LOCK_LEASE_SEC = 60; // 60 seconds
 
     @Autowired
     private TaskLockDao taskLockDao;
@@ -90,7 +90,7 @@ public class DistributedLockService {
             return false;
         }
 
-        int leaseDurationMs = DEFAULT_CLUSTER_LOCK_LEASE_MS;
+        int leaseDurationMs = DEFAULT_CLUSTER_LOCK_LEASE_SEC * 1000;
 
         logger.info("Attempting to acquire lock [{}] for owner [{}]. Lease: {}ms. Max attempts: {}. Retry delay: {}ms.",
                 lockName, owner, leaseDurationMs, maxLockAttempts, lockRetryDelayMs);
