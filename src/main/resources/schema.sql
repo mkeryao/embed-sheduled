@@ -26,6 +26,10 @@ CREATE TABLE task_config (
     is_active BOOLEAN DEFAULT TRUE,
     execution_mode VARCHAR(20) NOT NULL DEFAULT 'BROADCAST' COMMENT 'Execution mode: BROADCAST or CLUSTER',
 
+    -- Retry configuration
+    max_retry_attempts INT DEFAULT 0 COMMENT 'Maximum number of retry attempts upon failure (0 means no retries)',
+    retry_interval_seconds INT DEFAULT 30 COMMENT 'Interval in seconds between retry attempts',
+
     -- Workflow specific fields (for task_type=10)
     workflow_nodes TEXT, -- JSON array of WorkflowNode, defines the structure
     workflow_edges TEXT, -- JSON array of WorkflowEdge, defines transitions
@@ -95,27 +99,28 @@ INSERT INTO task_config (
     task_name, task_group, cron_expression, task_type,
     bean_name, method_name, bean_parameters,
     description, is_active, execution_mode,
+    max_retry_attempts, retry_interval_seconds, -- Added new columns
     task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds,
     notify_success_user_ids, notify_failed_user_ids,
     workflow_nodes, workflow_edges, global_parameters
 ) VALUES
-('MySampleSuccessTask', 'DEFAULT_GROUP', '0/30 * * * * ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"Hello from scheduler!", "value": 123}', 'A sample task that should succeed.', TRUE, 'BROADCAST', NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
-('MySampleFailedTask', 'DEFAULT_GROUP', '0/45 * * * * ?', 0, 'mySampleTask', 'executeFailed', '{"error":"Simulated failure"}', 'A sample task that is expected to fail.', TRUE, 'BROADCAST', NULL, NULL, NULL, NULL, 30, NULL, '1', NULL, NULL, NULL),
-('MyClusteredTask', 'DEFAULT_GROUP', '0/20 * * * * ?', 0, 'mySampleTask', 'simpleExecute', '{}', 'A sample task that runs in CLUSTER mode.', TRUE, 'CLUSTER', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
-('MyInactiveTask', 'DEFAULT_GROUP', '0 0 0 1 1 ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"This should not run", "value": 0}', 'An inactive sample task.', FALSE, 'BROADCAST', NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
-('MyFirstWorkflow', 'WORKFLOW_GROUP', '0 0 1 * * ?', 10, NULL, NULL, NULL, 'A sample workflow task.', TRUE, 'BROADCAST', NULL, NULL, NULL, NULL, 0, NULL, '1',
+('MySampleSuccessTask', 'DEFAULT_GROUP', '0/30 * * * * ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"Hello from scheduler!", "value": 123}', 'A sample task that should succeed.', TRUE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
+('MySampleFailedTask', 'DEFAULT_GROUP', '0/45 * * * * ?', 0, 'mySampleTask', 'executeFailed', '{"error":"Simulated failure"}', 'A sample task that is expected to fail.', TRUE, 'BROADCAST', 3, 60, NULL, NULL, NULL, NULL, 30, NULL, '1', NULL, NULL, NULL),
+('MyClusteredTask', 'DEFAULT_GROUP', '0/20 * * * * ?', 0, 'mySampleTask', 'simpleExecute', '{}', 'A sample task that runs in CLUSTER mode.', TRUE, 'CLUSTER', 0, 30, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
+('MyInactiveTask', 'DEFAULT_GROUP', '0 0 0 1 1 ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"This should not run", "value": 0}', 'An inactive sample task.', FALSE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
+('MyFirstWorkflow', 'WORKFLOW_GROUP', '0 0 1 * * ?', 10, NULL, NULL, NULL, 'A sample workflow task.', TRUE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, NULL, '1',
     '[{"nodeId":"node1","taskConfigId":1,"nodeName":"Step 1: Success Task","parameters":{"message":"Input for step 1 from workflow"}}, {"nodeId":"node2","taskConfigId":2,"nodeName":"Step 2: Failed Task","parameters":{}}]',
     '[{"fromNodeId":"node1", "toNodeId":"node2", "priority":0, "expression":"${node1_status} == ''SUCCESS''"}]',
     '{"global_api_key":"some_global_value", "default_retry_count":3}'),
 ('SampleHttpTask', 'HTTP_TASKS', '0 0 2 * * ?', 2, NULL, NULL,
     '{"url":"https://jsonplaceholder.typicode.com/todos/1", "method":"GET", "headers":{"X-Custom":"Test"}, "body":null, "connectTimeout":5000, "readTimeout":10000}',
-    'A sample HTTP GET task.', TRUE, 'BROADCAST', NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
+    'A sample HTTP GET task.', TRUE, 'BROADCAST', 2, 45, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
 ('SampleShellScriptByPath', 'SHELL_TASKS', '0 0 3 * * ?', 4, NULL, NULL,
     '{"script":"/opt/scripts/my_script.sh", "isInlineScript":false, "arguments":["param1","param2"], "workingDirectory":"/opt/scripts"}',
-    'A sample path-based Shell script task.', TRUE, 'BROADCAST', NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
+    'A sample path-based Shell script task.', TRUE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
 ('SampleInlineShellScript', 'SHELL_TASKS', '0 0 4 * * ?', 4, NULL, NULL,
     '{"script":"#!/bin/bash\\necho \\"Hello from Inline Shell Task! Argument: $1\\"; date\\necho PWD is $(pwd)\\necho USER is $(whoami)", "isInlineScript":true, "arguments":["InlineArg"], "workingDirectory":"/tmp"}',
-    'A sample inline Shell script task.', TRUE, 'BROADCAST', NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL);
+    'A sample inline Shell script task.', TRUE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL);
 
 
 INSERT INTO task_user (username, password_hash, email, webhook_address, is_admin)

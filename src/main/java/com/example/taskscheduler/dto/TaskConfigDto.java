@@ -117,4 +117,8 @@ public class TaskConfigDto {
     private List<WorkflowEdge> workflowEdges;
     /** Global parameters for a workflow task, accessible within node parameter templating. Only applicable if taskType is WORKFLOW. */
     private Map<String, Object> globalParameters;
+
+    // Retry Configuration
+    private Integer maxRetryAttempts;
+    private Integer retryIntervalSeconds;
 }

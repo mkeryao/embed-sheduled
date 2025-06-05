@@ -106,6 +106,12 @@ public class TaskConfig {
     /** JSON string representing a map of global parameters for a workflow. */
     private String globalParametersJson;
 
+    // --- Retry Configuration ---
+    /** Maximum number of retry attempts upon failure (0 means no retries). */
+    private Integer maxRetryAttempts;
+    /** Interval in seconds between retry attempts. */
+    private Integer retryIntervalSeconds;
+
     // --- Timestamps ---
     /** Timestamp of when this task configuration was created. */
     private Timestamp createTime;

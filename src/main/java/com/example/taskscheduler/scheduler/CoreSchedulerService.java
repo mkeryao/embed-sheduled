@@ -57,7 +57,9 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
 
-    private TaskScheduler taskScheduler; // Spring's default TaskScheduler
+    // Ensure this is the ThreadPoolTaskScheduler for scheduling with delay/specific time
+    @Autowired
+    private ThreadPoolTaskScheduler taskScheduler;
     @Autowired
     private ApplicationContext applicationContext; // To get BeanTaskExecutor
     @Autowired
@@ -94,14 +96,15 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         this.taskRegistrar = taskRegistrar;
-        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-        taskScheduler.setPoolSize(15); // 设置线程池大小
-        taskScheduler.setThreadNamePrefix("embed-sheduled-task-");
-        taskScheduler.initialize();
-        taskRegistrar.setScheduler(taskScheduler);
-        this.taskScheduler = taskScheduler; // Use this for scheduling tasks
-        // Initial tasks are typically loaded via @PostConstruct calling scheduleTask directly.
-        // This registrar could be used if tasks were defined statically or needed more complex registrar-level setup.
+        // If taskScheduler is not autowired or needs specific configuration not achievable via autowiring alone:
+        if (this.taskScheduler == null) {
+            ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
+            threadPoolTaskScheduler.setPoolSize(15); // Example pool size
+            threadPoolTaskScheduler.setThreadNamePrefix("core-scheduler-");
+            threadPoolTaskScheduler.initialize();
+            this.taskScheduler = threadPoolTaskScheduler;
+        }
+        taskRegistrar.setScheduler(this.taskScheduler);
     }
 
     /**
@@ -187,132 +190,104 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      * @return A {@link Runnable} that can be scheduled.
      */
     private Runnable createTaskRunnable(TaskConfig taskConfig) {
-        return () -> {
-            TaskExecuteLog savedLog = null; // Initialize to null
-            boolean lockAcquired = false;
-            String derivedLockNameForCluster = null; // Will hold the lock name if mode is CLUSTER
-            String executeNo = null; // Will be logId
+        // For cron-scheduled tasks, the first attempt is always 1.
+        // The CustomTaskTrigger will use this Runnable.
+        return new TaskExecutionJob(
+                taskConfig,
+                this.applicationContext,
+                this.taskExecuteLogDao,
+                this.distributedLockService,
+                this, // Pass self for callback to handleTaskCompletion
+                this.notificationService,
+                this.distributedLockService.getSchedulerInstanceId(),
+                1 // Initial attempt for a cron-scheduled run or first manual trigger
+        );
+    }
 
-            try {
-                // Initial log entry for attempting to run
-                TaskExecuteLog log = new TaskExecuteLog();
-                log.setTaskId(taskConfig.getTaskId());
-                log.setStartTime(new Timestamp(System.currentTimeMillis()));
-                log.setState("RUNNING"); // Initial state, might change to SKIPPED
-                log.setInstanceId(distributedLockService.getSchedulerInstanceId());
-                // Set taskPattern based on task type
-                log.setTaskPattern(taskConfig.getTaskType() == 10 ? "WORKFLOW_PARENT" : "NORMAL"); // 3 changed to 10
-                savedLog = taskExecuteLogDao.save(log);
-                executeNo = String.valueOf(savedLog.getLogId());
-                MDC.put("execute_no", executeNo);
+    /**
+     * Handles the completion of a task execution attempt, scheduling retries if applicable.
+     *
+     * @param taskConfig The configuration of the task that completed.
+     * @param finalStatus The final status of the just-completed attempt (e.g., "FAILED", "TIMED_OUT", "SUCCESS").
+     * @param completedAttemptNumber The attempt number that just completed.
+     * @param executionLogId The ID of the log entry for the completed attempt.
+     */
+    public void handleTaskCompletion(TaskConfig taskConfig, String finalStatus, int completedAttemptNumber, long executionLogId) {
+        MDC.put("task_id", String.valueOf(taskConfig.getTaskId()));
+        MDC.put("task_name", taskConfig.getTaskName());
+        MDC.put("execute_no", String.valueOf(executionLogId)); // Log ID of the failed attempt
+        MDC.put("attempt_no", String.valueOf(completedAttemptNumber));
 
-                logger.info("Preparing to execute task: {} (ID: {}, Log ID: {})",
-                        taskConfig.getTaskName(), taskConfig.getTaskId(), savedLog.getLogId());
+        if ("FAILED".equals(finalStatus) || "TIMED_OUT".equals(finalStatus)) {
+            Integer maxRetries = taskConfig.getMaxRetryAttempts();
+            if (maxRetries == null) maxRetries = 0;
 
-                // Distributed Lock Acquisition
-                if (taskConfig.getExecutionMode() == ExecutionMode.CLUSTER) {
-                    if (taskConfig.getTaskId() == null) { // Should not happen for persisted tasks
-                        logger.error("Task ID is null for CLUSTER mode task: {}. Cannot form lock name.", taskConfig.getTaskName());
-                        taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", "Task ID is null, cannot acquire cluster lock.");
-                        // Optionally send notification
-                        notificationService.sendNotification(taskConfig, taskExecuteLogDao.findById(savedLog.getLogId()).orElse(savedLog));
-                        return;
-                    }
-                    derivedLockNameForCluster = "task_lock_id_" + taskConfig.getTaskId();
-                    lockAcquired = distributedLockService.tryLock(derivedLockNameForCluster, distributedLockService.getSchedulerInstanceId());
-                    if (!lockAcquired) {
-                        String skipMessage = "Skipped: Could not acquire CLUSTER lock '" + derivedLockNameForCluster + "'";
-                        logger.warn("{} for task ID {}", skipMessage, taskConfig.getTaskId());
-                        taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "SKIPPED", skipMessage);
-                        notificationService.sendNotification(taskConfig, taskExecuteLogDao.findById(savedLog.getLogId()).orElse(savedLog));
-                        return;
-                    }
-                    logger.info("CLUSTER Lock '{}' acquired for task ID {}", derivedLockNameForCluster, taskConfig.getTaskId());
-                } else {
-                    logger.debug("Task ID {} running in BROADCAST mode, no lock required.", taskConfig.getTaskId());
-                }
+            if (completedAttemptNumber <= maxRetries) { // If current attempt is less than or equal to allowed retries
+                int nextAttempt = completedAttemptNumber + 1;
 
-                // Exclusion Checks (Date, Calendar, Time)
-                String skipReason = checkDateExclusions(taskConfig);
-                if (skipReason == null) skipReason = checkCalendarExclusions(taskConfig);
-                if (skipReason == null) skipReason = checkTimeExclusions(taskConfig);
+                // If this was the last allowed attempt (completedAttemptNumber == maxRetries),
+                // and it failed, we log it and do not schedule another.
+                // The retry should happen if completedAttemptNumber < maxRetries.
+                // Example: maxRetries = 0. Attempt 1 fails. 1 < 0 is false. No retry.
+                // Example: maxRetries = 1. Attempt 1 fails. 1 < 1 is false. No retry.
+                // This means maxRetries is "number of *additional* attempts".
+                // So, if maxRetries = 1, total attempts = 1 (original) + 1 (retry) = 2.
+                // We schedule a retry (attempt #2) if original attempt #1 fails.
+                // The `nextAttempt` should not exceed `maxRetries + 1`.
+                // So, if `completedAttemptNumber` (which just failed) is less than `maxRetries + 1` (total allowed runs), schedule next.
+                // And `nextAttempt` (which is `completedAttemptNumber + 1`) is the one being scheduled.
 
-                if (skipReason != null) {
-                    logger.info("Task {} (ID: {}) skipped: {}. Log ID: {}",
-                            taskConfig.getTaskName(), taskConfig.getTaskId(), skipReason, savedLog.getLogId());
-                    taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "SKIPPED", skipReason);
-                    // Notification for skipped tasks is handled in the finally block after lock release
+                if (completedAttemptNumber >= (maxRetries + 1) ) { //This means all attempts (original + retries) are done
+                     logger.info("Task ID {} failed on attempt {} and max retries ({}) reached. No more retries.",
+                            taskConfig.getTaskId(), completedAttemptNumber, maxRetries);
+                    taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed attempt " + completedAttemptNumber + ", max retries ("+maxRetries+") reached.");
+                    MDC.clear();
                     return;
                 }
 
-                // Actual Task Execution
-                logger.info("Executing task: {} (ID: {}, Log ID: {})",
-                        taskConfig.getTaskName(), taskConfig.getTaskId(), savedLog.getLogId());
 
-                switch (taskConfig.getTaskType()) {
-                    case 0: // Bean task
-                        if (beanTaskExecutor == null) beanTaskExecutor = applicationContext.getBean(BeanTaskExecutor.class);
-                            beanTaskExecutor.execute(taskConfig);
-                        TaskExecuteLog currentLogStateBean = taskExecuteLogDao.findById(savedLog.getLogId()).orElse(savedLog);
-                            if ("RUNNING".equals(currentLogStateBean.getState())) {
-                            taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "SUCCESS", null);
-                        }
-                        logger.info("Bean Task {} (ID: {}) completed. Final state: {}", taskConfig.getTaskName(), taskConfig.getTaskId(), taskExecuteLogDao.findById(savedLog.getLogId()).map(TaskExecuteLog::getState).orElse("UNKNOWN"));
-                        break;
-                        case 1: // Shell script task
-                            // Ensure ShellTaskExecutor is bean-managed and autowired if not already
-                            ShellTaskExecutor shellTaskExecutor = applicationContext.getBean(ShellTaskExecutor.class);
-                            shellTaskExecutor.execute(taskConfig, savedLog);
-                            logger.info("Shell Task {} (ID: {}) execution handled by ShellTaskExecutor. Final state: {}", taskConfig.getTaskName(), taskConfig.getTaskId(), taskExecuteLogDao.findById(savedLog.getLogId()).map(TaskExecuteLog::getState).orElse("UNKNOWN"));
-                            break;
-                        case 2: // HTTP task
-                            HttpTaskExecutor httpTaskExecutor = applicationContext.getBean(HttpTaskExecutor.class);
-                            httpTaskExecutor.execute(taskConfig, savedLog);
-                            logger.info("HTTP Task {} (ID: {}) execution handled by HttpTaskExecutor. Final state: {}", taskConfig.getTaskName(), taskConfig.getTaskId(), taskExecuteLogDao.findById(savedLog.getLogId()).map(TaskExecuteLog::getState).orElse("UNKNOWN"));
-                            break;
-                    case 10: // Workflow task (was 3)
-                        workflowExecutionService.startWorkflow(taskConfig, savedLog);
-                        logger.info("Workflow Task {} (ID: {}) processing initiated. Final state will be set by WorkflowExecutionService.", taskConfig.getTaskName(), taskConfig.getTaskId());
-                        break;
-                        default:
-                            String unknownMsg = "Unknown task type: " + taskConfig.getTaskType();
-                            logger.error(unknownMsg + " for task ID: {}", taskConfig.getTaskId());
-                            taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", unknownMsg);
-                        break;
+                Integer intervalSeconds = taskConfig.getRetryIntervalSeconds();
+                if (intervalSeconds == null || intervalSeconds < 1) intervalSeconds = 30; // Default
+
+                logger.info("Task ID {} failed on attempt {}. Scheduling retry attempt {} in {} seconds. (Max total attempts: {})",
+                            taskConfig.getTaskId(), completedAttemptNumber, nextAttempt, intervalSeconds, maxRetries + 1);
+
+                taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed attempt " + completedAttemptNumber + ", scheduling retry " + nextAttempt + ".");
+
+                TaskExecutionJob retryJob = new TaskExecutionJob(
+                    taskConfig,
+                    this.applicationContext,
+                    this.taskExecuteLogDao,
+                    this.distributedLockService,
+                    this,
+                    this.notificationService,
+                    this.distributedLockService.getSchedulerInstanceId(),
+                    nextAttempt
+                );
+
+                Instant nextExecutionTime = Instant.now().plusSeconds(intervalSeconds);
+                try {
+                    this.taskScheduler.schedule(retryJob, nextExecutionTime); // Use the class field taskScheduler
+                     logger.info("Task ID {} retry attempt {} scheduled for {}.", taskConfig.getTaskId(), nextAttempt, nextExecutionTime);
+                } catch (Exception e) {
+                    logger.error("Error scheduling retry for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
+                    taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed attempt " + completedAttemptNumber + ". Retry attempt " + nextAttempt + " could not be scheduled: " + e.getMessage());
                 }
-            } catch (BeanTaskExecutor.TaskTimeoutException e) {
-                logger.error("Task {} (ID: {}) timed out.", taskConfig.getTaskName(), taskConfig.getTaskId(), e);
-                if (savedLog != null) taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "TIMED_OUT", e.getMessage());
-            } catch (Exception e) {
-                logger.error("Task {} (ID: {}) failed with an unexpected exception.", taskConfig.getTaskName(), taskConfig.getTaskId(), e);
-                if (savedLog != null) {
-                    String errorMsg = e.getMessage() != null ? (e.getMessage().length() > 2000 ? e.getMessage().substring(0, 2000) : e.getClass().getSimpleName()) : "Unknown error";
-                    TaskExecuteLog currentLog = taskExecuteLogDao.findById(savedLog.getLogId()).orElse(null);
-                    // Avoid overwriting a more specific state like TIMED_OUT if already set by BeanTaskExecutor's exception handling
-                    if (currentLog != null && !"TIMED_OUT".equals(currentLog.getState())) {
-                        taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", errorMsg);
-                    } else if (currentLog == null) { // Should ideally not happen
-                         taskExecuteLogDao.updateLogStatus(savedLog.getLogId(), "FAILED", "Log disappeared: " + errorMsg);
-                    }
-                }
-            } finally {
-                if (lockAcquired && derivedLockNameForCluster != null) { // Only unlock if acquired and name is set (i.e., CLUSTER mode)
-                    distributedLockService.unlock(derivedLockNameForCluster, distributedLockService.getSchedulerInstanceId());
-                    logger.info("CLUSTER Lock '{}' released for task ID {}", derivedLockNameForCluster, taskConfig.getTaskId());
-                }
-                // Send notification after final log state is set (or determined)
-                if (savedLog != null && savedLog.getLogId() != null) {
-                    TaskExecuteLog finalLogState = taskExecuteLogDao.findById(savedLog.getLogId()).orElse(savedLog); // Refresh log state
-                    notificationService.sendNotification(taskConfig, finalLogState);
-                } else {
-                    // This case might occur if the initial log save itself failed.
-                    logger.error("Could not send notification for task {} (ID: {}) because its execution log was not properly saved.", taskConfig.getTaskName(), taskConfig.getTaskId());
-                }
+            } else {
+                 logger.info("Task ID {} failed on final attempt {} (max configured retries: {}). No more retries.",
+                            taskConfig.getTaskId(), completedAttemptNumber, maxRetries);
+                 taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed on final attempt " + completedAttemptNumber + ". Max retries ("+maxRetries+") exhausted.");
             }
-        };
+        } else {
+            logger.info("Task ID {} completed with status {} on attempt {}.", taskConfig.getTaskId(), finalStatus, completedAttemptNumber);
+            if (completedAttemptNumber > 1 && "SUCCESS".equals(finalStatus)) {
+                 taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Successfully completed on attempt " + completedAttemptNumber + ".");
+            }
+        }
+        MDC.clear();
     }
 
-    // --- Helper methods for exclusion checks ---
+    // --- Helper methods for exclusion checks (checkDateExclusions, etc.) remain unchanged ---
 
     /**
      * Checks if the task should be excluded based on its configured start and end dates.
@@ -454,30 +429,27 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         TaskConfig taskConfig = taskConfigDao.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found with ID: " + taskId + " for manual trigger."));
 
-        // Log if triggering an inactive task, but still proceed as manual trigger implies override of schedule.
-        // The execution runnable itself will check isActive for regular scheduling, but manual trigger might bypass this.
-        // However, the current createTaskRunnable respects exclusions.
         if (!taskConfig.isActive()) {
-            logger.warn("Manual trigger requested for INACTIVE task ID: {}. It will attempt to run once if other conditions pass.", taskId);
+            // If we decide that manual trigger should not run inactive tasks, we can return or throw here.
+            // For now, allow triggering inactive tasks manually but log a warning.
+            logger.warn("Manual trigger requested for INACTIVE task ID: {}. It will attempt to run once.", taskId);
         }
 
-        Runnable runnable = createTaskRunnable(taskConfig);
-        if (runnable != null) {
-            // Task is run in a thread from the taskScheduler's pool
-            taskScheduler.schedule(runnable, Instant.now());
-            logger.info("Manually triggered task ID: {}. Execution outcome will be logged by the task itself.", taskId);
-        } else {
-            // This should not happen if taskConfig is valid.
-            logger.error("Could not create runnable for manual trigger of task ID: {}. Logging a FAILED log.", taskId);
-            TaskExecuteLog log = new TaskExecuteLog();
-            log.setTaskId(taskId);
-            log.setStartTime(new Timestamp(System.currentTimeMillis()));
-            log.setState("FAILED");
-            log.setExMsg("Failed to create runnable for manual trigger");
-            log.setInstanceId(distributedLockService.getSchedulerInstanceId());
-            log.setTaskPattern(taskConfig.getTaskType() == 10 ? "WORKFLOW_PARENT" : "NORMAL"); // 3 changed to 10 for consistency
-            taskExecuteLogDao.save(log); // No notification for this pre-flight failure
-        }
+        // Create TaskExecutionJob with attemptNumber = 1 for manual trigger
+        TaskExecutionJob job = new TaskExecutionJob(
+                taskConfig,
+                this.applicationContext,
+                this.taskExecuteLogDao,
+                this.distributedLockService,
+                this, // Pass self for callback
+                this.notificationService,
+                this.distributedLockService.getSchedulerInstanceId(),
+                1 // Initial attempt for a manual run
+        );
+
+        // Use the class field taskScheduler (ThreadPoolTaskScheduler)
+        this.taskScheduler.schedule(job, Instant.now());
+        logger.info("Manually triggered task ID: {}. Attempt 1. Execution outcome will be logged.", taskId);
     }
 
     /**
