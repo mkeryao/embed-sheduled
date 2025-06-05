@@ -50,6 +50,9 @@ public class WorkflowExecutionService {
     @Autowired
     private ExpressionUtil expressionUtil;
 
+    @Autowired
+    private com.example.taskscheduler.scheduler.CoreSchedulerService coreSchedulerService;
+
     /**
      * Starts the execution of a workflow defined by the given {@link TaskConfig}.
      * This method is called by {@link com.example.taskscheduler.scheduler.CoreSchedulerService}
@@ -133,20 +136,65 @@ public class WorkflowExecutionService {
                 workflowTaskConfig.getTaskName(), workflowTaskConfig.getTaskId(), startNode.getNodeId());
 
         Map<String, WorkflowNode> nodeMap = nodes.stream().collect(Collectors.toMap(WorkflowNode::getNodeId, node -> node));
-        StringBuilder overallWorkflowMessage = new StringBuilder("Workflow started. Global params loaded: " + initialContextData.keySet() + "\n");
+
+        // Initial execution context for starting nodes
         Map<String, Object> executionContext = new HashMap<>(initialContextData);
 
-        boolean overallSuccess = executeNodeRecursive(startNode, parentWorkflowLog, nodeMap, edges, executionContext, overallWorkflowMessage);
-
-        if (overallSuccess) {
-            logger.info("Workflow {} (ID: {}, Log ID: {}) completed successfully.",
-                    workflowTaskConfig.getTaskName(), workflowTaskConfig.getTaskId(), parentWorkflowLog.getLogId());
-            updateWorkflowLog(parentWorkflowLog.getLogId(), "SUCCESS", "Workflow completed successfully. " + overallWorkflowMessage.toString());
-        } else {
-            logger.warn("Workflow {} (ID: {}, Log ID: {}) failed or stopped.",
-                    workflowTaskConfig.getTaskName(), workflowTaskConfig.getTaskId(), parentWorkflowLog.getLogId());
-            updateWorkflowLog(parentWorkflowLog.getLogId(), "FAILED", "Workflow failed or stopped. " + overallWorkflowMessage.toString());
+        // Update parent workflow log to indicate it's running and what nodes are initially triggered
+        // More sophisticated state can be stored in rtn_msg as JSON if needed.
+        StringBuilder initialMessage = new StringBuilder("Workflow started. ");
+        if (!initialContextData.isEmpty()) {
+            initialMessage.append("Global params loaded: ").append(initialContextData.keySet().toString()).append(". ");
         }
+        initialMessage.append("Attempting to trigger start node(s).");
+
+        // Potentially update parentWorkflowLog's rtn_msg with a structured state
+        // For now, just a general message. The actual node statuses will be tracked by their individual logs
+        // and aggregated by processNodeCompletion.
+        updateWorkflowLog(parentWorkflowLog.getLogId(), "RUNNING", initialMessage.toString());
+
+        // Trigger the start node. If there are multiple potential start nodes (no incoming edges),
+        // this logic might need to trigger all of them if that's the desired semantic.
+        // For now, findStartNode usually returns one.
+        if (startNode != null) {
+            logger.info("Workflow {} (Log ID: {}): Triggering start node '{}'.",
+                        workflowTaskConfig.getTaskName(), parentWorkflowLog.getLogId(), startNode.getNodeId());
+
+            Optional<TaskConfig> referencedTaskConfigOpt = taskConfigDao.findById(startNode.getTaskConfigId());
+            if (referencedTaskConfigOpt.isPresent() && referencedTaskConfigOpt.get().getTaskType() == 0) { // Must be BEAN task
+                TaskConfig referencedTaskConfig = referencedTaskConfigOpt.get();
+                Map<String, Object> resolvedParameters = prepareAndResolveParameters(referencedTaskConfig, startNode, executionContext);
+                String resolvedParametersJson = (resolvedParameters != null && !resolvedParameters.isEmpty()) ? JSON.toJSONString(resolvedParameters) : null;
+
+                coreSchedulerService.triggerTaskManually(
+                        referencedTaskConfig.getTaskId(),
+                        "WORKFLOW_STEP",
+                        parentWorkflowLog.getLogId(),
+                        resolvedParametersJson,
+                        startNode.getNodeId() // Pass the workflowNodeId
+                );
+                // Initial status in context for the start node
+                executionContext.put(startNode.getNodeId() + "_status", "TRIGGERED");
+                // Update parent log message or state if storing detailed node status there
+                String msgUpdate = parentWorkflowLog.getRtnMsg() + "\nNode '" + startNode.getNodeId() + "' triggered.";
+                updateWorkflowLog(parentWorkflowLog.getLogId(), "RUNNING", msgUpdate);
+
+            } else {
+                String errorMsg = String.format("Start node '%s' references invalid, non-BEAN, or missing TaskConfigId: %d",
+                                                startNode.getNodeId(), startNode.getTaskConfigId());
+                logger.error(errorMsg);
+                updateWorkflowLog(parentWorkflowLog.getLogId(), "FAILED", errorMsg);
+                // No further processing if start node cannot be triggered.
+            }
+        } else {
+             // This case should have been caught earlier (no nodes or startNode is null after findStartNode)
+             // but as a safeguard:
+            logger.warn("Workflow {} (Log ID: {}): No start node found, workflow cannot begin.",
+                         workflowTaskConfig.getTaskName(), parentWorkflowLog.getLogId());
+            // If there were no nodes at all, it would have been SUCCESS. If nodes exist but no start node, it's a definition FAILED.
+            updateWorkflowLog(parentWorkflowLog.getLogId(), "FAILED", "No start node could be determined.");
+        }
+        // startWorkflow now finishes. Progression happens via processNodeCompletion.
     }
 
     /**
@@ -171,135 +219,11 @@ public class WorkflowExecutionService {
         return nodes.stream()
                 .filter(node -> !targetNodeIds.contains(node.getNodeId()))
                 .findFirst()
-                .orElse(nodes.get(0)); // Fallback to the first node
+                .orElse(nodes.get(0)); // Fallback to the first node if no other start node criteria met
     }
 
-    /**
-     * Recursively executes workflow nodes based on defined edges and conditions.
-     *
-     * @param currentNode The current {@link WorkflowNode} to execute.
-     * @param parentWorkflowLog The main log entry for the parent workflow.
-     * @param nodeMap A map of all nodes in the workflow, keyed by their ID.
-     * @param allEdges A list of all edges defining transitions in the workflow.
-     * @param contextData A map holding the execution context (global params, node statuses, outputs).
-     * @param overallWorkflowMessage A {@link StringBuilder} to accumulate messages about the workflow's progress.
-     * @return {@code true} if the current execution path completed successfully, {@code false} otherwise.
-     */
-    private boolean executeNodeRecursive(WorkflowNode currentNode, TaskExecuteLog parentWorkflowLog,
-                                         Map<String, WorkflowNode> nodeMap, List<WorkflowEdge> allEdges,
-                                         Map<String, Object> contextData, StringBuilder overallWorkflowMessage) {
-        if (currentNode == null) {
-            overallWorkflowMessage.append("Reached end of a workflow path (current node is null).\n");
-            return true; // Successfully completed this path
-        }
-
-        logger.info("Executing workflow node: Node ID '{}', TaskConfigId: {} (Parent Workflow Log ID: {}). Context keys: {}",
-                currentNode.getNodeId(), currentNode.getTaskConfigId(), parentWorkflowLog.getLogId(), contextData.keySet());
-        overallWorkflowMessage.append("Executing node '").append(currentNode.getNodeId()).append("': ");
-
-        Optional<TaskConfig> referencedTaskConfigOpt = taskConfigDao.findById(currentNode.getTaskConfigId());
-        if (!referencedTaskConfigOpt.isPresent() || referencedTaskConfigOpt.get().getTaskType() != 0) { // Must be BEAN task
-            String errorMsg = String.format("Node '%s' references invalid or non-BEAN TaskConfigId: %d",
-                    currentNode.getNodeId(), currentNode.getTaskConfigId());
-            logger.error(errorMsg);
-            overallWorkflowMessage.append("Failed - ").append(errorMsg).append(".\n");
-            contextData.put(currentNode.getNodeId() + "_status", "ERROR_INVALID_CONFIG");
-            return false; // Node execution failed due to bad configuration
-        }
-        TaskConfig referencedTaskConfig = referencedTaskConfigOpt.get();
-
-        TaskExecuteLog stepLog = new TaskExecuteLog();
-        stepLog.setTaskId(referencedTaskConfig.getTaskId());
-        stepLog.setStartTime(new Timestamp(System.currentTimeMillis()));
-        stepLog.setState("RUNNING");
-        stepLog.setInstanceId(distributedLockService.getSchedulerInstanceId());
-        stepLog.setParentLogId(parentWorkflowLog.getLogId());
-        stepLog.setTaskPattern("WORKFLOW_STEP");
-        TaskExecuteLog savedStepLog = taskExecuteLogDao.save(stepLog);
-
-        String stepExecuteNo = String.valueOf(savedStepLog.getLogId());
-        MDC.put("execute_no", stepExecuteNo); // Add step's execute_no to MDC
-
-        String stepStatus;
-        String stepMessage = null;
-
-        try {
-            Map<String, Object> resolvedParameters = prepareAndResolveParameters(referencedTaskConfig, currentNode, contextData);
-
-            TaskConfig effectiveTaskConfigForBean = new TaskConfig(); // Temporary TaskConfig for this specific execution
-            BeanUtils.copyProperties(referencedTaskConfig, effectiveTaskConfigForBean); // Start with base config
-            if (resolvedParameters != null && !resolvedParameters.isEmpty()) {
-                // Override beanParameters with resolved ones for this execution
-                effectiveTaskConfigForBean.setBeanParameters(JSON.toJSONString(resolvedParameters));
-            }
-
-            beanTaskExecutor.execute(effectiveTaskConfigForBean); // This may throw exceptions including TaskTimeoutException
-            stepStatus = "SUCCESS";
-            overallWorkflowMessage.append("Succeeded. ");
-        } catch (BeanTaskExecutor.TaskTimeoutException e) {
-            logger.warn("Node '{}' (Task ID: {}) timed out: {}", currentNode.getNodeId(), referencedTaskConfig.getTaskId(), e.getMessage());
-            stepStatus = "TIMED_OUT";
-            stepMessage = e.getMessage();
-            overallWorkflowMessage.append("Timed Out. ");
-        } catch (Exception e) {
-            logger.error("Node '{}' (Task ID: {}) failed execution: {}", currentNode.getNodeId(), referencedTaskConfig.getTaskId(), e.getMessage(), e);
-            stepStatus = "FAILED";
-            stepMessage = e.getMessage();
-            overallWorkflowMessage.append("Failed. ");
-        }
-
-        taskExecuteLogDao.updateLogStatus(savedStepLog.getLogId(), stepStatus, stepMessage);
-        contextData.put(currentNode.getNodeId() + "_status", stepStatus);
-        // Future enhancement: capture actual output from beanTaskExecutor.execute (if it returns a value)
-        // and put it into contextData, e.g., contextData.put(currentNode.getNodeId() + "_output", actualOutput);
-
-        // Determine next node based on edges and conditions
-        List<WorkflowEdge> outgoingEdges = allEdges.stream()
-                .filter(edge -> edge.getFromNodeId().equals(currentNode.getNodeId()))
-                .sorted(Comparator.comparingInt(WorkflowEdge::getPriority)) // Lower number = higher priority
-                .collect(Collectors.toList());
-
-        if (outgoingEdges.isEmpty()) {
-            overallWorkflowMessage.append("No outgoing edges from node '").append(currentNode.getNodeId()).append("'. Path ends.\n");
-            // A path ending is not necessarily a workflow failure if the step itself was not a failure.
-            return "SUCCESS".equals(stepStatus) || "TIMED_OUT".equals(stepStatus);
-        }
-
-        for (WorkflowEdge edge : outgoingEdges) {
-            boolean conditionMet = false;
-            String evaluatedExpression = StringUtils.hasText(edge.getExpression()) ? edge.getExpression() : edge.getCondition();
-            if (StringUtils.hasText(evaluatedExpression)) {
-                conditionMet = expressionUtil.evaluate(evaluatedExpression, contextData);
-                logger.debug("Edge from '{}' to '{}': expression/condition '{}' (stepStatus='{}') evaluated to {}",
-                    edge.getFromNodeId(), edge.getToNodeId(), evaluatedExpression, stepStatus, conditionMet);
-            } else {
-                // No expression and no simple condition implies unconditional transition if current step was SUCCESSFUL
-                conditionMet = "SUCCESS".equals(stepStatus);
-                 logger.debug("Edge from '{}' to '{}': no expression/condition, defaulting based on stepStatus='{}', conditionMet={}",
-                    edge.getFromNodeId(), edge.getToNodeId(), stepStatus, conditionMet);
-            }
-
-            if (conditionMet) {
-                overallWorkflowMessage.append("Transitioning via edge from '").append(edge.getFromNodeId())
-                                      .append("' to '").append(edge.getToNodeId())
-                                      .append("' due to expression/condition '").append(evaluatedExpression).append("'.\n");
-                WorkflowNode nextNode = nodeMap.get(edge.getToNodeId());
-                if (nextNode == null && edge.getToNodeId() != null && !"END".equalsIgnoreCase(edge.getToNodeId())) {
-                    logger.error("Next node ID '{}' defined in edge from '{}' not found in node map. Workflow terminates.",
-                            edge.getToNodeId(), edge.getFromNodeId());
-                    overallWorkflowMessage.append("Error: Next node '").append(edge.getToNodeId()).append("' not found.\n");
-                    return false; // Critical error in workflow definition
-                }
-                // Recursively execute the next node. If it fails, the whole workflow is marked as failed.
-                return executeNodeRecursive(nextNode, parentWorkflowLog, nodeMap, allEdges, contextData, overallWorkflowMessage);
-            }
-        }
-
-        overallWorkflowMessage.append("No outgoing edge conditions met for node '").append(currentNode.getNodeId()).append("'. Workflow path ends.\n");
-        // If no conditions met, this path of the workflow ends.
-        // This is considered a successful completion of this path if the current node itself didn't fail.
-        return "SUCCESS".equals(stepStatus) || "TIMED_OUT".equals(stepStatus);
-    }
+    // executeNodeRecursive method is removed as its logic is now split between startWorkflow (for initial trigger)
+    // and processNodeCompletion (for handling subsequent triggers and state).
 
     /**
      * Prepares and resolves parameters for a workflow node execution.
@@ -360,5 +284,257 @@ public class WorkflowExecutionService {
             finalMessage = message.substring(0, 1997) + "...";
         }
         taskExecuteLogDao.updateLogStatus(logId, status, finalMessage);
+    }
+
+    // New method to be called by CoreSchedulerService upon node completion
+    public void processNodeCompletion(long parentWorkflowLogId, String completedNodeId, String nodeFinalStatus, long nodeLastLogId) {
+        MDC.put("workflow_log_id", String.valueOf(parentWorkflowLogId));
+        MDC.put("completed_node_id", completedNodeId);
+        MDC.put("node_final_status", nodeFinalStatus);
+        logger.info("Processing completion of node '{}' for workflow log ID {} with status '{}' (Last Log ID: {}).",
+                completedNodeId, parentWorkflowLogId, nodeFinalStatus, nodeLastLogId);
+
+        TaskExecuteLog parentWorkflowLog = taskExecuteLogDao.findById(Math.toIntExact(parentWorkflowLogId)).orElse(null);
+        if (parentWorkflowLog == null) {
+            logger.error("Parent workflow log ID {} not found. Cannot process node completion for node {}.", parentWorkflowLogId, completedNodeId);
+            MDC.clear();
+            return;
+        }
+
+        TaskConfig workflowTaskConfig = taskConfigDao.findById(parentWorkflowLog.getTaskId()).orElse(null);
+        if (workflowTaskConfig == null || workflowTaskConfig.getTaskType() != 10) {
+            logger.error("TaskConfig for workflow (ID: {}) not found or not a workflow type. Cannot process node completion.", parentWorkflowLog.getTaskId());
+            updateWorkflowLog(parentWorkflowLog.getLogId(), "FAILED", "Could not retrieve workflow task config during node completion.");
+            MDC.clear();
+            return;
+        }
+
+        List<WorkflowNode> nodes;
+        List<WorkflowEdge> edges;
+        Map<String, WorkflowNode> nodeMap; // For quick lookup
+        try {
+            nodes = JSON.parseArray(workflowTaskConfig.getWorkflowNodesJson(), WorkflowNode.class);
+            edges = JSON.parseArray(workflowTaskConfig.getWorkflowEdgesJson(), WorkflowEdge.class);
+            if (CollectionUtils.isEmpty(nodes)) {
+                logger.warn("Workflow {} has no nodes defined. Cannot process node completion further.", workflowTaskConfig.getTaskName());
+                // This state should ideally not be reached if startWorkflow handled it.
+                MDC.clear();
+                return;
+            }
+            nodeMap = nodes.stream().collect(Collectors.toMap(WorkflowNode::getNodeId, node -> node));
+        } catch (Exception e) {
+            logger.error("Failed to parse workflow definition for workflow {} during node completion: {}", workflowTaskConfig.getTaskName(), e.getMessage(), e);
+            updateWorkflowLog(parentWorkflowLog.getLogId(), "FAILED", "Error parsing workflow definition during node completion: " + e.getMessage());
+            MDC.clear();
+            return;
+        }
+
+        // --- State Management: Load current workflow state (e.g., from parentWorkflowLog.getRtnMsg()) ---
+        // For simplicity, we'll build a context map. A more robust solution might involve a dedicated state object.
+        Map<String, Object> executionContext = new HashMap<>();
+        // Load global parameters (if any were stored or needed)
+        if (StringUtils.hasText(workflowTaskConfig.getGlobalParametersJson())) {
+             try {
+                Map<String, Object> globalParams = JSON.parseObject(workflowTaskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {});
+                executionContext.putAll(globalParams);
+            } catch (Exception e) {
+                 logger.warn("Could not parse global params for workflow {} during node completion: {}", workflowTaskConfig.getTaskName(), e.getMessage());
+            }
+        }
+        executionContext.put("workflow_name", workflowTaskConfig.getTaskName());
+        executionContext.put("workflow_id", workflowTaskConfig.getTaskId());
+        executionContext.put("workflow_log_id", parentWorkflowLogId);
+
+        // Populate context with status of all known nodes so far by querying their latest terminal logs
+        // This is crucial for evaluating conditions for subsequent nodes.
+        for (WorkflowNode node : nodes) {
+            if (node.getNodeId().equals(completedNodeId)) {
+                executionContext.put(node.getNodeId() + "_status", nodeFinalStatus);
+            } else {
+                // Find the latest terminal status for other nodes if needed for complex conditions
+                // This could involve querying TaskExecuteLogDao: findLatestTerminalLogForNode(parentWorkflowLogId, node.getTaskConfigId(), node.getNodeId())
+                // For now, we primarily care about the completedNodeId's status for direct outgoing edges.
+                // A simple approach: if not the completed node, assume its prior state if we were storing it, or leave it out.
+                // For this iteration, the context will primarily use the just-completed node's status.
+        //    --> This needs to be more robust for evaluating complex conditions.
+        // Let's try to populate more completely.
+        final Map<String, String> currentNodeStates = new HashMap<>();
+        for (WorkflowNode node : nodes) {
+            String statusForContext = "PENDING"; // Default if not yet run or completed
+            if (node.getNodeId().equals(completedNodeId)) {
+                statusForContext = nodeFinalStatus;
+            } else {
+                // Query DAO for the latest log status for this node in this workflow instance.
+                // This requires a method that can find the latest log for a specific node_id within a parent_workflow_log_id.
+                // TaskExecuteLogDao would need: findLatestLogForWorkflowNode(parentWorkflowLogId, node.getNodeId())
+                // This method would internally know how to map nodeId to task_id and filter appropriately.
+                // For now, we simulate: find logs by parent and task_id, then assume nodeId matches if task_id does (simplification)
+                List<TaskExecuteLog> nodeLogs = taskExecuteLogDao.findByParentExecuteNoAndTaskId(parentWorkflowLogId, node.getTaskConfigId());
+                if (!nodeLogs.isEmpty()) {
+                    // Sort by logId descending to get the latest first
+                    nodeLogs.sort(Comparator.comparing(TaskExecuteLog::getLogId).reversed());
+                    TaskExecuteLog latestLog = nodeLogs.get(0); // This is the absolute latest, could be RUNNING or a terminal RETRY_ATTEMPT
+
+                    // We need the *terminal* status of the *sequence* of attempts for this node.
+                    // If latestLog is SUCCESS, FAILED, TIMED_OUT, it's terminal *for that attempt*.
+                    // If it's FAILED/TIMED_OUT, we need to check if it was the last possible attempt.
+                    TaskConfig nodeTaskConfig = taskConfigDao.findById(node.getTaskConfigId()).orElse(null);
+                    int attemptNumber = 1; // This is hard to get from log directly without a dedicated column
+                                           // or parsing from message of RETRY_ATTEMPT logs.
+                                           // For simplicity, if latest is FAILED/TIMED_OUT, assume it's terminal for now.
+                                           // This is a significant simplification.
+
+                    if ("SUCCESS".equals(latestLog.getState())) {
+                        statusForContext = "SUCCESS";
+                    } else if ("FAILED".equals(latestLog.getState()) || "TIMED_OUT".equals(latestLog.getState())) {
+                        // Simplified: assume terminal failure if latest log shows FAILED/TIMED_OUT
+                        statusForContext = latestLog.getState();
+                    } else if ("RUNNING".equals(latestLog.getState())) {
+                        statusForContext = "RUNNING";
+                    } else if ("TRIGGERED".equals(latestLog.getState())) { // If we were to save "TRIGGERED" state
+                        statusForContext = "TRIGGERED";
+                    }
+                }
+            }
+            executionContext.put(node.getNodeId() + "_status", statusForContext);
+            currentNodeStates.put(node.getNodeId(), statusForContext);
+        }
+
+        logger.info("Reconstructed node statuses for workflow {}: {}", workflowTaskConfig.getTaskName(), currentNodeStates);
+        logger.debug("Full executionContext for evaluating next steps for workflow {}: {}", workflowTaskConfig.getTaskName(), executionContext);
+
+        // --- Logic to trigger next nodes ---
+        boolean allPathsEnded = true; // Assume all paths end unless a new node is triggered
+        boolean anyPathFailed = false;
+
+        if ("FAILED".equals(nodeFinalStatus) || "TIMED_OUT".equals(nodeFinalStatus)) {
+             // If a critical node fails and there are no alternative paths, the workflow might be considered failed.
+             // This logic depends on workflow design (e.g., error handling paths).
+             // For now, a FAILED/TIMED_OUT node means this path has failed.
+             anyPathFailed = true; // A path has failed.
+        }
+
+        if ("SUCCESS".equals(nodeFinalStatus)) { // Only proceed if the completed node was successful
+            List<WorkflowEdge> outgoingEdges = edges.stream()
+                    .filter(edge -> edge.getFromNodeId().equals(completedNodeId))
+                    .sorted(Comparator.comparingInt(WorkflowEdge::getPriority))
+                    .collect(Collectors.toList());
+
+            if (!outgoingEdges.isEmpty()) {
+                allPathsEnded = false; // We have outgoing edges, so not all paths have ended yet.
+                boolean transitionTaken = false;
+                for (WorkflowEdge edge : outgoingEdges) {
+                    boolean conditionMet = false;
+                    if (StringUtils.hasText(edge.getExpression())) {
+                        conditionMet = expressionUtil.evaluate(edge.getExpression(), executionContext);
+                    } else { // No expression means unconditional if prior step was SUCCESS
+                        conditionMet = true;
+                    }
+
+                    if (conditionMet) {
+                        WorkflowNode nextNodeToTrigger = nodeMap.get(edge.getToNodeId());
+                        if (nextNodeToTrigger != null) {
+                            logger.info("Workflow {}: Condition met for edge {} -> {}. Triggering next node '{}'.",
+                                    workflowTaskConfig.getTaskName(), completedNodeId, edge.getToNodeId(), nextNodeToTrigger.getNodeId());
+
+                            Map<String, Object> nextNodeParams = prepareAndResolveParameters(
+                                taskConfigDao.findById(nextNodeToTrigger.getTaskConfigId()).orElse(null), // This could be an issue if taskConfig is null
+                                nextNodeToTrigger,
+                                executionContext
+                            );
+                            String nextNodeParamsJson = (nextNodeParams != null && !nextNodeParams.isEmpty()) ? JSON.toJSONString(nextNodeParams) : null;
+
+                            coreSchedulerService.triggerTaskManually(
+                                    nextNodeToTrigger.getTaskConfigId(),
+                                    "WORKFLOW_STEP",
+                                    parentWorkflowLogId,
+                                    nextNodeParamsJson,
+                                    nextNodeToTrigger.getNodeId()
+                            );
+                            // TODO: Update workflow state to mark this node as TRIGGERED
+                            transitionTaken = true;
+                            break; // Assuming only one path is taken from a node if multiple conditions meet (priority based)
+                        } else if (edge.getToNodeId() != null && !"END".equalsIgnoreCase(edge.getToNodeId())) {
+                             logger.error("Workflow {}: Next node ID '{}' not found in map. Edge from '{}'.",
+                                workflowTaskConfig.getTaskName(), edge.getToNodeId(), completedNodeId);
+                             anyPathFailed = true; // Error in definition
+                        } else {
+                             logger.info("Workflow {}: Path ended at 'END' marker or null toNodeId from node '{}'.", workflowTaskConfig.getTaskName(), completedNodeId);
+                        }
+                    }
+                }
+                if (!transitionTaken && !outgoingEdges.isEmpty()) {
+                    // Conditions for all outgoing edges evaluated to false. This path ends here.
+                    allPathsEnded = true;
+                }
+            } else { // No outgoing edges from the completed successful node
+                allPathsEnded = true;
+            }
+        } else { // Node failed/timed_out, this path stops unless error handling paths exist (not implemented here)
+             allPathsEnded = true; // This path has ended due to node failure.
+        }
+
+
+        // --- Check for Overall Workflow Completion ---
+        // This is a simplified check. A robust check needs to:
+        // 1. Know all end nodes OR ensure all triggered nodes have completed.
+        // 2. Consider all possible paths.
+        // 3. If 'anyPathFailed' is true and no compensatory paths exist, workflow is FAILED.
+        // For now: if allPathsEnded (meaning the current path ended, and no new nodes were triggered from it)
+        // then we check status.
+        if (allPathsEnded) {
+            // More sophisticated check: query DB for any other RUNNING/TRIGGERED step logs for this parentWorkflowLogId.
+            // If none, then the workflow is truly finished.
+            boolean hasPendingNodes = false; // This needs to be determined by checking status of ALL nodes in the workflow definition.
+
+            // More robust state reconstruction based on current node states
+            long pendingOrRunningNodesCount = currentNodeStates.values().stream()
+                .filter(status -> "PENDING".equals(status) || "RUNNING".equals(status) || "TRIGGERED".equals(status))
+                .count();
+
+            if (pendingOrRunningNodesCount == 0 && allPathsEnded) {
+                // Workflow is complete if no nodes are actively running/pending AND all traversable paths have ended.
+                boolean overallWorkflowSuccess = !anyPathFailed; // If any path had a terminal failure, workflow is failed.
+
+                // Additional check: ensure all nodes that were supposed to run (not PENDING due to untaken paths) are SUCCESS.
+                if(overallWorkflowSuccess) {
+                    for(Map.Entry<String, String> entry : currentNodeStates.entrySet()) {
+                        if(!("SUCCESS".equals(entry.getValue()) || "PENDING".equals(entry.getValue()))) {
+                            // If a node that wasn't simply pending (i.e. it ran or should have run) isn't SUCCESS, then it's not overall success.
+                            // This check is tricky if "PENDING" can also mean it was on a path that correctly wasn't taken.
+                            // A simpler check: if anyPathFailed is false, and no nodes are running/pending, it's SUCCESS.
+                            // This assumes that if a node was supposed to run and didn't reach SUCCESS, anyPathFailed would be true.
+                        }
+                    }
+                }
+
+                String finalWorkflowStatus = overallWorkflowSuccess ? "SUCCESS" : "FAILED";
+                logger.info("Workflow {} (Log ID: {}) determined to be complete with status: {}. Node statuses: {}",
+                            workflowTaskConfig.getTaskName(), parentWorkflowLogId, finalWorkflowStatus, currentNodeStates);
+
+                String finalMessage = (parentWorkflowLog.getRtnMsg() == null ? "" : parentWorkflowLog.getRtnMsg()) +
+                                      "\nNode " + completedNodeId + " finished: " + nodeFinalStatus + ". Last log: " + nodeLastLogId +
+                                      ". Workflow processing complete. Final Node States: " + JSON.toJSONString(currentNodeStates) +
+                                      ". Final status: " + finalWorkflowStatus;
+                updateWorkflowLog(parentWorkflowLog.getLogId(), finalWorkflowStatus, finalMessage);
+                parentWorkflowLog.setEndTime(new Timestamp(System.currentTimeMillis())); // Set end time for parent
+                taskExecuteLogDao.save(parentWorkflowLog); // Save end time
+
+            } else {
+                 // Workflow still running or has pending/triggered tasks
+                 logger.info("Workflow {} (Log ID: {}) still in progress. Pending/Running nodes: {}. All paths ended: {}. Any path failed: {}",
+                            workflowTaskConfig.getTaskName(), parentWorkflowLogId, pendingOrRunningNodesCount, allPathsEnded, anyPathFailed);
+
+                String currentMessage = (parentWorkflowLog.getRtnMsg() == null ? "" : parentWorkflowLog.getRtnMsg());
+                // Avoid appending the same node completion message multiple times if processNodeCompletion is called again for some reason
+                String nodeCompletionMessage = "\nNode " + completedNodeId + " finished: " + nodeFinalStatus + ". Last log: " + nodeLastLogId + ".";
+                if (!currentMessage.contains(nodeCompletionMessage)) { // Simple check to avoid duplicate message parts
+                    currentMessage += nodeCompletionMessage;
+                }
+                currentMessage += " Current Node States: " + JSON.toJSONString(currentNodeStates);
+                updateWorkflowLog(parentWorkflowLog.getLogId(), "RUNNING", currentMessage);
+            }
+        }
+        MDC.clear();
     }
 }

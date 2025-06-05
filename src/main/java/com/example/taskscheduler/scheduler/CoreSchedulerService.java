@@ -69,6 +69,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     @Autowired
     private NotificationService notificationService;
     @Autowired
+    @org.springframework.context.annotation.Lazy // To handle potential circular dependency
     private WorkflowExecutionService workflowExecutionService;
 
 
@@ -192,6 +193,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     private Runnable createTaskRunnable(TaskConfig taskConfig) {
         // For cron-scheduled tasks, the first attempt is always 1.
         // The CustomTaskTrigger will use this Runnable.
+        // Cron tasks are considered "NORMAL" and have no parent.
         return new TaskExecutionJob(
                 taskConfig,
                 this.applicationContext,
@@ -200,7 +202,11 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 this, // Pass self for callback to handleTaskCompletion
                 this.notificationService,
                 this.distributedLockService.getSchedulerInstanceId(),
-                1 // Initial attempt for a cron-scheduled run or first manual trigger
+                1, // Initial attempt for a cron-scheduled run
+                "NORMAL", // initialTaskPattern for cron
+                null,     // parentLogId for cron
+                null,     // effectiveBeanParametersJson for cron
+                null      // workflowNodeId for cron
         );
     }
 
@@ -211,11 +217,15 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      * @param finalStatus The final status of the just-completed attempt (e.g., "FAILED", "TIMED_OUT", "SUCCESS").
      * @param completedAttemptNumber The attempt number that just completed.
      * @param executionLogId The ID of the log entry for the completed attempt.
+     * @param originalInitialPattern The initialTaskPattern of the first attempt in this sequence.
+     * @param originalParentLogId The parentLogId of the first attempt in this sequence (if any).
+     * @param workflowNodeId The ID of the workflow node, if this task is part of a workflow.
      */
-    public void handleTaskCompletion(TaskConfig taskConfig, String finalStatus, int completedAttemptNumber, long executionLogId) {
+    public void handleTaskCompletion(TaskConfig taskConfig, String finalStatus, int completedAttemptNumber, long executionLogId,
+                                     String originalInitialPattern, Long originalParentLogId, String workflowNodeId) {
         MDC.put("task_id", String.valueOf(taskConfig.getTaskId()));
         MDC.put("task_name", taskConfig.getTaskName());
-        MDC.put("execute_no", String.valueOf(executionLogId)); // Log ID of the failed attempt
+        MDC.put("execute_no", String.valueOf(executionLogId)); // Log ID of the completed/failed attempt
         MDC.put("attempt_no", String.valueOf(completedAttemptNumber));
 
         if ("FAILED".equals(finalStatus) || "TIMED_OUT".equals(finalStatus)) {
@@ -262,7 +272,11 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                     this,
                     this.notificationService,
                     this.distributedLockService.getSchedulerInstanceId(),
-                    nextAttempt
+                    nextAttempt,
+                    originalInitialPattern,
+                    originalParentLogId,
+                    null,                   // effectiveBeanParametersJson for retries (use original task config)
+                    workflowNodeId          // Pass along the workflowNodeId for retries
                 );
 
                 Instant nextExecutionTime = Instant.now().plusSeconds(intervalSeconds);
@@ -282,6 +296,32 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             logger.info("Task ID {} completed with status {} on attempt {}.", taskConfig.getTaskId(), finalStatus, completedAttemptNumber);
             if (completedAttemptNumber > 1 && "SUCCESS".equals(finalStatus)) {
                  taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Successfully completed on attempt " + completedAttemptNumber + ".");
+            }
+        }
+
+        // Notify WorkflowExecutionService if this was a workflow node and it's terminal
+        if (originalParentLogId != null && workflowNodeId != null) {
+            boolean isMaxRetriesReached = taskConfig.getMaxRetryAttempts() == null ? false : completedAttemptNumber > taskConfig.getMaxRetryAttempts();
+             // Simpler: if maxRetryAttempts is 0, completedAttemptNumber 1 is already > 0.
+             // Max total attempts = maxRetryAttempts + 1. If completedAttemptNumber >= maxRetryAttempts + 1, all attempts are done.
+            if (taskConfig.getMaxRetryAttempts() != null && completedAttemptNumber > taskConfig.getMaxRetryAttempts()) { // simplified this from before
+                 isMaxRetriesReached = true;
+            } else if (taskConfig.getMaxRetryAttempts() == null && completedAttemptNumber > 0) { // No retries configured, first attempt is final if failed
+                 isMaxRetriesReached = true;
+            }
+
+
+            boolean isTerminal = "SUCCESS".equals(finalStatus) ||
+                                 (("FAILED".equals(finalStatus) || "TIMED_OUT".equals(finalStatus)) && isMaxRetriesReached);
+
+            if (isTerminal) {
+                if (this.workflowExecutionService != null) {
+                    logger.debug("Notifying WES of terminal node. ParentLogId: {}, NodeId: {}, Status: {}, LastLogId: {}",
+                                originalParentLogId, workflowNodeId, finalStatus, executionLogId);
+                    this.workflowExecutionService.processNodeCompletion(originalParentLogId, workflowNodeId, finalStatus, executionLogId);
+                } else {
+                    logger.warn("WorkflowExecutionService not available in CoreSchedulerService to notify node completion for workflowLogId: {}, nodeId: {}", originalParentLogId, workflowNodeId);
+                }
             }
         }
         MDC.clear();
@@ -426,13 +466,56 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      * @throws IllegalArgumentException if the task is not found.
      */
     public void triggerTaskManually(Integer taskId) {
+        // Default manual trigger: "NORMAL" pattern, no parent, no override parameters, no workflow node ID.
+        triggerTaskManually(taskId, "NORMAL", null, null, null);
+    }
+
+    /**
+     * Triggers a task for immediate execution with a specified initial pattern and optional parent log ID.
+     *
+     * @param taskId The ID of the task to trigger.
+     * @param initialPattern The task pattern for the first attempt.
+     * @param parentLogId The parent log ID if this task is part of a workflow.
+     * @throws IllegalArgumentException if the task is not found.
+     */
+    public void triggerTaskManually(Integer taskId, String initialPattern, Long parentLogId) {
+        triggerTaskManually(taskId, initialPattern, parentLogId, null, null);
+    }
+
+     /**
+     * Triggers a task for immediate execution with specified initial pattern, optional parent log ID,
+     * and optional override bean parameters.
+     *
+     * @param taskId The ID of the task to trigger.
+     * @param initialPattern The task pattern for the first attempt.
+     * @param parentLogId The parent log ID if this task is part of a workflow.
+     * @param effectiveBeanParametersJson JSON string of bean parameters to use for this specific run.
+     * @throws IllegalArgumentException if the task is not found.
+     */
+    public void triggerTaskManually(Integer taskId, String initialPattern, Long parentLogId, String effectiveBeanParametersJson) {
+        triggerTaskManually(taskId, initialPattern, parentLogId, effectiveBeanParametersJson, null);
+    }
+
+    /**
+     * Triggers a task for immediate execution with specified initial pattern, optional parent log ID,
+     * optional override bean parameters, and optional workflow node ID.
+     *
+     * @param taskId The ID of the task to trigger.
+     * @param initialPattern The task pattern for the first attempt (e.g., "WORKFLOW_STEP").
+     * @param parentLogId The parent log ID if this task is part of a workflow.
+     * @param effectiveBeanParametersJson JSON string of bean parameters to use for this specific run, overriding stored ones.
+     * @param workflowNodeId The ID of the node in the workflow, if this task is a workflow step.
+     * @throws IllegalArgumentException if the task is not found.
+     */
+    public void triggerTaskManually(Integer taskId, String initialPattern, Long parentLogId, String effectiveBeanParametersJson, String workflowNodeId) {
         TaskConfig taskConfig = taskConfigDao.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found with ID: " + taskId + " for manual trigger."));
 
         if (!taskConfig.isActive()) {
-            // If we decide that manual trigger should not run inactive tasks, we can return or throw here.
             // For now, allow triggering inactive tasks manually but log a warning.
-            logger.warn("Manual trigger requested for INACTIVE task ID: {}. It will attempt to run once.", taskId);
+            // Workflow steps, even if the underlying TaskConfig is marked inactive, might need to run if the workflow is active.
+            // This behavior might need refinement based on desired product logic for inactive tasks within active workflows.
+            logger.warn("Manual trigger requested for INACTIVE task ID: {}. Pattern: {}. It will attempt to run once.", taskId, initialPattern);
         }
 
         // Create TaskExecutionJob with attemptNumber = 1 for manual trigger
@@ -444,13 +527,18 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 this, // Pass self for callback
                 this.notificationService,
                 this.distributedLockService.getSchedulerInstanceId(),
-                1 // Initial attempt for a manual run
+                1, // Initial attempt for a manual run
+                initialPattern,
+                parentLogId,
+                effectiveBeanParametersJson,
+                workflowNodeId
         );
 
         // Use the class field taskScheduler (ThreadPoolTaskScheduler)
         this.taskScheduler.schedule(job, Instant.now());
-        logger.info("Manually triggered task ID: {}. Attempt 1. Execution outcome will be logged.", taskId);
+        logger.info("Manually triggered task ID: {}. Pattern: {}. ParentLogID: {}. Attempt 1. Execution outcome will be logged.", taskId, initialPattern, parentLogId);
     }
+
 
     /**
      * Shuts down the scheduler service, cancelling all scheduled tasks.

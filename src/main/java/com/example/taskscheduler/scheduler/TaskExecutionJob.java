@@ -32,6 +32,10 @@ public class TaskExecutionJob implements Runnable {
     private final NotificationService notificationService; // For notifications
     private final String instanceId;
     private final int attemptNumber;
+    private final String initialTaskPattern; // Pattern of the first attempt
+    private final Long parentLogId; // For WORKFLOW_STEP, this is the parent workflow's log ID
+    private final String effectiveBeanParametersJson; // For overriding bean parameters for a single run
+    private final String workflowNodeId; // Identifier of the node in the workflow, if applicable
     private Long executionLogId; // To store the log ID for this specific attempt
 
     public TaskExecutionJob(TaskConfig taskConfig,
@@ -41,7 +45,11 @@ public class TaskExecutionJob implements Runnable {
                             CoreSchedulerService coreSchedulerService,
                             NotificationService notificationService,
                             String instanceId,
-                            int attemptNumber) {
+                            int attemptNumber,
+                            String initialTaskPattern,
+                            Long parentLogId,
+                            String effectiveBeanParametersJson,
+                            String workflowNodeId) {
         this.taskConfig = taskConfig;
         this.applicationContext = applicationContext;
         this.taskExecuteLogDao = taskExecuteLogDao;
@@ -50,6 +58,10 @@ public class TaskExecutionJob implements Runnable {
         this.notificationService = notificationService;
         this.instanceId = instanceId;
         this.attemptNumber = attemptNumber;
+        this.initialTaskPattern = initialTaskPattern;
+        this.parentLogId = parentLogId;
+        this.effectiveBeanParametersJson = effectiveBeanParametersJson;
+        this.workflowNodeId = workflowNodeId;
     }
 
     @Override
@@ -65,9 +77,17 @@ public class TaskExecutionJob implements Runnable {
         log.setStartTime(new Timestamp(System.currentTimeMillis()));
         log.setState("RUNNING");
         log.setInstanceId(this.instanceId);
-        log.setTaskPattern(taskConfig.getTaskType() == 10 ? "WORKFLOW_PARENT" : "NORMAL");
-        // Note: We might want to log the attempt number in the database log entry as well.
-        // For now, it's part of log messages and used for retry logic.
+
+        if (this.attemptNumber > 1) {
+            log.setTaskPattern("RETRY_ATTEMPT");
+        } else {
+            log.setTaskPattern(this.initialTaskPattern != null ? this.initialTaskPattern : "NORMAL");
+        }
+
+        if (this.parentLogId != null) {
+            log.setParentExecuteNo(this.parentLogId);
+        }
+
         // If a DB column `attempt_number` was added to `task_execute_log`, set it here:
         // log.setAttemptNumber(this.attemptNumber);
 
@@ -106,7 +126,15 @@ public class TaskExecutionJob implements Runnable {
             switch (taskConfig.getTaskType()) {
                 case 0: // Bean task
                     BeanTaskExecutor beanTaskExecutor = applicationContext.getBean(BeanTaskExecutor.class);
-                    beanTaskExecutor.execute(taskConfig); // This might throw exceptions including timeout
+                    TaskConfig configForBeanRun = taskConfig; // Default to original
+                    if (this.effectiveBeanParametersJson != null && !this.effectiveBeanParametersJson.isEmpty()) {
+                        // Create a temporary copy to modify beanParameters for this run only
+                        configForBeanRun = new TaskConfig();
+                        org.springframework.beans.BeanUtils.copyProperties(taskConfig, configForBeanRun);
+                        configForBeanRun.setBeanParameters(this.effectiveBeanParametersJson);
+                        logger.debug("Using effectiveBeanParameters for task ID {}, Log ID {}", taskConfig.getTaskId(), this.executionLogId);
+                    }
+                    beanTaskExecutor.execute(configForBeanRun); // This might throw exceptions including timeout
                     finalStatus = "SUCCESS"; // If no exception
                     break;
                 case 2: // HTTP task
@@ -180,8 +208,14 @@ public class TaskExecutionJob implements Runnable {
             notificationService.sendNotification(taskConfig, finalLogEntry);
 
             // Call completion handler for retry logic (or final success logging)
-            // Pass the final status of *this attempt*.
-            coreSchedulerService.handleTaskCompletion(taskConfig, finalLogEntry.getState(), this.attemptNumber, this.executionLogId);
+            // Pass the final status of *this attempt*, and context for potential retries.
+            coreSchedulerService.handleTaskCompletion(taskConfig,
+                                                     finalLogEntry.getState(),
+                                                     this.attemptNumber,
+                                                     this.executionLogId,
+                                                     this.initialTaskPattern,
+                                                     this.parentLogId,
+                                                     this.workflowNodeId); // Pass workflowNodeId for context
 
             MDC.clear();
         }
