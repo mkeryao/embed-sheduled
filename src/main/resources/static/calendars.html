@@ -2,26 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Calendar Management - Task Scheduler</title>
+    <title data-i18n-key="calendarsPage.title">Calendar Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/i18n.js"></script>
 </head>
 <body>
     <div id="navbar-container"></div>
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center my-3">
-            <h2>Calendar Management</h2>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#calendarFormModal" id="addCalendarBtn">Add Calendar</button>
+            <h2 data-i18n-key="calendarsPage.header">Calendar Management</h2>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#calendarFormModal" id="addCalendarBtn" data-i18n-key="calendarsPage.addCalendarBtn">Add Calendar</button>
         </div>
         <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
-                    <th>ID</th>
-                    <th>Calendar Name (Group)</th>
-                    <th>Description (Remark)</th>
-                    <th>Actions</th>
+                    <th data-i18n-key="calendarsPage.table.id">ID</th>
+                    <th data-i18n-key="calendarsPage.table.name">Calendar Name (Group)</th>
+                    <th data-i18n-key="calendarsPage.table.description">Description (Remark)</th>
+                    <th data-i18n-key="calendarsPage.table.actions">Actions</th>
                 </tr>
             </thead>
             <tbody id="calendars-table-body">
@@ -35,8 +36,8 @@
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="calendarFormModalLabel">Add/Edit Calendar</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <h5 class="modal-title" id="calendarFormModalLabel" data-i18n-key="calendarsPage.calendarFormModal.titleAdd">Add Calendar</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
@@ -44,14 +45,14 @@
                     <form id="calendar-form">
                         <input type="hidden" id="calendarId">
                         <div class="form-group">
-                            <label for="calendarName">Calendar Name (Group)</label>
-                            <input type="text" class="form-control" id="calendarName" required>
+                            <label for="calendarName" data-i18n-key="calendarsPage.calendarFormModal.nameLabel">Calendar Name (Group)</label>
+                            <input type="text" class="form-control" id="calendarName" data-i18n-key-placeholder="calendarsPage.calendarFormModal.namePlaceholder" placeholder="Enter calendar name" required>
                         </div>
                         <div class="form-group">
-                            <label for="calendarDescription">Description (Remark)</label>
-                            <textarea class="form-control" id="calendarDescription" rows="2"></textarea>
+                            <label for="calendarDescription" data-i18n-key="calendarsPage.calendarFormModal.descriptionLabel">Description (Remark)</label>
+                            <textarea class="form-control" id="calendarDescription" rows="2" data-i18n-key-placeholder="calendarsPage.calendarFormModal.descriptionPlaceholder" placeholder="Enter description"></textarea>
                         </div>
-                        <button type="submit" class="btn btn-success">Save Calendar</button>
+                        <button type="submit" class="btn btn-success" data-i18n-key="calendarsPage.calendarFormModal.saveBtn">Save Calendar</button>
                     </form>
                 </div>
             </div>
@@ -63,40 +64,40 @@
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="calendarDaysModalLabel">Manage Calendar Days for <span id="daysModalCalendarName"></span></h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <h5 class="modal-title" id="calendarDaysModalLabel">Manage Calendar Days</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="currentCalendarIdForDays">
-                    <h5>Add New Day Entry</h5>
+                    <h5 data-i18n-key="calendarsPage.daysModal.addNewDayHeader">Add New Day Entry</h5>
                     <form id="calendar-day-form" class="form-inline mb-3">
                         <div class="form-group mr-2">
-                            <label for="eventDate" class="sr-only">Date</label>
-                            <input type="date" class="form-control" id="eventDate" placeholder="Event Date" required>
+                            <label for="eventDate" class="sr-only" data-i18n-key="calendarsPage.daysModal.dateLabel">Date</label>
+                            <input type="date" class="form-control" id="eventDate" data-i18n-key-placeholder="calendarsPage.daysModal.datePlaceholder" placeholder="Event Date" required>
                         </div>
                         <div class="form-group mr-2">
-                            <label for="dayDescription" class="sr-only">Description</label>
-                            <input type="text" class="form-control" id="dayDescription" placeholder="Day Description">
+                            <label for="dayDescription" class="sr-only" data-i18n-key="calendarsPage.daysModal.descriptionLabel">Description</label>
+                            <input type="text" class="form-control" id="dayDescription" data-i18n-key-placeholder="calendarsPage.daysModal.descriptionPlaceholder" placeholder="Day Description">
                         </div>
                         <div class="form-check mr-2">
                             <input class="form-check-input" type="checkbox" id="isWorkingDay" checked>
-                            <label class="form-check-label" for="isWorkingDay">
+                            <label class="form-check-label" for="isWorkingDay" data-i18n-key="calendarsPage.daysModal.isWorkingDayLabel">
                                 Is Working Day?
                             </label>
                         </div>
-                        <button type="submit" class="btn btn-primary">Add Day</button>
+                        <button type="submit" class="btn btn-primary" data-i18n-key="calendarsPage.daysModal.addDayBtn">Add Day</button>
                     </form>
                     <hr/>
-                    <h5>Existing Days</h5>
+                    <h5 data-i18n-key="calendarsPage.daysModal.existingDaysHeader">Existing Days</h5>
                     <table class="table table-sm">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Description</th>
-                                <th>Working Day?</th>
-                                <th>Actions</th>
+                                <th data-i18n-key="calendarsPage.daysModal.table.date">Date</th>
+                                <th data-i18n-key="calendarsPage.daysModal.table.description">Description</th>
+                                <th data-i18n-key="calendarsPage.daysModal.table.workingDay">Working Day?</th>
+                                <th data-i18n-key="calendarsPage.daysModal.table.actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="calendar-days-list">
@@ -115,6 +116,15 @@
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function() {
+            if (typeof i18n !== 'undefined') {
+                i18n.init().then(() => {
+                    console.log("i18n initialized for calendars.html");
+                    // Any dynamic updates post-init can re-apply or use i18n.translate
+                });
+            } else {
+                console.error("i18n object not defined in calendars.html");
+            }
+
             $("#navbar-container").load("_navbar.html", function() {
                  const currentUsername = localStorage.getItem('username');
                  if (currentUsername) {
@@ -124,11 +134,12 @@
                     e.preventDefault();
                     logout();
                 });
+                if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to navbar
             });
             loadCalendars();
 
             function loadCalendars() {
-                makeApiCall('GET', '/calendars', null,
+                makeApiCall('GET', '/api/calendars', null,
                     function(calendars) {
                         const tableBody = $('#calendars-table-body');
                         tableBody.empty();
@@ -138,103 +149,105 @@
                                 <td>${calendar.calendarName || ''}</td>
                                 <td>${calendar.description || ''}</td>
                                 <td class="action-buttons">
-                                    <button class="btn btn-sm btn-info manage-days-btn" data-id="${calendar.calendarId}" data-name="${calendar.calendarName}">Manage Days</button>
-                                    <button class="btn btn-sm btn-danger delete-calendar-btn" data-id="${calendar.calendarId}">Delete Calendar</button>
+                                    <button class="btn btn-sm btn-info manage-days-btn" data-id="${calendar.calendarId}" data-name="${calendar.calendarName}" title="${i18n.translate('calendarsPage.table.manageDaysBtnTitle', 'Manage Days')}">${i18n.translate('calendarsPage.table.manageDaysBtn', 'Manage Days')}</button>
+                                    <button class="btn btn-sm btn-danger delete-calendar-btn" data-id="${calendar.calendarId}" title="${i18n.translate('calendarsPage.table.deleteCalendarBtnTitle', 'Delete Calendar')}">${i18n.translate('common.delete', 'Delete')}</button>
                                 </td>
                             </tr>`;
                             tableBody.append(row);
                         });
                     },
                     function(jqXHR) {
-                        showFeedback('Error loading calendars: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('calendarsPage.feedback.errorLoadingCalendars', "Error loading calendars: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             }
 
             $('#addCalendarBtn').click(function() {
-                $('#calendarFormModalLabel').text('Add Calendar');
+                $('#calendarFormModalLabel').text(i18n.translate('calendarsPage.calendarFormModal.titleAdd', 'Add Calendar'));
                 $('#calendar-form')[0].reset();
                 $('#calendarId').val('');
             });
 
             $('#calendar-form').submit(function(event) {
                 event.preventDefault();
-                const calendarId = $('#calendarId').val(); // Not currently using edit for calendars, only add.
+                const calendarId = $('#calendarId').val();
                 const calendarData = {
                     calendarName: $('#calendarName').val(),
                     description: $('#calendarDescription').val(),
-                    // days: [] // Days are managed separately after calendar creation for simplicity here
                 };
 
-                // For this simplified UI, we are not supporting edit of calendar name/description.
-                // Only add. If edit was needed, it would be similar to tasks.
-                if (calendarId) {
-                     showFeedback('Editing existing calendars is not supported in this UI version.', true);
+                if (calendarId) { // Editing not implemented via this form in this version
+                     showFeedback(i18n.translate('calendarsPage.feedback.editingNotSupported', 'Editing existing calendars via this form is not supported.'), true);
                      return;
                 }
 
-                makeApiCall('POST', '/calendars', calendarData,
+                makeApiCall('POST', '/api/calendars', calendarData,
                     function(response) {
                         $('#calendarFormModal').modal('hide');
-                        showFeedback('Calendar saved successfully!', false);
+                        showFeedback(i18n.translate('calendarsPage.feedback.calendarSaved'), false);
                         loadCalendars();
                     },
                     function(jqXHR) {
-                        showFeedback('Error saving calendar: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('calendarsPage.feedback.errorSavingCalendar', "Error saving calendar: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
 
-            // Delete Calendar
             $('#calendars-table-body').on('click', '.delete-calendar-btn', function() {
                 const calId = $(this).data('id');
-                if (confirm('Are you sure you want to delete calendar ' + calId + '? This will also delete all its day entries.')) {
-                    makeApiCall('DELETE', `/calendars/${calId}`, null,
+                const calName = $(this).closest('tr').find('td:nth-child(2)').text(); // Get name for confirm message
+                const confirmMsg = i18n.translate('calendarsPage.feedback.confirmDeleteCalendar', "Are you sure you want to delete calendar '{{name}}' (ID: {{id}})? This will also delete all its day entries.")
+                                   .replace('{{id}}', calId)
+                                   .replace('{{name}}', calName);
+                if (confirm(confirmMsg)) {
+                    makeApiCall('DELETE', `/api/calendars/${calId}`, null,
                         function() {
-                            showFeedback('Calendar deleted successfully!', false);
+                            showFeedback(i18n.translate('calendarsPage.feedback.calendarDeleted'), false);
                             loadCalendars();
                         },
                         function(jqXHR) {
-                            showFeedback('Error deleting calendar: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                            showFeedback(i18n.translate('calendarsPage.feedback.errorDeletingCalendar', "Error deleting calendar: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                         }
                     );
                 }
             });
 
-            // --- Manage Calendar Days ---
             let currentManagingCalendarId = null;
 
             $('#calendars-table-body').on('click', '.manage-days-btn', function() {
                 currentManagingCalendarId = $(this).data('id');
                 const calendarName = $(this).data('name');
-                $('#daysModalCalendarName').text(calendarName);
+                $('#daysModalCalendarName').text(calendarName); // This part of title is dynamic, not using data-i18n-key directly on span
+                $('#calendarDaysModalLabel').html(i18n.translate('calendarsPage.daysModal.title', "Manage Calendar Days for <span id=\"daysModalCalendarName\">{{calendarName}}</span>").replace("{{calendarName}}", calendarName));
+
                 $('#currentCalendarIdForDays').val(currentManagingCalendarId);
                 loadCalendarDays(currentManagingCalendarId);
                 $('#calendarDaysModal').modal('show');
             });
 
             function loadCalendarDays(calendarId) {
-                makeApiCall('GET', `/calendars/${calendarId}/days`, null,
+                makeApiCall('GET', `/api/calendars/${calendarId}/days`, null,
                     function(days) {
                         const daysList = $('#calendar-days-list');
                         daysList.empty();
                         if (days && days.length > 0) {
                             days.forEach(function(day) {
+                                const workingDayText = day.isWorkingDay ? i18n.translate('calendarsPage.dayTypes.working', 'Yes') : i18n.translate('calendarsPage.dayTypes.nonWorking', 'No');
                                 const row = `<tr>
                                     <td>${day.eventDate}</td>
                                     <td>${day.description || '-'}</td>
-                                    <td>${day.isWorkingDay ? 'Yes' : 'No'}</td>
-                                    <td><button class="btn btn-xs btn-danger delete-day-btn" data-day-id="${day.dayId}">Delete</button></td>
+                                    <td>${workingDayText}</td>
+                                    <td><button class="btn btn-xs btn-danger delete-day-btn" data-day-id="${day.dayId}" title="${i18n.translate('common.delete', 'Delete')}">${i18n.translate('common.delete', 'Delete')}</button></td>
                                 </tr>`;
                                 daysList.append(row);
                             });
                         } else {
-                            daysList.append('<tr><td colspan="4">No day entries found for this calendar.</td></tr>');
+                            daysList.append(`<tr><td colspan="4">${i18n.translate('calendarsPage.daysModal.noDaysFound', 'No day entries found for this calendar.')}</td></tr>`);
                         }
                     },
                     function(jqXHR) {
-                        $('#calendar-days-list').html('<tr><td colspan="4">Error loading days.</td></tr>');
-                        showFeedback('Error loading calendar days: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        $('#calendar-days-list').html(`<tr><td colspan="4">${i18n.translate('calendarsPage.feedback.errorLoadingDays', 'Error loading days.')}</td></tr>`);
+                        showFeedback(i18n.translate('calendarsPage.feedback.errorLoadingDaysDetailed', "Error loading calendar days: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             }
@@ -243,7 +256,7 @@
                 event.preventDefault();
                 const calendarId = $('#currentCalendarIdForDays').val();
                 if (!calendarId) {
-                    showFeedback('No calendar selected for adding day.', true);
+                    showFeedback(i18n.translate('calendarsPage.feedback.noCalendarSelected'), true);
                     return;
                 }
                 const dayData = {
@@ -252,17 +265,21 @@
                     isWorkingDay: $('#isWorkingDay').is(':checked')
                 };
 
-                makeApiCall('POST', `/calendars/${calendarId}/days`, dayData,
+                makeApiCall('POST', `/api/calendars/${calendarId}/days`, dayData,
                     function(response) {
-                        showFeedback('Day entry added successfully!', false);
-                        loadCalendarDays(calendarId); // Refresh list
+                        showFeedback(i18n.translate('calendarsPage.feedback.dayAdded'), false);
+                        loadCalendarDays(calendarId);
                         $('#calendar-day-form')[0].reset();
+                        $('#isWorkingDay').prop('checked', true); // Reset checkbox to default
                     },
                     function(jqXHR) {
-                         let msg = 'Error adding day entry.';
-                         if (jqXHR.status === 409) msg = 'Day entry for this date already exists.';
-                         else if(jqXHR.responseJSON && jqXHR.responseJSON.message) msg = jqXHR.responseJSON.message;
-                         showFeedback(msg, true);
+                         let msgKey = 'calendarsPage.feedback.errorAddingDay';
+                         let defaultMsg = "Error adding day entry.";
+                         if (jqXHR.status === 409) {
+                            msgKey = 'calendarsPage.feedback.dayExists';
+                            defaultMsg = 'Day entry for this date already exists.';
+                         }
+                         showFeedback(i18n.translate(msgKey, defaultMsg).replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
@@ -270,14 +287,15 @@
             $('#calendar-days-list').on('click', '.delete-day-btn', function() {
                 const dayId = $(this).data('day-id');
                 const calendarId = $('#currentCalendarIdForDays').val();
-                if (confirm('Are you sure you want to delete this day entry?')) {
-                    makeApiCall('DELETE', `/calendars/${calendarId}/days/${dayId}`, null,
+                const confirmMsg = i18n.translate('calendarsPage.feedback.confirmDeleteDay', "Are you sure you want to delete this day entry?");
+                if (confirm(confirmMsg)) {
+                    makeApiCall('DELETE', `/api/calendars/${calendarId}/days/${dayId}`, null,
                         function() {
-                            showFeedback('Day entry deleted successfully!', false);
-                            loadCalendarDays(calendarId); // Refresh list
+                            showFeedback(i18n.translate('calendarsPage.feedback.dayDeleted'), false);
+                            loadCalendarDays(calendarId);
                         },
                         function(jqXHR) {
-                            showFeedback('Error deleting day entry: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                            showFeedback(i18n.translate('calendarsPage.feedback.errorDeletingDay', "Error deleting day entry: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                         }
                     );
                 }

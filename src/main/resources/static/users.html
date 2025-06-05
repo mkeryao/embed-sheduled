@@ -2,29 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>User Management - Task Scheduler</title>
+    <title data-i18n-key="usersPage.title">User Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/i18n.js"></script>
 </head>
 <body>
     <div id="navbar-container"></div>
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center my-3">
-            <h2>User Management</h2>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#userFormModal" id="addUserBtn">Add User</button>
+            <h2 data-i18n-key="usersPage.header">User Management</h2>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#userFormModal" id="addUserBtn" data-i18n-key="usersPage.addUserBtn">Add User</button>
         </div>
         <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Webhook Address</th>
-                    <th>Role (Status)</th>
-                    <th>Created At</th>
-                    <th>Actions</th>
+                    <th data-i18n-key="usersPage.table.id">ID</th>
+                    <th data-i18n-key="usersPage.table.username">Username</th>
+                    <th data-i18n-key="usersPage.table.email">Email</th>
+                    <th data-i18n-key="usersPage.table.webhook">Webhook Address</th>
+                    <th data-i18n-key="usersPage.table.role">Role (Status)</th>
+                    <th data-i18n-key="usersPage.table.createdAt">Created At</th>
+                    <th data-i18n-key="usersPage.table.actions">Actions</th>
                 </tr>
             </thead>
             <tbody id="users-table-body">
@@ -39,7 +40,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="userFormModalLabel">Add/Edit User</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
@@ -47,32 +48,32 @@
                     <form id="user-form">
                         <input type="hidden" id="userId">
                         <div class="form-group">
-                            <label for="username">Username</label>
-                            <input type="text" class="form-control" id="username" required>
+                            <label for="username" data-i18n-key="usersPage.modal.usernameLabel">Username</label>
+                            <input type="text" class="form-control" id="username" data-i18n-key-placeholder="usersPage.modal.usernamePlaceholder" placeholder="Username" required>
                         </div>
                         <div class="form-group">
-                            <label for="email">Email</label>
-                            <input type="email" class="form-control" id="email">
+                            <label for="email" data-i18n-key="usersPage.modal.emailLabel">Email</label>
+                            <input type="email" class="form-control" id="email" data-i18n-key-placeholder="usersPage.modal.emailPlaceholder" placeholder="Email">
                         </div>
                         <div class="form-group">
-                            <label for="webhookAddress">Webhook Address (Optional)</label>
-                            <input type="url" class="form-control" id="webhookAddress" placeholder="https://example.com/webhook or JSON array of URLs">
+                            <label for="webhookAddress" data-i18n-key="usersPage.modal.webhookLabel">Webhook Address (Optional)</label>
+                            <input type="url" class="form-control" id="webhookAddress" data-i18n-key-placeholder="usersPage.modal.webhookPlaceholder" placeholder="https://example.com/webhook or JSON array of URLs">
                         </div>
                         <div class="form-group">
-                            <label for="notificationPreferencesJson">Notification Preferences (JSON - Optional)</label>
-                            <textarea class="form-control" id="notificationPreferencesJson" rows="3" placeholder='e.g., {"EMAIL": {"emailAddress": "user@example.com", "enabled": true}}'></textarea>
-                            <small class="form-text text-muted">Advanced: Configure specific notification channels and details.</small>
+                            <label for="notificationPreferencesJson" data-i18n-key="usersPage.modal.notificationPreferencesLabel">Notification Preferences (JSON - Optional)</label>
+                            <textarea class="form-control" id="notificationPreferencesJson" rows="3" data-i18n-key-placeholder="usersPage.modal.notificationPreferencesPlaceholder" placeholder='e.g., {"EMAIL": {"emailAddress": "user@example.com", "enabled": true}}'></textarea>
+                            <small class="form-text text-muted" data-i18n-key="usersPage.modal.notificationPreferencesHelp">Advanced: Configure specific notification channels and details.</small>
                         </div>
                         <div class="form-group" id="password-group">
-                            <label for="password">Password</label>
-                            <input type="password" class="form-control" id="password" placeholder="Enter new password or leave blank to keep current">
-                            <small id="passwordHelp" class="form-text text-muted">Required for new users. For existing users, leave blank to keep current password.</small>
+                            <label for="password" data-i18n-key="usersPage.modal.passwordLabel">Password</label>
+                            <input type="password" class="form-control" id="password" data-i18n-key-placeholder="usersPage.modal.passwordPlaceholder" placeholder="Enter new password or leave blank to keep current">
+                            <small id="passwordHelp" class="form-text text-muted" data-i18n-key="usersPage.modal.passwordHelpNew">Required for new users. For existing users, leave blank to keep current password.</small>
                         </div>
                         <div class="form-group form-check">
                             <input type="checkbox" class="form-check-input" id="isAdmin">
-                            <label class="form-check-label" for="isAdmin">Is Admin (Role)</label>
+                            <label class="form-check-label" for="isAdmin" data-i18n-key="usersPage.modal.isAdminLabel">Is Admin (Role)</label>
                         </div>
-                        <button type="submit" class="btn btn-success">Save User</button>
+                        <button type="submit" class="btn btn-success" data-i18n-key="usersPage.modal.saveBtn">Save User</button>
                     </form>
                 </div>
             </div>
@@ -85,6 +86,11 @@
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function() {
+            if (typeof i18n !== 'undefined') {
+                i18n.init().then(() => console.log("i18n initialized for users.html"));
+            } else {
+                console.error("i18n object not defined in users.html");
+            }
             $("#navbar-container").load("_navbar.html", function() {
                  const currentUsername = localStorage.getItem('username');
                  if (currentUsername) {
@@ -103,7 +109,9 @@
                         const tableBody = $('#users-table-body');
                         tableBody.empty();
                         users.forEach(function(user) {
-                            const role = user.isAdmin ? '<span class="badge badge-danger">Admin</span>' : '<span class="badge badge-primary">User</span>';
+                            const roleText = user.isAdmin ? i18n.translate('usersPage.table.roleAdmin', 'Admin') : i18n.translate('usersPage.table.roleUser', 'User');
+                            const roleClass = user.isAdmin ? 'badge-danger' : 'badge-primary';
+                            const role = `<span class="badge ${roleClass}">${roleText}</span>`;
                             const webhookDisplay = user.webhookAddress ? user.webhookAddress.substring(0, 30) + (user.webhookAddress.length > 30 ? '...' : '') : '-';
                             const row = `<tr>
                                 <td>${user.userId}</td>
@@ -113,8 +121,8 @@
                                 <td>${role}</td>
                                 <td>${user.createTime ? new Date(user.createTime).toLocaleDateString() : ''}</td>
                                 <td class="action-buttons">
-                                    <button class="btn btn-sm btn-info edit-btn" data-id="${user.userId}">Edit</button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${user.userId}">Delete</button>
+                                    <button class="btn btn-sm btn-info edit-btn" data-id="${user.userId}" title="${i18n.translate('common.edit', 'Edit')}">${i18n.translate('common.edit', 'Edit')}</button>
+                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${user.userId}" title="${i18n.translate('common.delete', 'Delete')}">${i18n.translate('common.delete', 'Delete')}</button>
                                 </td>
                             </tr>`;
                             tableBody.append(row);
@@ -127,11 +135,11 @@
             }
 
             $('#addUserBtn').click(function() {
-                $('#userFormModalLabel').text('Add User');
+                $('#userFormModalLabel').text(i18n.translate('usersPage.modal.titleAdd', 'Add User'));
                 $('#user-form')[0].reset();
                 $('#userId').val('');
-                $('#password').prop('required', true); // Password required for new user
-                $('#passwordHelp').text('Required for new users.');
+                $('#password').prop('required', true);
+                $('#passwordHelp').text(i18n.translate('usersPage.modal.passwordHelpNew', 'Required for new users.'));
             });
 
             $('#user-form').submit(function(event) {
@@ -139,8 +147,8 @@
                 const userId = $('#userId').val();
                 const password = $('#password').val();
 
-                if (!userId && (!password || password.trim() === '')) { // New user and password empty
-                    showFeedback('Password is required for new users.', true);
+                if (!userId && (!password || password.trim() === '')) {
+                    showFeedback(i18n.translate('usersPage.feedback.passwordRequired'), true);
                     return;
                 }
 
@@ -162,11 +170,11 @@
                 makeApiCall(method, endpoint, userData,
                     function(response) {
                         $('#userFormModal').modal('hide');
-                        showFeedback('User saved successfully!', false);
+                        showFeedback(i18n.translate('usersPage.feedback.userSaved'), false);
                         loadUsers();
                     },
                     function(jqXHR) {
-                        showFeedback('Error saving user: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('usersPage.feedback.errorSavingUser', "Error saving user: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
@@ -176,20 +184,20 @@
                 const userId = $(this).data('id');
                 makeApiCall('GET', `/users/${userId}`, null,
                     function(user) {
-                        $('#userFormModalLabel').text('Edit User');
+                        $('#userFormModalLabel').text(i18n.translate('usersPage.modal.titleEdit', 'Edit User'));
                         $('#userId').val(user.userId);
                         $('#username').val(user.username);
                         $('#email').val(user.email);
                         $('#webhookAddress').val(user.webhookAddress);
                         $('#notificationPreferencesJson').val(user.notificationPreferencesJson);
                         $('#isAdmin').prop('checked', user.isAdmin);
-                        $('#password').val(''); // Clear password field for edit
-                        $('#password').prop('required', false); // Not required for edit unless changing
-                        $('#passwordHelp').text('For existing users, leave blank to keep current password.');
+                        $('#password').val('');
+                        $('#password').prop('required', false);
+                        $('#passwordHelp').text(i18n.translate('usersPage.modal.passwordHelpEdit', 'For existing users, leave blank to keep current password.'));
                         $('#userFormModal').modal('show');
                     },
                     function(jqXHR) {
-                        showFeedback('Error fetching user details: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('usersPage.feedback.errorFetchingUser', "Error fetching user details: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
@@ -197,23 +205,24 @@
             // Delete button
             $('#users-table-body').on('click', '.delete-btn', function() {
                 const userId = $(this).data('id');
-                // Ideally, prevent self-deletion or deletion of the last admin user.
-                // This logic should be in the backend, but a frontend check can be a UX improvement.
                 const currentUsername = localStorage.getItem('username');
                 const usernameToDelete = $(this).closest('tr').find('td:nth-child(2)').text();
                 if (currentUsername === usernameToDelete) {
-                    showFeedback("You cannot delete your own user account.", true);
+                    showFeedback(i18n.translate('usersPage.feedback.cannotDeleteSelf'), true);
                     return;
                 }
 
-                if (confirm('Are you sure you want to delete user ' + userId + ' (' + usernameToDelete + ')?')) {
+                const confirmMessage = i18n.translate('usersPage.feedback.confirmDeleteUser', "Are you sure you want to delete user {{userId}} ({{username}})?")
+                                        .replace('{{userId}}', userId)
+                                        .replace('{{username}}', usernameToDelete);
+                if (confirm(confirmMessage)) {
                     makeApiCall('DELETE', `/users/${userId}`, null,
                         function() {
-                            showFeedback('User deleted successfully!', false);
+                            showFeedback(i18n.translate('usersPage.feedback.userDeleted'), false);
                             loadUsers();
                         },
                         function(jqXHR) {
-                            showFeedback('Error deleting user: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                            showFeedback(i18n.translate('usersPage.feedback.errorDeletingUser', "Error deleting user: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                         }
                     );
                 }

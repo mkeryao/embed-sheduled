@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.support.CronExpression; // Added for CRON validation
 import org.springframework.web.bind.annotation.*;
+import com.example.taskscheduler.util.DagCycleDetector; // Added for DAG cycle detection
 
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -118,6 +119,19 @@ public class TaskConfigController {
             }
         }
 
+        // DAG Cycle Validation for Workflow tasks (TaskType 10)
+        if (taskConfigDto.getTaskType() != null && taskConfigDto.getTaskType() == 10) {
+            List<WorkflowNode> workflowNodes = taskConfigDto.getWorkflowNodes();
+            List<WorkflowEdge> workflowEdges = taskConfigDto.getWorkflowEdges();
+
+            if (workflowNodes != null && !workflowNodes.isEmpty() && workflowEdges != null && !workflowEdges.isEmpty()) {
+                DagCycleDetector detector = new DagCycleDetector();
+                if (detector.hasCycle(workflowNodes, workflowEdges)) {
+                    return ResponseEntity.badRequest().body("Workflow configuration contains a cycle. Please correct the workflow definition.");
+                }
+            }
+        }
+
         TaskConfig taskConfig = convertToEntity(taskConfigDto);
         taskConfig.setTaskId(null); // Ensure it's a new task
         TaskConfig savedTask = taskConfigDao.save(taskConfig);
@@ -173,6 +187,39 @@ public class TaskConfigController {
                     return ResponseEntity.badRequest().body("beanParameters is not valid JSON for HTTP/Shell task type.");
                 }
             }
+        }
+
+        // DAG Cycle Validation for Workflow tasks (TaskType 10)
+        // Ensure taskType is determined correctly for updates
+        Integer effectiveTaskTypeForCycleCheck = taskConfigDto.getTaskType();
+        if (effectiveTaskTypeForCycleCheck == null) {
+            TaskConfig existingTaskForType = taskConfigDao.findById(id).orElse(null);
+            if (existingTaskForType != null) {
+                effectiveTaskTypeForCycleCheck = existingTaskForType.getTaskType();
+            }
+        }
+
+        if (effectiveTaskTypeForCycleCheck != null && effectiveTaskTypeForCycleCheck == 10) {
+            List<WorkflowNode> workflowNodes = taskConfigDto.getWorkflowNodes();
+            List<WorkflowEdge> workflowEdges = taskConfigDto.getWorkflowEdges();
+
+            // If nodes/edges are not part of the DTO (e.g. partial update not affecting them),
+            // we might need to fetch existing ones to perform a complete cycle check.
+            // For now, assume if type is 10, nodes/edges are provided or are being cleared.
+            // If workflowNodes or workflowEdges are explicitly null in DTO, it implies clearing them.
+            // If they are not present in DTO (partial update), this check might be insufficient
+            // without merging with existing entity's nodes/edges first.
+            // The current DTO structure and convertToEntity seems to handle full replacements or
+            // relies on frontend sending complete node/edge lists if they are part of the update.
+
+            if (workflowNodes != null && !workflowNodes.isEmpty() && workflowEdges != null && !workflowEdges.isEmpty()) {
+                DagCycleDetector detector = new DagCycleDetector();
+                if (detector.hasCycle(workflowNodes, workflowEdges)) {
+                    return ResponseEntity.badRequest().body("Workflow configuration contains a cycle. Please correct the workflow definition.");
+                }
+            }
+            // If workflowNodes or workflowEdges are cleared (e.g. to empty lists or null),
+            // that's a valid state (no cycle).
         }
 
         Optional<TaskConfig> existingTaskOptional = taskConfigDao.findById(id);

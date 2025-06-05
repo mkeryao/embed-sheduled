@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Task Scheduler</title>
+    <title data-i18n-key="loginPage.title">Login - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/i18n.js"></script> <!-- Load i18n early -->
 </head>
 <body>
     <div class="container">
@@ -13,18 +14,18 @@
             <div class="col-md-6 col-lg-4">
                 <div class="card mt-5">
                     <div class="card-body">
-                        <h3 class="card-title text-center">Login</h3>
+                        <h3 class="card-title text-center" data-i18n-key="loginPage.header">Login</h3>
                         <div id="error-message" class="alert alert-danger" style="display: none;"></div>
                         <form id="login-form">
                             <div class="form-group">
-                                <label for="username">Username</label>
-                                <input type="text" class="form-control" id="username" name="username" required>
+                                <label for="username" data-i18n-key="loginPage.usernameLabel">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" data-i18n-key="loginPage.usernamePlaceholder" placeholder="Enter username" required>
                             </div>
                             <div class="form-group">
-                                <label for="password">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
+                                <label for="password" data-i18n-key="loginPage.passwordLabel">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" data-i18n-key="loginPage.passwordPlaceholder" placeholder="Enter password" required>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-block">Login</button>
+                            <button type="submit" class="btn btn-primary btn-block" data-i18n-key="loginPage.loginButton">Login</button>
                         </form>
                     </div>
                 </div>
@@ -38,7 +39,17 @@
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function() {
-            // If token exists, redirect to tasks.html
+            // Initialize i18n
+            if (typeof i18n !== 'undefined') {
+                i18n.init().then(() => {
+                    console.log("i18n initialized for login page.");
+                    // Any login-specific dynamic text updates after init can go here
+                }).catch(err => console.error("Error initializing i18n for login page:", err));
+            } else {
+                console.error("i18n object is not available on login page.");
+            }
+
+            // If token exists, redirect to tasks.html (existing logic)
             if (localStorage.getItem('jwtToken')) {
                 window.location.href = 'tasks.html';
             }
@@ -55,14 +66,20 @@
                         window.location.href = 'tasks.html';
                     },
                     function(jqXHR) { // onError
-                        let message = 'Login failed. Please check your credentials.';
+                        let messageKey = 'loginPage.loginFailed'; // Default key
+                        let message = i18n.translate(messageKey, "Login failed. Please check your credentials."); // Translate
+
+                        // Attempt to get a more specific message from backend if available
+                        // This part remains largely the same, but the final message is translated if possible
                         if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                            // If backend provides a message, it might be a key or a raw message.
+                            // For now, assume raw, but ideally backend could send keys too.
                             message = jqXHR.responseJSON.message;
                         } else if (jqXHR.responseText) {
                              try {
                                 const err = JSON.parse(jqXHR.responseText);
                                 if (err.message) message = err.message;
-                             } catch(e) { /* ignore parse error */ }
+                             } catch(e) { /* ignore parse error, use default translated message */ }
                         }
                         $('#error-message').text(message).show();
                     }

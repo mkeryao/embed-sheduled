@@ -2,30 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Task Management - Task Scheduler</title>
+    <title data-i18n-key="tasksPage.title">Task Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/i18n.js"></script>
 </head>
 <body>
     <div id="navbar-container"></div>
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center my-3">
-            <h2>Task Management</h2>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#taskFormModal" id="addTaskBtn">Add Task</button>
+            <h2 data-i18n-key="tasksPage.header">Task Management</h2>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#taskFormModal" id="addTaskBtn" data-i18n-key="tasksPage.addTaskBtn">Add Task</button>
         </div>
         <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
-                    <th>ID</th>
-                    <th>Group</th>
-                    <th>Name</th>
-                    <th>CRON</th>
-                    <th>Type</th>
-                    <th>Status</th>
-                    <th>Exec Mode</th>
-                    <th>Actions</th>
+                    <th data-i18n-key="tasksPage.table.id">ID</th>
+                    <th data-i18n-key="tasksPage.table.group">Group</th>
+                    <th data-i18n-key="tasksPage.table.name">Name</th>
+                    <th data-i18n-key="tasksPage.table.cron">CRON</th>
+                    <th data-i18n-key="tasksPage.table.type">Type</th>
+                    <th data-i18n-key="tasksPage.table.status">Status</th>
+                    <th data-i18n-key="tasksPage.table.execMode">Exec Mode</th>
+                    <th data-i18n-key="tasksPage.table.actions">Actions</th>
                 </tr>
             </thead>
             <tbody id="tasks-table-body">
@@ -40,7 +41,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="taskFormModalLabel">Add/Edit Task</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
@@ -49,42 +50,42 @@
                         <input type="hidden" id="taskId">
                         <div class="form-row">
                             <div class="form-group col-md-6">
-                                <label for="taskName">Task Name</label>
-                                <input type="text" class="form-control" id="taskName" required>
+                                <label for="taskName" data-i18n-key="tasksPage.modal.taskNameLabel">Task Name</label>
+                                <input type="text" class="form-control" id="taskName" data-i18n-key-placeholder="tasksPage.modal.taskNamePlaceholder" placeholder="Enter task name" required>
                             </div>
                             <div class="form-group col-md-6">
-                                <label for="taskGroup">Task Group</label>
-                                <input type="text" class="form-control" id="taskGroup" required>
+                                <label for="taskGroup" data-i18n-key="tasksPage.modal.taskGroupLabel">Task Group</label>
+                                <input type="text" class="form-control" id="taskGroup" data-i18n-key-placeholder="tasksPage.modal.taskGroupPlaceholder" placeholder="Enter task group" required>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="cronExpression">CRON Expression</label>
+                            <label for="cronExpression" data-i18n-key="tasksPage.modal.cronLabel">CRON Expression</label>
                             <input type="text" class="form-control" id="cronExpression" required>
                             <div class="mt-1">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="validateCronBtn">Validate & Show Next Runtimes</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="validateCronBtn" data-i18n-key="tasksPage.modal.validateCronBtn">Validate & Show Next Runtimes</button>
                             </div>
                             <div id="cronValidationResult" class="mt-1" style="display: none;">
                                 <!-- Validation message and next times will be shown here -->
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="description">Description</label>
+                            <label for="description" data-i18n-key="tasksPage.modal.descriptionLabel">Description</label>
                             <textarea class="form-control" id="description" rows="2"></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="executionMode">Execution Mode</label>
+                            <label for="executionMode" data-i18n-key="tasksPage.modal.executionModeLabel">Execution Mode</label>
                             <select class="form-control" id="executionMode">
-                                <option value="BROADCAST">Broadcast (All Instances)</option>
-                                <option value="CLUSTER">Cluster (Single Instance via Lock)</option>
+                                <option value="BROADCAST" data-i18n-key="tasksPage.modal.executionModeBroadcast">Broadcast (All Instances)</option>
+                                <option value="CLUSTER" data-i18n-key="tasksPage.modal.executionModeCluster">Cluster (Single Instance via Lock)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="taskType">Task Type</label>
+                            <label for="taskType" data-i18n-key="tasksPage.modal.taskTypeLabel">Task Type</label>
                             <select class="form-control" id="taskType">
-                                <option value="0">Bean Task</option>
-                                <option value="2">HTTP Task</option>
-                                <option value="4">Shell Script Task</option>
-                                <option value="10">Workflow Task</option>
+                                <option value="0" data-i18n-key="tasksPage.modal.taskTypes.bean">Bean Task</option>
+                                <option value="2" data-i18n-key="tasksPage.modal.taskTypes.http">HTTP Task</option>
+                                <option value="4" data-i18n-key="tasksPage.modal.taskTypes.shell">Shell Script Task</option>
+                                <option value="10" data-i18n-key="tasksPage.modal.taskTypes.workflow">Workflow Task</option>
                             </select>
                         </div>
                         </div>
@@ -95,39 +96,39 @@
                             <div id="beanTaskFields" class="type-specific-fields" style="display:none;">
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
-                                        <label for="beanName">Bean Name</label>
-                                        <input type="text" class="form-control" id="beanName" placeholder="e.g., mySampleTask">
+                                        <label for="beanName" data-i18n-key="tasksPage.modal.beanTaskFields.beanNameLabel">Bean Name</label>
+                                        <input type="text" class="form-control" id="beanName" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanNamePlaceholder" placeholder="e.g., mySampleTask">
                                     </div>
                                     <div class="form-group col-md-6">
-                                        <label for="methodName">Method Name</label>
-                                        <input type="text" class="form-control" id="methodName" placeholder="e.g., executeSuccess">
+                                        <label for="methodName" data-i18n-key="tasksPage.modal.beanTaskFields.methodNameLabel">Method Name</label>
+                                        <input type="text" class="form-control" id="methodName" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.methodNamePlaceholder" placeholder="e.g., executeSuccess">
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="beanParameters">Bean Parameters (JSON)</label>
-                                    <textarea class="form-control" id="beanParameters" rows="2" placeholder='{"key": "value"}'></textarea>
+                                    <label for="beanParameters" data-i18n-key="tasksPage.modal.beanTaskFields.beanParamsLabel">Bean Parameters (JSON)</label>
+                                    <textarea class="form-control" id="beanParameters" rows="2" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanParamsPlaceholder" placeholder='{"key": "value"}'></textarea>
                                 </div>
                             </div>
 
                             <!-- Shell Script Task Specific Fields (type 1) -->
                             <div id="shellTaskFields" class="type-specific-fields" style="display:none;">
                                 <div class="form-group">
-                                    <label for="shellScriptContent">Script Content or Path</label>
-                                    <textarea class="form-control" id="shellScriptContent" rows="3" placeholder="e.g., echo 'Hello' or /path/to/script.sh"></textarea>
+                                    <label for="shellScriptContent" data-i18n-key="tasksPage.modal.shellTaskFields.scriptLabel">Script Content or Path</label>
+                                    <textarea class="form-control" id="shellScriptContent" rows="3" data-i18n-key-placeholder="tasksPage.modal.shellTaskFields.scriptPlaceholder" placeholder="e.g., echo 'Hello' or /path/to/script.sh"></textarea>
                                 </div>
                                 <div class="form-group form-check">
                                     <input type="checkbox" class="form-check-input" id="shellIsInlineScript">
-                                    <label class="form-check-label" for="shellIsInlineScript">Is Inline Script (vs. Path)</label>
+                                    <label class="form-check-label" for="shellIsInlineScript" data-i18n-key="tasksPage.modal.shellTaskFields.inlineScriptLabel">Is Inline Script (vs. Path)</label>
                                 </div>
                                 <div class="form-group">
-                                    <label for="shellArguments">Arguments (one per line)</label>
-                                    <textarea class="form-control" id="shellArguments" rows="2" placeholder="arg1&#10;arg2 with spaces"></textarea>
+                                    <label for="shellArguments" data-i18n-key="tasksPage.modal.shellTaskFields.argsLabel">Arguments (one per line)</label>
+                                    <textarea class="form-control" id="shellArguments" rows="2" data-i18n-key-placeholder="tasksPage.modal.shellTaskFields.argsPlaceholder" placeholder="arg1&#10;arg2 with spaces"></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="shellWorkingDirectory">Working Directory (Optional)</label>
-                                    <input type="text" class="form-control" id="shellWorkingDirectory" placeholder="e.g., /tmp">
+                                    <label for="shellWorkingDirectory" data-i18n-key="tasksPage.modal.shellTaskFields.workDirLabel">Working Directory (Optional)</label>
+                                    <input type="text" class="form-control" id="shellWorkingDirectory" data-i18n-key-placeholder="tasksPage.modal.shellTaskFields.workDirPlaceholder" placeholder="e.g., /tmp">
                                 </div>
-                                <small class="form-text text-muted">
+                                <small class="form-text text-muted" data-i18n-key="tasksPage.modal.shellTaskFields.note">
                                     Note: Shell script parameters (script, arguments, workingDirectory, isInlineScript) will be stored as a JSON object in the generic "Bean Parameters" field in the database.
                                     The fields below (Bean Name, Method Name) are not used for Shell tasks.
                                 </small>
@@ -136,11 +137,11 @@
                             <!-- HTTP Task Specific Fields (type 2) -->
                             <div id="httpTaskFields" class="type-specific-fields" style="display:none;">
                                 <div class="form-group">
-                                    <label for="httpUrl">HTTP URL</label>
-                                    <input type="url" class="form-control" id="httpUrl" placeholder="https://example.com/api/data" required>
+                                    <label for="httpUrl" data-i18n-key="tasksPage.modal.httpTaskFields.urlLabel">HTTP URL</label>
+                                    <input type="url" class="form-control" id="httpUrl" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.urlPlaceholder" placeholder="https://example.com/api/data" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="httpMethod">HTTP Method</label>
+                                    <label for="httpMethod" data-i18n-key="tasksPage.modal.httpTaskFields.methodLabel">HTTP Method</label>
                                     <select class="form-control" id="httpMethod">
                                         <option value="GET">GET</option>
                                         <option value="POST">POST</option>
@@ -149,24 +150,24 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="httpHeaders">HTTP Headers (JSON)</label>
-                                    <textarea class="form-control" id="httpHeaders" rows="2" placeholder='{"Content-Type": "application/json", "X-API-KEY":"secret"}'></textarea>
+                                    <label for="httpHeaders" data-i18n-key="tasksPage.modal.httpTaskFields.headersLabel">HTTP Headers (JSON)</label>
+                                    <textarea class="form-control" id="httpHeaders" rows="2" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.headersPlaceholder" placeholder='{"Content-Type": "application/json", "X-API-KEY":"secret"}'></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="httpBody">HTTP Body (e.g., JSON for POST/PUT)</label>
-                                    <textarea class="form-control" id="httpBody" rows="3" placeholder='{"key": "value"}'></textarea>
+                                    <label for="httpBody" data-i18n-key="tasksPage.modal.httpTaskFields.bodyLabel">HTTP Body (e.g., JSON for POST/PUT)</label>
+                                    <textarea class="form-control" id="httpBody" rows="3" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.bodyPlaceholder" placeholder='{"key": "value"}'></textarea>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
-                                        <label for="httpConnectTimeout">Connect Timeout (ms, Optional)</label>
-                                        <input type="number" class="form-control" id="httpConnectTimeout" placeholder="e.g., 5000">
+                                        <label for="httpConnectTimeout" data-i18n-key="tasksPage.modal.httpTaskFields.connectTimeoutLabel">Connect Timeout (ms, Optional)</label>
+                                        <input type="number" class="form-control" id="httpConnectTimeout" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.connectTimeoutPlaceholder" placeholder="e.g., 5000">
                                     </div>
                                     <div class="form-group col-md-6">
-                                        <label for="httpReadTimeout">Read Timeout (ms, Optional)</label>
-                                        <input type="number" class="form-control" id="httpReadTimeout" placeholder="e.g., 10000">
+                                        <label for="httpReadTimeout" data-i18n-key="tasksPage.modal.httpTaskFields.readTimeoutLabel">Read Timeout (ms, Optional)</label>
+                                        <input type="number" class="form-control" id="httpReadTimeout" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.readTimeoutPlaceholder" placeholder="e.g., 10000">
                                     </div>
                                 </div>
-                                 <small class="form-text text-muted">
+                                 <small class="form-text text-muted" data-i18n-key="tasksPage.modal.httpTaskFields.note">
                                     Note: HTTP task parameters will be stored as a JSON object in the generic "Bean Parameters" field in the database.
                                     The fields below (Bean Name, Method Name) are not used for HTTP tasks.
                                 </small>
@@ -175,100 +176,102 @@
                             <!-- Workflow Task Specific Fields (type 3) -->
                             <div id="workflowTaskFields" class="type-specific-fields" style="display:none;">
                                 <div class="card mt-3 mb-3">
-                                    <div class="card-header">
+                                    <div class="card-header" data-i18n-key="tasksPage.modal.workflowTaskFields.nodeHelperCardHeader">
                                         Workflow Node Helper
                                     </div>
                                     <div class="card-body">
                                         <div class="form-group">
-                                            <label for="availableTasksForNodes">Select Task to Add as Node:</label>
-                                            <select id="availableTasksForNodes" class="form-control"></select>
+                                            <label for="availableTasksForNodes" data-i18n-key="tasksPage.modal.workflowTaskFields.selectTaskLabel">Select Task to Add as Node:</label>
+                                            <select id="availableTasksForNodes" class="form-control">
+                                                <!-- Options populated by JS, placeholder option text set in JS -->
+                                            </select>
                                         </div>
                                         <div class="form-row">
                                             <div class="form-group col-md-6">
-                                                <label for="wfNodeId">Node ID (Unique)</label>
-                                                <input type="text" id="wfNodeId" class="form-control" placeholder="e.g., step1">
+                                                <label for="wfNodeId" data-i18n-key="tasksPage.modal.workflowTaskFields.nodeIdLabel">Node ID (Unique)</label>
+                                                <input type="text" id="wfNodeId" class="form-control" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodeIdPlaceholder" placeholder="e.g., step1">
                                             </div>
                                             <div class="form-group col-md-6">
-                                                <label for="wfNodeName">Node Name (Display)</label>
-                                                <input type="text" id="wfNodeName" class="form-control" placeholder="e.g., Process Data">
+                                                <label for="wfNodeName" data-i18n-key="tasksPage.modal.workflowTaskFields.nodeNameLabel">Node Name (Display)</label>
+                                                <input type="text" id="wfNodeName" class="form-control" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodeNamePlaceholder" placeholder="e.g., Process Data">
                                             </div>
                                         </div>
                                         <div class="form-group">
-                                            <label for="wfNodeParams">Node-Specific Parameters (JSON, Optional)</label>
-                                            <textarea id="wfNodeParams" class="form-control" rows="2" placeholder='{"input_file": "/path/to/data.csv"}'></textarea>
+                                            <label for="wfNodeParams" data-i18n-key="tasksPage.modal.workflowTaskFields.nodeParamsLabel">Node-Specific Parameters (JSON, Optional)</label>
+                                            <textarea id="wfNodeParams" class="form-control" rows="2" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodeParamsPlaceholder" placeholder='{"input_file": "/path/to/data.csv"}'></textarea>
                                         </div>
-                                        <button type="button" id="addNodeToJsonBtn" class="btn btn-info btn-sm">Add/Update Node in JSON Below</button>
-                                        <small class="form-text text-muted">This helper populates the 'Workflow Nodes (JSON)' field. Ensure Node IDs are unique within this workflow.</small>
+                                        <button type="button" id="addNodeToJsonBtn" class="btn btn-info btn-sm" data-i18n-key="tasksPage.modal.workflowTaskFields.addNodeBtn">Add/Update Node in JSON Below</button>
+                                        <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.addNodeNote">This helper populates the 'Workflow Nodes (JSON)' field. Ensure Node IDs are unique within this workflow.</small>
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="globalParametersJson">Global Parameters (JSON, Optional)</label>
-                                <textarea class="form-control" id="globalParametersJson" rows="3" placeholder='{"key": "globalValue", "api_url": "https://example.com"}'></textarea>
+                                    <label for="globalParametersJson" data-i18n-key="tasksPage.modal.workflowTaskFields.globalParamsLabel">Global Parameters (JSON, Optional)</label>
+                                <textarea class="form-control" id="globalParametersJson" rows="3" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.globalParamsPlaceholder" placeholder='{"key": "globalValue", "api_url": "https://example.com"}'></textarea>
                             </div>
                             <div class="form-group">
-                                <label for="workflowNodesJson">Workflow Nodes (JSON)</label>
-                                <textarea class="form-control" id="workflowNodesJson" rows="5" placeholder='[{"nodeId":"node1", "taskConfigId":1, "parameters": {"input": "${global_api_key}"} }]'></textarea>
-                                <small class="form-text text-muted">Define tasks (nodes). Parameters can use templating like `${nodeA_status}` or `${global_param}`.</small>
+                                <label for="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonLabel">Workflow Nodes (JSON)</label>
+                                <textarea class="form-control" id="workflowNodesJson" rows="5" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodesJsonPlaceholder" placeholder='[{"nodeId":"node1", "taskConfigId":1, "parameters": {"input": "${global_api_key}"} }]'></textarea>
+                                <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonNote">Define tasks (nodes). Parameters can use templating like `${nodeA_status}` or `${global_param}`.</small>
                             </div>
                             <div class="form-group">
-                                <label>Workflow Visualizer</label>
-                                <button type="button" id="refreshDagViewBtn" class="btn btn-sm btn-outline-primary ml-2">Refresh View</button>
+                                <label data-i18n-key="tasksPage.modal.workflowTaskFields.visualizerHeader">Workflow Visualizer</label>
+                                <button type="button" id="refreshDagViewBtn" class="btn btn-sm btn-outline-primary ml-2" data-i18n-key="tasksPage.modal.workflowTaskFields.refreshDagBtn">Refresh View</button>
                                 <div id="dagContainer" style="width: 100%; min-height: 200px; background-color: #f8f9fa; border: 1px solid #dee2e6; position: relative; overflow: auto; padding: 10px;">
                                     <!-- SVG content will be generated here -->
                                 </div>
-                                <small class="form-text text-muted">Nodes are based on 'Workflow Nodes (JSON)' above. Edges from 'Workflow Edges (JSON)' below.</small>
+                                <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.dagContainerPlaceholderInitial">Nodes are based on 'Workflow Nodes (JSON)' above. Edges from 'Workflow Edges (JSON)' below.</small>
                             </div>
                              <div class="form-group">
-                                <label for="workflowEdgesJson">Workflow Edges (JSON)</label>
-                                <textarea class="form-control" id="workflowEdgesJson" rows="4" placeholder='[{"fromNodeId":"node1", "toNodeId":"node2", "expression": "${node1_status} == ''SUCCESS''"}]'></textarea>
-                                <small class="form-text text-muted">Define transitions and conditions between nodes.</small>
+                                <label for="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonLabel">Workflow Edges (JSON)</label>
+                                <textarea class="form-control" id="workflowEdgesJson" rows="4" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.edgesJsonPlaceholder" placeholder='[{"fromNodeId":"node1", "toNodeId":"node2", "expression": "${node1_status} == ''SUCCESS''"}]'></textarea>
+                                <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonNote">Define transitions and conditions between nodes.</small>
                             </div>
                         </div>
                         </div> <!-- End of typeSpecificFieldsContainer -->
 
                         <hr>
-                        <h5>Advanced Settings</h5>
+                        <h5 data-i18n-key="tasksPage.modal.advancedSettingsHeader">Advanced Settings</h5>
                         <div class="form-row">
                             <div class="form-group col-md-6">
-                                <label for="startDate">Start Date (Optional)</label>
+                                <label for="startDate" data-i18n-key="tasksPage.modal.startDateLabel">Start Date (Optional)</label>
                                 <input type="date" class="form-control" id="startDate">
                             </div>
                             <div class="form-group col-md-6">
-                                <label for="endDate">End Date (Optional)</label>
+                                <label for="endDate" data-i18n-key="tasksPage.modal.endDateLabel">End Date (Optional)</label>
                                 <input type="date" class="form-control" id="endDate">
                             </div>
                         </div>
                         <div class="form-row">
                              <div class="form-group col-md-6">
-                                <label for="taskCalendarGroup">Calendar Group for Exclusions (Optional)</label>
-                                <select class="form-control" id="taskCalendarGroup"><option value="">-- Select Calendar --</option></select>
+                                <label for="taskCalendarGroup" data-i18n-key="tasksPage.modal.calendarGroupLabel">Calendar Group for Exclusions (Optional)</label>
+                                <select class="form-control" id="taskCalendarGroup"><option value="" data-i18n-key="tasksPage.modal.calendarGroupDefaultOption">-- Select Calendar --</option></select>
                             </div>
                             <div class="form-group col-md-6">
-                                <label for="taskExcludeTimes">Exclude Times (Optional)</label>
-                                <input type="text" class="form-control" id="taskExcludeTimes" placeholder="e.g., 00:00-08:00,22:00-23:59">
+                                <label for="taskExcludeTimes" data-i18n-key="tasksPage.modal.excludeTimesLabel">Exclude Times (Optional)</label>
+                                <input type="text" class="form-control" id="taskExcludeTimes" data-i18n-key-placeholder="tasksPage.modal.excludeTimesPlaceholder" placeholder="e.g., 00:00-08:00,22:00-23:59">
                             </div>
                         </div>
                          <div class="form-group">
-                            <label for="executeTimeoutSeconds">Execution Timeout (seconds, 0 for no timeout)</label>
+                            <label for="executeTimeoutSeconds" data-i18n-key="tasksPage.modal.timeoutLabel">Execution Timeout (seconds, 0 for no timeout)</label>
                             <input type="number" class="form-control" id="executeTimeoutSeconds" value="0">
                         </div>
 
                         <hr>
-                        <h5>Notification Settings</h5>
+                        <h5 data-i18n-key="tasksPage.modal.notificationSettingsHeader">Notification Settings</h5>
                          <div class="form-group">
-                            <label for="notifySuccessUserIds">Notify Success - User IDs</label>
+                            <label for="notifySuccessUserIds" data-i18n-key="tasksPage.modal.notifySuccessLabel">Notify Success - User IDs</label>
                             <select multiple class="form-control" id="notifySuccessUserIds"></select>
                         </div>
                         <div class="form-group">
-                            <label for="notifyFailedUserIds">Notify Failure/Timeout - User IDs</label>
+                            <label for="notifyFailedUserIds" data-i18n-key="tasksPage.modal.notifyFailedLabel">Notify Failure/Timeout - User IDs</label>
                             <select multiple class="form-control" id="notifyFailedUserIds"></select>
                         </div>
 
                         <div class="form-group form-check mt-3">
                             <input type="checkbox" class="form-check-input" id="isActive">
-                            <label class="form-check-label" for="isActive">Active</label>
+                            <label class="form-check-label" for="isActive" data-i18n-key="tasksPage.modal.activeLabel">Active</label>
                         </div>
-                        <button type="submit" class="btn btn-success">Save Task</button>
+                        <button type="submit" class="btn btn-success" data-i18n-key="tasksPage.modal.saveBtn">Save Task</button>
                     </form>
                 </div>
             </div>
@@ -281,7 +284,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="edgePropertyModalLabel">Edge Properties</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <button type="button" class="close" data-dismiss="modal" data-i18n-key-title="common.close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
             <input type="hidden" id="edgeModalFromNode">
@@ -289,18 +292,18 @@
             <input type="hidden" id="edgeModalIsEditing" value="false">
             <input type="hidden" id="edgeModalArrayIndex" value="-1">
             <div class="form-group">
-              <label for="edgeExpression">Condition Expression (Optional)</label>
-              <input type="text" class="form-control" id="edgeExpression" placeholder="${nodeId_status} == 'SUCCESS'">
+              <label for="edgeExpression" data-i18n-key="tasksPage.edgeModal.expressionLabel">Condition Expression (Optional)</label>
+              <input type="text" class="form-control" id="edgeExpression" data-i18n-key-placeholder="tasksPage.edgeModal.expressionPlaceholder" placeholder="${nodeId_status} == 'SUCCESS'">
             </div>
             <div class="form-group">
-              <label for="edgePriority">Priority (Integer, Optional, default 0)</label>
-              <input type="number" class="form-control" id="edgePriority" placeholder="0">
+              <label for="edgePriority" data-i18n-key="tasksPage.edgeModal.priorityLabel">Priority (Integer, Optional, default 0)</label>
+              <input type="number" class="form-control" id="edgePriority" data-i18n-key-placeholder="tasksPage.edgeModal.priorityPlaceholder" placeholder="0">
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-danger mr-auto" id="deleteEdgeBtn" style="display:none;">Delete Edge</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary" id="saveEdgeBtn">Save Edge</button>
+            <button type="button" class="btn btn-danger mr-auto" id="deleteEdgeBtn" style="display:none;" data-i18n-key="tasksPage.edgeModal.deleteBtn">Delete Edge</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
+            <button type="button" class="btn btn-primary" id="saveEdgeBtn" data-i18n-key="tasksPage.edgeModal.saveBtn">Save Edge</button>
           </div>
         </div>
       </div>
@@ -313,30 +316,30 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="workflowNodeEditModalLabel">Edit Workflow Node</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <button type="button" class="close" data-dismiss="modal" data-i18n-key-title="common.close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
           </div>
           <div class="modal-body">
-            <input type="hidden" id="editingNodeArrayIndex"> <!-- To store the index of the node in workflowNodesJson -->
+            <input type="hidden" id="editingNodeArrayIndex">
             <div class="form-group">
-              <label>Node ID:</label>
-              <p id="displayNodeId" class="form-control-static"></p> <!-- Read-only display -->
+              <label data-i18n-key="tasksPage.nodeEditModal.nodeIdLabel">Node ID:</label>
+              <p id="displayNodeId" class="form-control-static"></p>
             </div>
             <div class="form-group">
-              <label>Task Config ID (Original Task):</label>
-              <p id="displayTaskConfigId" class="form-control-static"></p> <!-- Read-only display -->
+              <label data-i18n-key="tasksPage.nodeEditModal.taskConfigIdLabel">Task Config ID (Original Task):</label>
+              <p id="displayTaskConfigId" class="form-control-static"></p>
             </div>
             <div class="form-group">
-              <label for="editNodeName">Node Name (Display Name)</label>
+              <label for="editNodeName" data-i18n-key="tasksPage.nodeEditModal.nodeNameLabel">Node Name (Display Name)</label>
               <input type="text" class="form-control" id="editNodeName">
             </div>
             <div class="form-group">
-              <label for="editNodeParams">Node-Specific Parameters (JSON)</label>
-              <textarea class="form-control" id="editNodeParams" rows="4" placeholder='{"key":"value"}'></textarea>
+              <label for="editNodeParams" data-i18n-key="tasksPage.nodeEditModal.nodeParamsLabel">Node-Specific Parameters (JSON)</label>
+              <textarea class="form-control" id="editNodeParams" rows="4" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanParamsPlaceholder" placeholder='{"key":"value"}'></textarea> <!-- Reused placeholder key -->
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-primary" id="saveNodeChangesBtn">Save Changes</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
+            <button type="button" class="btn btn-primary" id="saveNodeChangesBtn" data-i18n-key="tasksPage.nodeEditModal.saveBtn">Save Changes</button>
           </div>
         </div>
       </div>
@@ -348,7 +351,69 @@
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
     <script src="js/main.js"></script>
     <script>
+        function detectCycleInWorkflow(nodes, edges) {
+            if (!nodes || nodes.length === 0 || !edges || edges.length === 0) {
+                return false;
+            }
+
+            const adj = new Map();
+            const nodeIds = new Set();
+
+            nodes.forEach(node => {
+                if (node && node.nodeId) {
+                    nodeIds.add(node.nodeId);
+                    adj.set(node.nodeId, []);
+                }
+            });
+
+            if (nodeIds.size === 0) return false;
+
+            edges.forEach(edge => {
+                if (edge && edge.fromNodeId && edge.toNodeId &&
+                    nodeIds.has(edge.fromNodeId) && nodeIds.has(edge.toNodeId)) {
+                    adj.get(edge.fromNodeId).push(edge.toNodeId);
+                }
+            });
+
+            const visitStatus = new Map();
+            nodeIds.forEach(nodeId => visitStatus.set(nodeId, 0));
+
+            function dfs(currentNodeId) {
+                visitStatus.set(currentNodeId, 1);
+
+                const neighbors = adj.get(currentNodeId) || [];
+                for (const neighborId of neighbors) {
+                    if (!visitStatus.has(neighborId)) continue;
+
+                    if (visitStatus.get(neighborId) === 1) {
+                        return true;
+                    }
+                    if (visitStatus.get(neighborId) === 0) {
+                        if (dfs(neighborId)) {
+                            return true;
+                        }
+                    }
+                }
+                visitStatus.set(currentNodeId, 2);
+                return false;
+            }
+
+            for (const nodeId of nodeIds) {
+                if (visitStatus.get(nodeId) === 0) {
+                    if (dfs(nodeId)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         $(document).ready(function() {
+            if (typeof i18n !== 'undefined') {
+                i18n.init().then(() => console.log("i18n initialized for tasks.html"));
+            } else {
+                console.error("i18n object not defined in tasks.html");
+            }
             $("#navbar-container").load("_navbar.html", function() {
                 // Ensure scripts in _navbar.html are also processed if any are there
                 // For simple text setting like username, it should work fine.
@@ -361,6 +426,7 @@
                     e.preventDefault();
                     logout();
                 });
+                if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to navbar
             });
             loadTasks();
             loadUsersForSelects();
@@ -374,16 +440,16 @@
                     function(users) {
                         const successSelect = $('#notifySuccessUserIds');
                         const failSelect = $('#notifyFailedUserIds');
-                        // successSelect.empty(); // Keep if you want to clear before load, but might not be needed if loaded once.
-                        // failSelect.empty();
+                        successSelect.empty();
+                        failSelect.empty();
                         users.forEach(function(user) {
                             const option = `<option value='${user.userId}'>${user.username}</option>`;
                             successSelect.append(option);
-                            failSelect.append(option.clone()); // Use clone if you modify 'option' later, good practice
+                            failSelect.append(option.clone());
                         });
                     },
                     function(jqXHR) {
-                        showFeedback('Error loading users: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('tasksPage.feedback.errorLoadingUsers', 'Error loading users: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             }
@@ -392,28 +458,26 @@
                 makeApiCall('GET', '/api/calendars', null,
                     function(calendars) {
                         const calendarSelect = $('#taskCalendarGroup');
-                        // calendarSelect.find('option:gt(0)').remove(); // Keep the first "-- Select Calendar --" option
+                        calendarSelect.find('option:gt(0)').remove(); // Keep the first "-- Select Calendar --" option
                         calendars.forEach(function(calendar) {
-                            // Assuming calendar object has a 'name' property or similar identifier
-                            // If the API returns strings directly: const option = `<option value='${calendar}'>${calendar}</option>`;
-                            const option = `<option value='${calendar.calendarName}'>${calendar.calendarName}</option>`; // Adjust based on actual API response
+                            const option = `<option value='${calendar.calendarName}'>${calendar.calendarName}</option>`;
                             calendarSelect.append(option);
                         });
                     },
                     function(jqXHR) {
-                        showFeedback('Error loading calendars: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                         showFeedback(i18n.translate('tasksPage.feedback.errorLoadingCalendars', 'Error loading calendars: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             }
 
             function loadAvailableTasksForNodes() {
                 const select = $('#availableTasksForNodes');
-                select.empty().append('<option value="">-- Select a Task --</option>'); // Clear and add placeholder
+                const placeholderText = i18n.translate('tasksPage.modal.workflowTaskFields.selectTaskPlaceholder', '-- Select a Task --');
+                select.empty().append(`<option value="">${placeholderText}</option>`);
 
-                makeApiCall('GET', '/api/tasks', null, // Assuming /api/tasks is the correct endpoint
+                makeApiCall('GET', '/api/tasks', null,
                     function(tasks) {
                         tasks.forEach(function(task) {
-                            // Exclude workflow tasks themselves and potentially inactive tasks from being nodes
                             if (task.taskType !== 10 && task.isActive) {
                                 const optionText = `${task.taskName} (ID: ${task.taskId}, Group: ${task.taskGroup || 'N/A'})`;
                                 select.append(`<option value='${task.taskId}'>${optionText}</option>`);
@@ -421,18 +485,18 @@
                         });
                     },
                     function(jqXHR) {
-                        showFeedback('Error loading tasks for node selection: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTasksForNode', 'Error loading tasks for node selection: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             }
 
             function getTaskTypeString(typeInt) {
                 switch(typeInt) {
-                    case 0: return "Bean";
-                    case 2: return "HTTP";
-                    case 4: return "Shell Script";
-                    case 10: return "Workflow";
-                    default: return `Unknown (${typeInt})`;
+                    case 0: return i18n.translate('tasksPage.modal.taskTypes.bean', 'Bean Task');
+                    case 2: return i18n.translate('tasksPage.modal.taskTypes.http', 'HTTP Task');
+                    case 4: return i18n.translate('tasksPage.modal.taskTypes.shell', 'Shell Script Task');
+                    case 10: return i18n.translate('tasksPage.modal.taskTypes.workflow', 'Workflow Task');
+                    default: return i18n.translate('tasksPage.modal.taskTypes.unknown', 'Unknown ({{typeInt}})').replace('{{typeInt}}', typeInt);
                 }
             }
 
@@ -442,7 +506,14 @@
                         const tableBody = $('#tasks-table-body');
                         tableBody.empty();
                         tasks.forEach(function(task) {
-                            const status = task.isActive ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>';
+                            const status = task.isActive ? `<span class="badge badge-success">${i18n.translate('tasksPage.table.statusActive', 'Active')}</span>` : `<span class="badge badge-secondary">${i18n.translate('tasksPage.table.statusInactive', 'Inactive')}</span>`;
+                            const historyBtnText = i18n.translate('tasksPage.table.historyBtnShort', 'History');
+                            const editBtnText = i18n.translate('common.edit', 'Edit');
+                            const deleteBtnText = i18n.translate('common.delete', 'Delete');
+                            const triggerBtnText = i18n.translate('tasksPage.table.triggerBtnShort', 'Trigger');
+                            const disableBtnText = i18n.translate('tasksPage.table.disableBtnShort', 'Disable');
+                            const enableBtnText = i18n.translate('tasksPage.table.enableBtnShort', 'Enable');
+
                             const row = `<tr>
                                 <td>${task.taskId}</td>
                                 <td>${task.taskGroup || ''}</td>
@@ -452,13 +523,13 @@
                                 <td>${status}</td>
                                 <td>${task.executionMode || 'BROADCAST'}</td>
                                 <td class="action-buttons">
-                                    <a href="logs.html?taskId=${task.taskId}" class="btn btn-sm btn-outline-info mr-1" title="View Execution History">History</a>
-                                    <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}" title="Edit Task">Edit</button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}" title="Delete Task">Delete</button>
-                                    <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}" title="Trigger Task Manually">Trigger</button>
+                                    <a href="logs.html?taskId=${task.taskId}" class="btn btn-sm btn-outline-info mr-1" title="${i18n.translate('tasksPage.table.historyBtn', 'View Execution History')}">${historyBtnText}</a>
+                                    <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.editBtn', 'Edit Task')}">${editBtnText}</button>
+                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.deleteBtn', 'Delete Task')}">${deleteBtnText}</button>
+                                    <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.triggerBtn', 'Trigger Task Manually')}">${triggerBtnText}</button>
                                     ${task.isActive
-                                        ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}" title="Disable Task">Disable</button>`
-                                        : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}" title="Enable Task">Enable</button>`
+                                        ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.disableBtn', 'Disable Task')}">${disableBtnText}</button>`
+                                        : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.enableBtn', 'Enable Task')}">${enableBtnText}</button>`
                                     }
                                 </td>
                             </tr>`;
@@ -466,44 +537,41 @@
                         });
                     },
                     function(jqXHR) {
-                        showFeedback('Error loading tasks: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTasks', 'Error loading tasks: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             }
 
-            // Show/hide type-specific fields based on selection
             $('#taskType').change(function() {
                 const type = $(this).val();
                 $('.type-specific-fields').hide();
-                $('#beanName, #methodName, #beanParameters').closest('.form-group').show(); // Default visibility for bean params
+                $('#beanName, #methodName, #beanParameters').closest('.form-group').show();
 
-                // Clear DAG container when type changes
-                $('#dagContainer').empty().html('<p class="text-muted small">Select task type "Workflow" and define nodes to see visualization.</p>');
+                const initialDagMsg = i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerPlaceholderInitial', "Define nodes and edges in the JSON textareas and click \"Refresh View\".");
+                $('#dagContainer').empty().html(`<p class="text-muted small">${initialDagMsg}</p>`);
 
-
-                if (type === '0') { // Bean Task
+                if (type === '0') {
                     $('#beanTaskFields').show();
-                } else if (type === '4') { // Shell Script Task
+                } else if (type === '4') {
                     $('#shellTaskFields').show();
                     $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
-                } else if (type === '2') { // HTTP Task
+                } else if (type === '2') {
                     $('#httpTaskFields').show();
                     $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
-                } else if (type === '10') { // Workflow Task
+                } else if (type === '10') {
                     $('#workflowTaskFields').show();
                     $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
-                    loadAvailableTasksForNodes(); // Load tasks for the helper
-                    redrawDAG(); // Draw nodes on type change to workflow
+                    loadAvailableTasksForNodes();
+                    redrawDAG();
                 }
             }).trigger('change');
 
             function redrawDAG() {
                 const svgContainer = $('#dagContainer');
-                svgContainer.empty(); // Clear previous content
+                svgContainer.empty();
 
-                // Reset selection (important if redraw is called while a source is selected)
                 if (selectedSourceElement) {
-                    selectedSourceElement.find('rect').attr('fill', '#fff'); // Clear highlight before redraw
+                    selectedSourceElement.find('rect').attr('fill', '#fff');
                 }
                 selectedSourceNodeId = null;
                 selectedSourceElement = null;
@@ -512,31 +580,30 @@
                 let nodesArray = [];
 
                 if (!nodesJson || nodesJson.trim() === '') {
-                    svgContainer.append('<p class="text-muted small">No nodes defined. Add nodes using the helper or directly in "Workflow Nodes (JSON)" and click "Refresh View".</p>');
+                    svgContainer.append(`<p class="text-muted small">${i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerPlaceholderNoNodes')}</p>`);
                     return;
                 }
 
                 try {
                     nodesArray = JSON.parse(nodesJson);
                     if (!Array.isArray(nodesArray)) {
-                        svgContainer.append('<p class="text-danger small">Error: Workflow Nodes JSON is not a valid array.</p>');
+                        svgContainer.append(`<p class="text-danger small">${i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerErrorNotArray')}</p>`);
                         return;
                     }
                 } catch (e) {
-                    svgContainer.append(`<p class="text-danger small">Error parsing Workflow Nodes JSON: ${e.message}</p>`);
+                    svgContainer.append(`<p class="text-danger small">${i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerErrorParseNodes')}: ${e.message}</p>`);
                     return;
                 }
 
                 if (nodesArray.length === 0) {
-                    svgContainer.append('<p class="text-muted small">No nodes defined in Workflow Nodes JSON. Add nodes and click "Refresh View".</p>');
+                    svgContainer.append(`<p class="text-muted small">${i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerPlaceholderNoNodes')}</p>`);
                     return;
                 }
 
                 const svgNS = 'http://www.w3.org/2000/svg';
                 const svg = $(document.createElementNS(svgNS, 'svg'));
-                svg.attr('width', '100%'); // Set initial width, height will be adjusted
+                svg.attr('width', '100%');
 
-                // Define arrowhead marker
                 if (svg.find('#arrowhead').length === 0) {
                     const defs = $(document.createElementNS(svgNS, 'defs'));
                     const marker = $(document.createElementNS(svgNS, 'marker'));
@@ -544,16 +611,15 @@
                           .attr('orient', 'auto').attr('markerWidth', 6).attr('markerHeight', 6).attr('overflow', 'visible');
                     marker.append($(document.createElementNS(svgNS, 'path')).attr('d', 'M 0,-5 L 10 ,0 L 0,5').attr('fill', '#333'));
                     defs.append(marker);
-                    svg.prepend(defs); // Prepend to ensure it's defined before use
+                    svg.prepend(defs);
                 }
 
                 const nodeWidth = 150;
                 const nodeHeight = 60;
-                const nodeVMargin = 20; // Vertical margin between nodes
-                const nodeHMargin = 20; // Horizontal margin from container edge
+                const nodeVMargin = 20;
+                const nodeHMargin = 20;
                 const startX = nodeHMargin;
                 let currentY = nodeVMargin;
-                const textPadding = 5; // Padding for text from rect border
 
                 nodesArray.forEach(function(node, index) {
                     const g = $(document.createElementNS(svgNS, 'g'));
@@ -561,45 +627,42 @@
                     const nodeCenterY = currentY + nodeHeight / 2;
 
                     g.attr('transform', `translate(${startX}, ${currentY})`);
-                    g.attr('class', 'dag-node node-group'); // Added node-group for clarity
+                    g.attr('class', 'dag-node node-group');
                     g.attr('data-node-id', node.nodeId);
-                    g.data('nodeCenter', { x: nodeCenterX, y: nodeCenterY }); // Store center coords
+                    g.data('nodeCenter', { x: nodeCenterX, y: nodeCenterY });
 
                     const rect = $(document.createElementNS(svgNS, 'rect'));
                     rect.attr('x', 0).attr('y', 0)
                         .attr('width', nodeWidth).attr('height', nodeHeight)
                         .attr('fill', '#fff').attr('stroke', '#007bff')
                         .attr('stroke-width', 2).attr('rx', 5);
-                        // data-node-id is now on the group 'g'
                     g.append(rect);
 
-                    // Single click for edge creation
                     rect.on('click', function(event) {
                         event.stopPropagation();
                         const parentGroup = $(this).closest('g.node-group');
                         const clickedNodeId = parentGroup.attr('data-node-id');
 
-                        if (!selectedSourceNodeId) { // No source selected, select this one
+                        if (!selectedSourceNodeId) {
                             selectedSourceNodeId = clickedNodeId;
                             selectedSourceElement = parentGroup;
-                            parentGroup.find('rect').attr('fill', '#aaddff'); // Highlight
-                        } else { // A source is already selected
-                            if (selectedSourceNodeId === clickedNodeId) { // Clicked the same selected node
-                                selectedSourceElement.find('rect').attr('fill', '#fff'); // Deselect
+                            parentGroup.find('rect').attr('fill', '#aaddff');
+                        } else {
+                            if (selectedSourceNodeId === clickedNodeId) {
+                                selectedSourceElement.find('rect').attr('fill', '#fff');
                                 selectedSourceNodeId = null;
                                 selectedSourceElement = null;
-                            } else { // Clicked a different, target node
+                            } else {
                                 $('#edgeModalFromNode').val(selectedSourceNodeId);
                                 $('#edgeModalToNode').val(clickedNodeId);
                                 $('#edgeModalIsEditing').val('false');
-                                $('#edgeModalArrayIndex').val('-1'); // Not editing an existing edge
-                                $('#edgeExpression').val(''); // Clear previous values
-                                $('#edgePriority').val('0');  // Default priority
-                                $('#deleteEdgeBtn').hide();   // Hide delete for new edge
-                                $('#edgePropertyModalLabel').text(`New Edge: ${selectedSourceNodeId} → ${clickedNodeId}`);
+                                $('#edgeModalArrayIndex').val('-1');
+                                $('#edgeExpression').val('');
+                                $('#edgePriority').val('0');
+                                $('#deleteEdgeBtn').hide();
+                                $('#edgePropertyModalLabel').text(i18n.translate('tasksPage.edgeModal.titleNew', "New Edge: {{from}} → {{to}}").replace('{{from}}',selectedSourceNodeId).replace('{{to}}',clickedNodeId));
                                 $('#edgePropertyModal').modal('show');
 
-                                // Deselect source node after modal is set up
                                 selectedSourceElement.find('rect').attr('fill', '#fff');
                                 selectedSourceNodeId = null;
                                 selectedSourceElement = null;
@@ -607,7 +670,6 @@
                         }
                     });
 
-                    // Double click for editing node properties
                     g.on('dblclick', function(event) {
                         event.stopPropagation();
                         const clickedNodeId = $(this).attr('data-node-id');
@@ -616,61 +678,55 @@
                         try {
                             currentNodes = JSON.parse($('#workflowNodesJson').val() || '[]');
                         } catch (e) {
-                            showFeedback('Error parsing workflowNodesJson for editing: ' + e.message, true);
+                            showFeedback(i18n.translate('tasksPage.feedback.nodeEditErrorParse', "Error parsing workflowNodesJson for editing.") + " " + e.message, true);
                             return;
                         }
                         const nodeIndex = currentNodes.findIndex(n => n.nodeId === clickedNodeId);
                         if (nodeIndex === -1) {
-                            showFeedback('Could not find node data for editing.', true);
+                            showFeedback(i18n.translate('tasksPage.feedback.nodeEditNotFound', "Could not find node data for editing."), true);
                             return;
                         }
                         const nodeToEdit = currentNodes[nodeIndex];
 
                         $('#editingNodeArrayIndex').val(nodeIndex);
-                        $('#displayNodeId').text(nodeToEdit.nodeId); // Display Node ID (read-only)
-                        $('#displayTaskConfigId').text(nodeToEdit.taskConfigId); // Display Task Config ID (read-only)
+                        $('#displayNodeId').text(nodeToEdit.nodeId);
+                        $('#displayTaskConfigId').text(nodeToEdit.taskConfigId);
                         $('#editNodeName').val(nodeToEdit.nodeName || '');
                         $('#editNodeParams').val(nodeToEdit.parameters ? JSON.stringify(nodeToEdit.parameters, null, 2) : '{}');
 
-                        $('#workflowNodeEditModalLabel').text('Edit Workflow Node: ' + nodeToEdit.nodeId);
+                        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeEditModal.title', "Edit Workflow Node: {{nodeId}}").replace('{{nodeId}}', nodeToEdit.nodeId));
                         $('#workflowNodeEditModal').modal('show');
                     });
 
-                    // Node Name (or Node ID if name is missing)
                     const textNodeName = $(document.createElementNS(svgNS, 'text'));
-                    textNodeName.attr('x', nodeWidth / 2).attr('y', nodeHeight / 2 - 7) // Adjusted y for two lines
+                    textNodeName.attr('x', nodeWidth / 2).attr('y', nodeHeight / 2 - 7)
                         .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
                         .attr('font-size', '0.9em').attr('fill', '#333')
                         .text(node.nodeName || node.nodeId);
                     g.append(textNodeName);
 
-                    // Node ID (smaller, below name)
                     const textNodeId = $(document.createElementNS(svgNS, 'text'));
-                    textNodeId.attr('x', nodeWidth / 2).attr('y', nodeHeight / 2 + 10) // Adjusted y for two lines
+                    textNodeId.attr('x', nodeWidth / 2).attr('y', nodeHeight / 2 + 10)
                         .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
                         .attr('font-size', '0.7em').attr('fill', '#666')
                         .text(`(ID: ${node.nodeId})`);
                     g.append(textNodeId);
 
-                    // TODO: Add input/output ports in Phase 2 or 3
-
                     svg.append(g);
                     currentY += nodeHeight + nodeVMargin;
                 });
 
-                // Adjust SVG height based on content
-                const finalHeight = Math.max(200, currentY); // Ensure a minimum height
+                const finalHeight = Math.max(200, currentY);
                 svg.attr('height', finalHeight);
                 svgContainer.append(svg);
 
-                // After all nodes are drawn, collect their positions and draw edges
                 const nodePositions = {};
                 svg.find('g.node-group').each(function() {
                     const g = $(this);
                     nodePositions[g.attr('data-node-id')] = g.data('nodeCenter');
                 });
 
-                if (Object.keys(nodePositions).length > 0 && nodesArray.length > 0) { // Ensure nodes were actually drawn
+                if (Object.keys(nodePositions).length > 0 && nodesArray.length > 0) {
                      drawWorkflowEdges(svg, nodePositions);
                 }
             }
@@ -684,12 +740,12 @@
                     try {
                         edgesArray = JSON.parse(edgesJson);
                         if (!Array.isArray(edgesArray)) {
-                            showFeedback('Error: Workflow Edges JSON is not a valid array.', true);
-                            edgesArray = []; // Reset to empty if not an array
+                            showFeedback(i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerErrorNotArray'), true);
+                            edgesArray = [];
                         }
                     } catch (e) {
-                        showFeedback(`Error parsing Workflow Edges JSON: ${e.message}`, true);
-                        return; // Stop if edges JSON is invalid
+                        showFeedback(i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerErrorParseEdges', "Error parsing Workflow Edges JSON: {{message}}").replace("{{message}}", e.message), true);
+                        return;
                     }
                 }
 
@@ -707,9 +763,9 @@
                             .attr('stroke-width', 2)
                             .attr('marker-end', 'url(#arrowhead)');
 
-                        line.data('edgeData', edge); // Store original edge data
-                        line.data('edgeArrayIndex', index); // Store its index in the original array
-                        line.addClass('dag-edge'); // For styling or future interaction
+                        line.data('edgeData', edge);
+                        line.data('edgeArrayIndex', index);
+                        line.addClass('dag-edge');
 
                         line.on('click', function(event) {
                             event.stopPropagation();
@@ -723,7 +779,7 @@
                             $('#edgeModalIsEditing').val('true');
                             $('#edgeModalArrayIndex').val(edgeIndex);
                             $('#deleteEdgeBtn').show();
-                            $('#edgePropertyModalLabel').text(`Edit Edge: ${edgeData.fromNodeId} → ${edgeData.toNodeId}`);
+                            $('#edgePropertyModalLabel').text(i18n.translate('tasksPage.edgeModal.titleEdit', "Edit Edge: {{from}} → {{to}}").replace("{{from}}", edgeData.fromNodeId).replace("{{to}}", edgeData.toNodeId));
                             $('#edgePropertyModal').modal('show');
                         });
                         svg.append(line);
@@ -745,34 +801,59 @@
                 const isEditing = $('#edgeModalIsEditing').val() === 'true';
                 const arrayIndex = parseInt($('#edgeModalArrayIndex').val());
 
-                let edgesJson = $('#workflowEdgesJson').val();
-                let edgesArray = [];
+                let currentNodesJson = $('#workflowNodesJson').val();
+                let nodesArray = [];
                 try {
-                    if (edgesJson && edgesJson.trim() !== '') {
-                        edgesArray = JSON.parse(edgesJson);
-                        if (!Array.isArray(edgesArray)) throw new Error("Edges JSON is not an array.");
+                    if (currentNodesJson && currentNodesJson.trim() !== '') {
+                        nodesArray = JSON.parse(currentNodesJson);
+                        if (!Array.isArray(nodesArray)) {
+                           showFeedback(i18n.translate('tasksPage.feedback.nodeHelperErrorParseNodes', 'Workflow Nodes JSON is not an array.'), true);
+                           return;
+                        }
                     }
                 } catch (e) {
-                    showFeedback(`Error parsing existing Workflow Edges JSON: ${e.message}. Starting with new array.`, true);
-                    edgesArray = [];
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeHelperErrorParseNodes', 'Error parsing Workflow Nodes JSON.') + ': ' + e.message, true);
+                    return;
                 }
+
+                let currentEdgesJson = $('#workflowEdgesJson').val();
+                let potentialEdgesArray = [];
+                try {
+                    if (currentEdgesJson && currentEdgesJson.trim() !== '') {
+                        potentialEdgesArray = JSON.parse(currentEdgesJson);
+                        if (!Array.isArray(potentialEdgesArray)) {
+                            potentialEdgesArray = [];
+                        }
+                    }
+                } catch (e) {
+                    potentialEdgesArray = [];
+                }
+                potentialEdgesArray = JSON.parse(JSON.stringify(potentialEdgesArray)); // Deep copy
 
                 const newEdge = {
                     fromNodeId: fromNode,
                     toNodeId: toNode,
-                    expression: expression || null, // Store as null if empty
+                    expression: expression || null,
                     priority: priority
                 };
 
-                if (isEditing && arrayIndex > -1 && arrayIndex < edgesArray.length) {
-                    edgesArray[arrayIndex] = newEdge;
+                if (isEditing && arrayIndex > -1 && arrayIndex < potentialEdgesArray.length) {
+                    potentialEdgesArray[arrayIndex] = newEdge;
                 } else {
-                    edgesArray.push(newEdge);
+                    potentialEdgesArray.push(newEdge);
                 }
 
-                $('#workflowEdgesJson').val(JSON.stringify(edgesArray, null, 2));
+                // Cycle detection
+                if (nodesArray.length > 0 && potentialEdgesArray.length > 0) {
+                    if (detectCycleInWorkflow(nodesArray, potentialEdgesArray)) {
+                        showFeedback(i18n.translate('tasksPage.feedback.cycleDetected', 'Error: Adding/modifying this edge creates a cycle in the workflow.'), true);
+                        return;
+                    }
+                }
+
+                $('#workflowEdgesJson').val(JSON.stringify(potentialEdgesArray, null, 2));
                 $('#edgePropertyModal').modal('hide');
-                redrawDAG(); // Redraw to show changes
+                redrawDAG();
             });
 
             $('#deleteEdgeBtn').on('click', function() {
@@ -783,13 +864,13 @@
                 try {
                     if (edgesJson && edgesJson.trim() !== '') {
                         edgesArray = JSON.parse(edgesJson);
-                         if (!Array.isArray(edgesArray)) throw new Error("Edges JSON is not an array.");
+                         if (!Array.isArray(edgesArray)) throw new Error(i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerErrorNotArray'));
                     } else {
-                         showFeedback('No edges to delete.', true); // Should not happen if button is visible
+                         showFeedback(i18n.translate('tasksPage.feedback.edgeDeleteNoEdges'), true);
                         return;
                     }
                 } catch (e) {
-                    showFeedback(`Error parsing existing Workflow Edges JSON: ${e.message}`, true);
+                    showFeedback(i18n.translate('tasksPage.feedback.edgeErrorParse', "Error parsing existing Workflow Edges JSON: {{message}}. Starting with new array.").replace("{{message}}", e.message), true);
                     return;
                 }
 
@@ -797,20 +878,18 @@
                     edgesArray.splice(arrayIndex, 1);
                     $('#workflowEdgesJson').val(JSON.stringify(edgesArray, null, 2));
                 } else {
-                    showFeedback('Error: Invalid edge index for deletion.', true);
+                    showFeedback(i18n.translate('tasksPage.feedback.edgeDeleteError'), true);
                 }
                 $('#edgePropertyModal').modal('hide');
-                redrawDAG(); // Redraw to show changes
+                redrawDAG();
             });
 
             $('#edgePropertyModal').on('hidden.bs.modal', function () {
-                // Clear selection if modal is closed without saving (or after saving)
                 if (selectedSourceElement) {
                     selectedSourceElement.find('rect').attr('fill', '#fff');
                 }
                 selectedSourceNodeId = null;
                 selectedSourceElement = null;
-                // Reset modal fields for next time
                 $('#edgeExpression').val('');
                 $('#edgePriority').val('0');
                 $('#edgeModalIsEditing').val('false');
@@ -819,10 +898,8 @@
             });
 
             $('#dagContainer').on('click', function(event) {
-                // Deselect source node if clicking on the container background (not on a node or edge)
                 const target = $(event.target);
-                if (selectedSourceElement && (target.is('#dagContainer') || target.is('svg') || target.is('svg > defs') || target.is('svg > marker') || target.is('svg > path') || target.is('svg > rect') || target.is('svg > text'))) { // Expanded check
-                    // Check if the click target is NOT part of another node group or an edge line itself
+                if (selectedSourceElement && (target.is('#dagContainer') || target.is('svg') || target.is('svg > defs') || target.is('svg > marker') || target.is('svg > path') || target.is('svg > rect') || target.is('svg > text'))) {
                     if (!target.closest('.node-group').length && !target.closest('.dag-edge').length) {
                          selectedSourceElement.find('rect').attr('fill', '#fff');
                          selectedSourceNodeId = null;
@@ -840,7 +917,7 @@
                 try {
                     updatedParams = updatedNodeParamsString.trim() === '' ? {} : JSON.parse(updatedNodeParamsString);
                 } catch (e) {
-                    showFeedback('Invalid JSON in Node-Specific Parameters: ' + e.message, true);
+                    showFeedback(i18n.translate('tasksPage.feedback.invalidJson', "Invalid JSON: {{error}}").replace("{{error}}", e.message), true);
                     return;
                 }
 
@@ -849,27 +926,28 @@
                 try {
                     if (currentNodesJson && currentNodesJson.trim() !== '') {
                         nodesArray = JSON.parse(currentNodesJson);
+                        if (!Array.isArray(nodesArray)) throw new Error("Nodes JSON is not an array.");
                     }
                 } catch (e) {
-                    showFeedback('Error parsing current Workflow Nodes JSON: ' + e.message, true);
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeHelperErrorParseNodes'), true);
                     return;
                 }
 
                 if (nodeIndex >= 0 && nodeIndex < nodesArray.length) {
-                    nodesArray[nodeIndex].nodeName = updatedNodeName || nodesArray[nodeIndex].nodeId; // Default to nodeId if name cleared
+                    nodesArray[nodeIndex].nodeName = updatedNodeName || nodesArray[nodeIndex].nodeId;
                     nodesArray[nodeIndex].parameters = updatedParams;
 
                     $('#workflowNodesJson').val(JSON.stringify(nodesArray, null, 2));
                     $('#workflowNodeEditModal').modal('hide');
-                    redrawDAG(); // Refresh DAG to show updated node name/details
+                    redrawDAG();
                 } else {
-                    showFeedback('Error: Could not find node to update. Index out of bounds.', true);
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeEditErrorFinding'), true);
                 }
             });
 
             $('#workflowNodeEditModal').on('hidden.bs.modal', function () {
                 $('#editNodeName').val('');
-                $('#editNodeParams').val('{}'); // Default to empty JSON object string
+                $('#editNodeParams').val('{}');
                 $('#displayNodeId').text('');
                 $('#displayTaskConfigId').text('');
                 $('#editingNodeArrayIndex').val('');
@@ -877,54 +955,50 @@
 
 
             $('#addTaskBtn').click(function() {
-                $('#taskFormModalLabel').text('Add Task');
+                $('#taskFormModalLabel').text(i18n.translate('tasksPage.modal.titleAdd', 'Add Task'));
                 $('#task-form')[0].reset();
                 $('#taskId').val('');
-                $('#executeTimeoutSeconds').val(0); // Default timeout
-                $('#isActive').prop('checked', true); // Default to active
+                $('#executeTimeoutSeconds').val(0);
+                $('#isActive').prop('checked', true);
 
-                // Reset new select elements
-                $('#notifySuccessUserIds').val(null); // Clears selection for multi-select
-                $('#notifyFailedUserIds').val(null); // Clears selection for multi-select
-                $('#taskCalendarGroup').val(''); // Reset to the default "Select Calendar" option
+                $('#notifySuccessUserIds').val(null);
+                $('#notifyFailedUserIds').val(null);
+                $('#taskCalendarGroup').val('');
 
-                // Reset workflow node helper fields
-                $('#availableTasksForNodes').empty().append('<option value="">-- Select a Task --</option>');
+                $('#availableTasksForNodes').empty().append(`<option value="">${i18n.translate('tasksPage.modal.workflowTaskFields.selectTaskPlaceholder', '-- Select a Task --')}</option>`);
                 $('#wfNodeId').val('');
                 $('#wfNodeName').val('');
                 $('#wfNodeParams').val('');
-                $('#workflowNodesJson').val(''); // Also clear the main JSON textarea
+                $('#workflowNodesJson').val('');
                 $('#workflowEdgesJson').val('');
                 $('#globalParametersJson').val('');
 
-                $('#cronValidationResult').empty().hide(); // Clear cron validation
-                $('#dagContainer').empty().html('<p class="text-muted small">Define nodes and edges in the JSON textareas and click "Refresh View".</p>'); // Clear DAG
+                $('#cronValidationResult').empty().hide();
+                $('#dagContainer').empty().html(`<p class="text-muted small">${i18n.translate('tasksPage.modal.workflowTaskFields.dagContainerPlaceholderInitial')}</p>`);
 
 
-                $('#taskType').trigger('change'); // Ensure type-specific fields are correctly shown/hidden
+                $('#taskType').trigger('change');
             });
 
-            // CRON Validation Button Click
             $('#validateCronBtn').on('click', function() {
                 const cronExpr = $('#cronExpression').val();
                 const resultDiv = $('#cronValidationResult');
 
                 if (!cronExpr || cronExpr.trim() === '') {
-                    resultDiv.html('<div class="alert alert-warning">Please enter a CRON expression.</div>').show();
+                    resultDiv.html(`<div class="alert alert-warning">${i18n.translate('tasksPage.modal.cronValidation.empty')}</div>`).show();
                     return;
                 }
 
-                resultDiv.html('<div class="alert alert-info">Validating...</div>').show(); // Show loading/validating message
+                resultDiv.html(`<div class="alert alert-info">${i18n.translate('tasksPage.modal.cronValidation.validating')}</div>`).show();
 
                 makeApiCall('GET', `/api/tasks/validate-cron?cronExpression=${encodeURIComponent(cronExpr)}&count=5`, null,
                     function(response) {
                         let htmlContent = '';
                         if (response.isValid) {
-                            htmlContent = '<div class="alert alert-success mb-1">CRON is valid.</div>';
+                            htmlContent = `<div class="alert alert-success mb-1">${i18n.translate('tasksPage.modal.cronValidation.valid')}</div>`;
                             if (response.nextExecutionTimes && response.nextExecutionTimes.length > 0) {
-                                htmlContent += '<h6>Next Runtimes:</h6><ul class="list-unstyled small">';
+                                htmlContent += `<h6>${i18n.translate('tasksPage.modal.cronValidation.nextRuntimesHeader')}</h6><ul class="list-unstyled small">`;
                                 response.nextExecutionTimes.forEach(function(time) {
-                                    // Attempt to format to local string, fallback to raw time if parsing fails (e.g. non-standard ISO)
                                     let formattedTime = time;
                                     try {
                                         formattedTime = new Date(time).toLocaleString();
@@ -933,19 +1007,19 @@
                                 });
                                 htmlContent += '</ul>';
                             } else {
-                                htmlContent += '<p class="small">No future execution times found (or CRON is too far in the future/past).</p>';
+                                htmlContent += `<p class="small">${i18n.translate('tasksPage.modal.cronValidation.noFutureTimes')}</p>`;
                             }
                         } else {
-                            htmlContent = `<div class="alert alert-danger mb-1">CRON is invalid: ${response.error || 'Unknown error'}</div>`;
+                            htmlContent = `<div class="alert alert-danger mb-1">${i18n.translate('tasksPage.modal.cronValidation.invalid', 'CRON is invalid: {{error}}').replace('{{error}}', response.error || 'Unknown error')}</div>`;
                         }
                         resultDiv.html(htmlContent).show();
                     },
-                    function(jqXHR) { // Error from makeApiCall itself (e.g. network, 500, or 400 from backend)
-                        let errorMsg = 'Error validating CRON.';
-                        if (jqXHR.responseJSON) { // For structured JSON errors (like from Spring Boot default error handler or our custom ones)
+                    function(jqXHR) {
+                        let errorMsg = i18n.translate('common.error', 'Error validating CRON.');
+                        if (jqXHR.responseJSON) {
                             if (jqXHR.responseJSON.message) errorMsg = jqXHR.responseJSON.message;
-                            else if (jqXHR.responseJSON.error) errorMsg = jqXHR.responseJSON.error; // For our specific structure in validate-cron if it sends 400
-                        } else if (jqXHR.responseText) { // Fallback for non-JSON errors or if responseJSON isn't parsed
+                            else if (jqXHR.responseJSON.error) errorMsg = jqXHR.responseJSON.error;
+                        } else if (jqXHR.responseText) {
                            try {
                                const err = JSON.parse(jqXHR.responseText);
                                if (err.message) errorMsg = err.message;
@@ -971,16 +1045,11 @@
                     taskGroup: $('#taskGroup').val(),
                     cronExpression: $('#cronExpression').val(),
                     description: $('#description').val(),
-                    executionMode: $('#executionMode').val(), // Added
+                    executionMode: $('#executionMode').val(),
                     taskType: parseInt($('#taskType').val()),
                     isActive: $('#isActive').is(':checked'),
-
-                    // Common fields for BEAN tasks (type 0)
                     beanName: $('#beanName').val(),
                     methodName: $('#methodName').val(),
-                    // beanParameters will be populated based on task type below
-
-                    // Advanced settings (common to all)
                     startDate: $('#startDate').val() || null,
                     endDate: $('#endDate').val() || null,
                     taskCalendarGroup: $('#taskCalendarGroup').val() || null,
@@ -988,20 +1057,14 @@
                     executeTimeoutSeconds: parseInt($('#executeTimeoutSeconds').val()) || 0,
                     notifySuccessUserIds: $('#notifySuccessUserIds').val() ? $('#notifySuccessUserIds').val().join(',') : null,
                     notifyFailedUserIds: $('#notifyFailedUserIds').val() ? $('#notifyFailedUserIds').val().join(',') : null,
-
-                    // Workflow specific fields (as List<WorkflowNode>, List<WorkflowEdge> in DTO)
-                    // The controller will convert these from JSON strings if they are sent as such.
-                    // Or, if the DTO expects lists, parse them here.
-                    // For now, assume the controller handles TaskConfigDto which has List<...>
-                    workflowNodes: null, // Will be populated for workflow type
+                    workflowNodes: null,
                     workflowEdges: null,
                     globalParameters: null
                 };
 
-                // Populate beanParameters based on task type
-                if (taskData.taskType === 0) { // Bean
+                if (taskData.taskType === 0) {
                     taskData.beanParameters = $('#beanParameters').val();
-                } else if (taskData.taskType === 4) { // Shell (was 1)
+                } else if (taskData.taskType === 4) {
                     const shellParams = {
                         script: $('#shellScriptContent').val(),
                         isInlineScript: $('#shellIsInlineScript').is(':checked'),
@@ -1009,8 +1072,8 @@
                         workingDirectory: $('#shellWorkingDirectory').val() || null
                     };
                     taskData.beanParameters = JSON.stringify(shellParams);
-                    taskData.beanName = null; taskData.methodName = null; // Not used for Shell type directly
-                } else if (taskData.taskType === 2) { // HTTP
+                    taskData.beanName = null; taskData.methodName = null;
+                } else if (taskData.taskType === 2) {
                     const httpParams = {
                         url: $('#httpUrl').val(),
                         method: $('#httpMethod').val(),
@@ -1020,31 +1083,30 @@
                         readTimeout: parseJsonOrNull($('#httpReadTimeout').val())
                     };
                     taskData.beanParameters = JSON.stringify(httpParams);
-                    taskData.beanName = null; taskData.methodName = null; // Not used for HTTP type directly
-                } else if (taskData.taskType === 10) { // Workflow (was 3)
+                    taskData.beanName = null; taskData.methodName = null;
+                } else if (taskData.taskType === 10) {
                     taskData.workflowNodes = parseJsonOrNull($('#workflowNodesJson').val());
                     taskData.workflowEdges = parseJsonOrNull($('#workflowEdgesJson').val());
                     taskData.globalParameters = parseJsonOrNull($('#globalParametersJson').val());
-                    taskData.beanName = null; taskData.methodName = null; taskData.beanParameters = null; // Not used for Workflow parent
+                    taskData.beanName = null; taskData.methodName = null; taskData.beanParameters = null;
                 }
 
 
                 const method = taskId ? 'PUT' : 'POST';
-                const endpoint = taskId ? `/tasks/${taskId}` : '/tasks';
+                const endpoint = taskId ? `/api/tasks/${taskId}` : '/api/tasks';
 
                 makeApiCall(method, endpoint, taskData,
                     function(response) {
                         $('#taskFormModal').modal('hide');
-                        showFeedback('Task saved successfully!', false);
+                        showFeedback(i18n.translate('tasksPage.feedback.taskSaved'), false);
                         loadTasks();
                     },
                     function(jqXHR) {
-                        showFeedback('Error saving task: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('tasksPage.feedback.errorSaving', "Error saving task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
 
-            // Workflow Node Helper: Add/Update Node in JSON button
             $('#addNodeToJsonBtn').on('click', function() {
                 const selectedTaskId = $('#availableTasksForNodes').val();
                 const nodeId = $('#wfNodeId').val().trim();
@@ -1052,26 +1114,26 @@
                 const nodeParamsString = $('#wfNodeParams').val();
 
                 if (!selectedTaskId) {
-                    showFeedback('Please select a task to add as a node.', true);
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeHelperSelectTask'), true);
                     return;
                 }
                 if (!nodeId) {
-                    showFeedback('Node ID is required.', true);
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeHelperNodeIdRequired'), true);
                     return;
                 }
 
                 let nodeParams;
                 try {
-                    nodeParams = nodeParamsString ? JSON.parse(nodeParamsString) : {};
+                    nodeParams = nodeParamsString.trim() === '' ? {} : JSON.parse(nodeParamsString);
                 } catch (e) {
-                    showFeedback('Invalid JSON in Node-Specific Parameters: ' + e.message, true);
+                    showFeedback(i18n.translate('tasksPage.feedback.invalidJson', "Invalid JSON: {{error}}").replace("{{error}}", e.message), true);
                     return;
                 }
 
                 const newNode = {
                     nodeId: nodeId,
                     taskConfigId: parseInt(selectedTaskId),
-                    nodeName: nodeName || nodeId, // Default nodeName to nodeId if empty
+                    nodeName: nodeName || nodeId,
                     parameters: nodeParams
                 };
 
@@ -1080,65 +1142,57 @@
                 try {
                     if (currentNodesJson && currentNodesJson.trim() !== '') {
                         nodesArray = JSON.parse(currentNodesJson);
-                        if (!Array.isArray(nodesArray)) { // Ensure it's an array
-                           showFeedback('Warning: Existing Workflow Nodes JSON was not an array. Initializing as new array.', true);
-                           nodesArray = [];
-                        }
+                        if (!Array.isArray(nodesArray)) throw new Error("Nodes JSON is not an array.");
                     }
                 } catch (e) {
-                    showFeedback('Warning: Existing Workflow Nodes JSON is invalid. Initializing as new array.', true);
-                    nodesArray = []; // Initialize if parsing fails
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeHelperErrorParseNodes'), true);
+                    nodesArray = [];
                 }
 
-                // Check if node with same nodeId exists and update, otherwise add
                 const existingNodeIndex = nodesArray.findIndex(node => node.nodeId === nodeId);
                 if (existingNodeIndex > -1) {
-                    nodesArray[existingNodeIndex] = newNode; // Update existing node
-                    showFeedback(`Node '${nodeId}' updated in JSON.`, false);
+                    nodesArray[existingNodeIndex] = newNode;
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeHelperNodeUpdated', "Node '{{nodeId}}' updated in JSON.").replace('{{nodeId}}', nodeId), false);
                 } else {
-                    nodesArray.push(newNode); // Add new node
-                    showFeedback(`Node '${nodeId}' added to JSON.`, false);
+                    nodesArray.push(newNode);
+                    showFeedback(i18n.translate('tasksPage.feedback.nodeHelperNodeAdded', "Node '{{nodeId}}' added to JSON.").replace('{{nodeId}}', nodeId), false);
                 }
 
                 $('#workflowNodesJson').val(JSON.stringify(nodesArray, null, 2));
 
-                // Clear helper input fields
                 $('#wfNodeId').val('');
                 $('#wfNodeName').val('');
                 $('#wfNodeParams').val('');
-                $('#availableTasksForNodes').val(''); // Reset dropdown
+                $('#availableTasksForNodes').val('');
             });
 
-            // Edit button
             $('#tasks-table-body').on('click', '.edit-btn', function() {
                 const taskId = $(this).data('id');
-                makeApiCall('GET', `/tasks/${taskId}`, null,
+                makeApiCall('GET', `/api/tasks/${taskId}`, null,
                     function(task) {
-                        $('#taskFormModalLabel').text('Edit Task');
+                        $('#taskFormModalLabel').text(i18n.translate('tasksPage.modal.titleEdit', 'Edit Task'));
                         $('#taskId').val(task.taskId);
                         $('#taskName').val(task.taskName);
                         $('#taskGroup').val(task.taskGroup);
                         $('#cronExpression').val(task.cronExpression);
                         $('#description').val(task.description);
-                        $('#executionMode').val(task.executionMode || 'BROADCAST'); // Added, default to BROADCAST if null
+                        $('#executionMode').val(task.executionMode || 'BROADCAST');
                         $('#taskType').val(task.taskType.toString()).trigger('change');
                         $('#isActive').prop('checked', task.isActive);
 
-                        // Populate common bean fields first
                         $('#beanName').val(task.beanName);
                         $('#methodName').val(task.methodName);
 
-                        // Clear workflow helper fields initially, they will be populated if it's a workflow task by taskType change
-                        $('#availableTasksForNodes').empty().append('<option value="">-- Select a Task --</option>');
+                        const placeholderTask = i18n.translate('tasksPage.modal.workflowTaskFields.selectTaskPlaceholder', '-- Select a Task --');
+                        $('#availableTasksForNodes').empty().append(`<option value="">${placeholderTask}</option>`);
                         $('#wfNodeId').val('');
                         $('#wfNodeName').val('');
                         $('#wfNodeParams').val('');
-                        $('#cronValidationResult').empty().hide(); // Clear cron validation on edit
+                        $('#cronValidationResult').empty().hide();
 
-                        // Populate type-specific fields based on task.taskType
-                        if (task.taskType === 0) { // Bean
+                        if (task.taskType === 0) {
                             $('#beanParameters').val(task.beanParameters);
-                        } else if (task.taskType === 4) { // Shell (was 1)
+                        } else if (task.taskType === 4) {
                             if (task.beanParameters) {
                                 try {
                                     const shellP = JSON.parse(task.beanParameters);
@@ -1147,11 +1201,11 @@
                                     $('#shellArguments').val((shellP.arguments || []).join('\n'));
                                     $('#shellWorkingDirectory').val(shellP.workingDirectory);
                                 } catch (e) {
-                                    showFeedback('Error parsing Shell parameters: ' + e.message, true);
-                                    $('#beanParameters').val(task.beanParameters); // Show raw if parse fails
+                                    showFeedback(i18n.translate('tasksPage.feedback.invalidJson', "Invalid JSON: {{error}}").replace("{{error}}", e.message), true);
+                                    $('#beanParameters').val(task.beanParameters);
                                 }
                             }
-                        } else if (task.taskType === 2) { // HTTP
+                        } else if (task.taskType === 2) {
                              if (task.beanParameters) {
                                 try {
                                     const httpP = JSON.parse(task.beanParameters);
@@ -1162,90 +1216,81 @@
                                     $('#httpConnectTimeout').val(httpP.connectTimeout);
                                     $('#httpReadTimeout').val(httpP.readTimeout);
                                 } catch (e) {
-                                    showFeedback('Error parsing HTTP parameters: ' + e.message, true);
-                                    $('#beanParameters').val(task.beanParameters); // Show raw if parse fails
+                                    showFeedback(i18n.translate('tasksPage.feedback.invalidJson', "Invalid JSON: {{error}}").replace("{{error}}", e.message), true);
+                                    $('#beanParameters').val(task.beanParameters);
                                 }
                             }
-                        } else if (task.taskType === 10) { // Workflow (was 3)
-                            // loadAvailableTasksForNodes() is called by .trigger('change') on taskType
+                        } else if (task.taskType === 10) {
                             $('#workflowNodesJson').val(task.workflowNodes ? JSON.stringify(task.workflowNodes, null, 2) : '');
                             $('#workflowEdgesJson').val(task.workflowEdges ? JSON.stringify(task.workflowEdges, null, 2) : '');
                             $('#globalParametersJson').val(task.globalParameters ? JSON.stringify(task.globalParameters, null, 2) : '');
-                            $('#beanParameters').val(''); // Clear generic beanParameters for workflow type
-                            redrawDAG(); // Draw nodes after populating JSON for workflow task
+                            $('#beanParameters').val('');
+                            redrawDAG();
                         } else {
-                             $('#beanParameters').val(task.beanParameters); // Fallback for unknown or simple bean tasks
+                             $('#beanParameters').val(task.beanParameters);
                         }
 
-
-                        // Populate advanced settings
                         $('#startDate').val(task.startDate);
                         $('#endDate').val(task.endDate);
-                        // $('#taskCalendarGroup').val(task.taskCalendarGroup); // Will be set below
                         $('#taskExcludeTimes').val(task.taskExcludeTimes);
                         $('#executeTimeoutSeconds').val(task.executeTimeoutSeconds != null ? task.executeTimeoutSeconds : 0);
-                        // $('#notifySuccessUserIds').val(task.notifySuccessUserIds); // Will be set below
-                        // $('#notifyFailedUserIds').val(task.notifyFailedUserIds); // Will be set below
 
-                        // Populate select for taskCalendarGroup
                         $('#taskCalendarGroup').val(task.taskCalendarGroup || '');
-
-                        // Populate multi-selects for notifySuccessUserIds and notifyFailedUserIds
                         const successUserIds = task.notifySuccessUserIds ? task.notifySuccessUserIds.split(',') : [];
                         $('#notifySuccessUserIds').val(successUserIds);
-
                         const failedUserIds = task.notifyFailedUserIds ? task.notifyFailedUserIds.split(',') : [];
                         $('#notifyFailedUserIds').val(failedUserIds);
 
                         $('#taskFormModal').modal('show');
                     },
                     function(jqXHR) {
-                         showFeedback('Error fetching task details: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                         showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTaskDetails', "Error fetching task details: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
 
-            // Delete button
             $('#tasks-table-body').on('click', '.delete-btn', function() {
                 const taskId = $(this).data('id');
-                if (confirm('Are you sure you want to delete task ' + taskId + '?')) {
-                    makeApiCall('DELETE', `/tasks/${taskId}`, null,
+                if (confirm(i18n.translate('tasksPage.feedback.confirmDelete', "Are you sure you want to delete task {{taskId}}?").replace('{{taskId}}', taskId))) {
+                    makeApiCall('DELETE', `/api/tasks/${taskId}`, null,
                         function() {
-                            showFeedback('Task deleted successfully!', false);
+                            showFeedback(i18n.translate('tasksPage.feedback.taskDeleted'), false);
                             loadTasks();
                         },
                         function(jqXHR) {
-                            showFeedback('Error deleting task: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                            showFeedback(i18n.translate('tasksPage.feedback.errorDeleting', "Error deleting task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                         }
                     );
                 }
             });
 
-            // Trigger button
             $('#tasks-table-body').on('click', '.trigger-btn', function() {
                 const taskId = $(this).data('id');
-                makeApiCall('POST', `/tasks/${taskId}/trigger`, null,
+                makeApiCall('POST', `/api/tasks/${taskId}/trigger`, null,
                     function() {
-                        showFeedback('Task ' + taskId + ' triggered successfully!', false);
+                        showFeedback(i18n.translate('tasksPage.feedback.taskTriggered', "Task {{taskId}} triggered successfully!").replace('{{taskId}}', taskId), false);
                     },
                     function(jqXHR) {
-                        showFeedback('Error triggering task: ' + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        showFeedback(i18n.translate('tasksPage.feedback.errorTriggering', "Error triggering task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
 
-            // Enable/Disable buttons
             $('#tasks-table-body').on('click', '.enable-btn, .disable-btn', function() {
                 const taskId = $(this).data('id');
                 const isEnable = $(this).hasClass('enable-btn');
-                const endpoint = `/tasks/${taskId}/${isEnable ? 'enable' : 'disable'}`;
+                const endpoint = `/api/tasks/${taskId}/${isEnable ? 'enable' : 'disable'}`;
                 makeApiCall('POST', endpoint, null,
                     function() {
-                        showFeedback(`Task ${taskId} ${isEnable ? 'enabled' : 'disabled'} successfully!`, false);
-                        loadTasks(); // Refresh table to show new status
+                        const messageKey = isEnable ? 'tasksPage.feedback.taskEnabled' : 'tasksPage.feedback.taskDisabled';
+                        const defaultMessage = isEnable ? "Task {{taskId}} enabled successfully!" : "Task {{taskId}} disabled successfully!";
+                        showFeedback(i18n.translate(messageKey, defaultMessage).replace('{{taskId}}', taskId), false);
+                        loadTasks();
                     },
                     function(jqXHR) {
-                        showFeedback(`Error ${isEnable ? 'enabling' : 'disabling'} task: ` + (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText), true);
+                        const messageKey = isEnable ? 'tasksPage.feedback.errorEnabling' : 'tasksPage.feedback.errorDisabling';
+                        const defaultMessage = isEnable ? "Error enabling task: {{error}}" : "Error disabling task: {{error}}";
+                        showFeedback(i18n.translate(messageKey, defaultMessage).replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             });
@@ -1257,8 +1302,8 @@
                 try {
                     return JSON.parse(jsonString);
                 } catch (e) {
-                    showFeedback('Invalid JSON: ' + e.message, true);
-                    throw e; // Stop submission
+                    showFeedback(i18n.translate('tasksPage.feedback.invalidJson', "Invalid JSON: {{error}}").replace("{{error}}", e.message), true);
+                    throw e;
                 }
             }
         });
