@@ -26,10 +26,11 @@ public interface TaskConfigDao {
      */
     Optional<TaskConfig> findById(Integer taskId);
     /**
-     * Retrieves all task configurations.
-     * @return A list of all task configurations.
+     * Retrieves task configurations based on a set of filters.
+     * @param filters A map where keys are field names and values are the filter criteria.
+     * @return A list of task configurations matching the filters.
      */
-    List<TaskConfig> findAll();
+    List<TaskConfig> findByFilters(Map<String, Object> filters);
 
     /**
      * Retrieves all active task configurations (where {@code isActive} is true).
@@ -66,3 +67,5 @@ public interface TaskConfigDao {
      */
     void updateTaskStatus(Integer taskId, boolean isActive);
 }
+// Added import for Map used in findByFilters
+import java.util.Map;

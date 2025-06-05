@@ -49,7 +49,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     private static final String UPDATE_SQL = "UPDATE task_config SET " + UPDATE_SETTERS + " WHERE task_id=?";
 
     private static final String SELECT_BY_ID_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE task_id=?";
-    private static final String SELECT_ALL_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config";
+    // SELECT_ALL_SQL will be replaced by findByFilters logic
     private static final String SELECT_ALL_ACTIVE_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE is_active=TRUE";
     private static final String SELECT_BY_GROUP_AND_NAME_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE task_group=? AND task_name=?";
     private static final String DELETE_BY_ID_SQL = "DELETE FROM task_config WHERE task_id=?";
@@ -145,8 +145,39 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     }
 
     @Override
-    public List<TaskConfig> findAll() {
-        return jdbcTemplate.query(SELECT_ALL_SQL, rowMapper);
+    public List<TaskConfig> findByFilters(Map<String, Object> filters) {
+        StringBuilder sql = new StringBuilder("SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE 1=1");
+        List<Object> params = new java.util.ArrayList<>();
+
+        if (filters != null) {
+            String taskName = (String) filters.get("taskName");
+            if (org.springframework.util.StringUtils.hasText(taskName)) {
+                sql.append(" AND task_name LIKE ?");
+                params.add("%" + taskName + "%");
+            }
+
+            String taskGroup = (String) filters.get("taskGroup");
+            if (org.springframework.util.StringUtils.hasText(taskGroup)) {
+                sql.append(" AND task_group = ?");
+                params.add(taskGroup);
+            }
+
+            Integer taskType = (Integer) filters.get("taskType");
+            if (taskType != null) {
+                sql.append(" AND task_type = ?");
+                params.add(taskType);
+            }
+
+            Boolean isActive = (Boolean) filters.get("isActive");
+            if (isActive != null) {
+                sql.append(" AND is_active = ?");
+                params.add(isActive);
+            }
+        }
+
+        sql.append(" ORDER BY task_id DESC");
+
+        return jdbcTemplate.query(sql.toString(), params.toArray(), rowMapper);
     }
 
     @Override
@@ -179,7 +210,6 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
                 taskConfig.getTaskId());
     }
 
-    private void setObjectOrNull(PreparedStatement ps, int parameterIndex, Object value, int sqlType) throws SQLException {
     private void setObjectOrNull(PreparedStatement ps, int parameterIndex, Object value, int sqlType) throws SQLException {
         if (value != null) {
             ps.setObject(parameterIndex, value);

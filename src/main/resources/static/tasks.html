@@ -16,6 +16,43 @@
             <h2 data-i18n-key="tasksPage.header">Task Management</h2>
             <button class="btn btn-primary" data-toggle="modal" data-target="#taskFormModal" id="addTaskBtn" data-i18n-key="tasksPage.addTaskBtn">Add Task</button>
         </div>
+
+        <div class="card mb-3">
+            <div class="card-header" data-i18n-key="tasksPage.filters.header">Task Filters</div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group col-md-3">
+                        <label for="filterTaskName" data-i18n-key="tasksPage.filters.taskNameLabel">Task Name</label>
+                        <input type="text" id="filterTaskName" class="form-control" data-i18n-key-placeholder="tasksPage.filters.taskNamePlaceholder" placeholder="Enter task name...">
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="filterTaskGroup" data-i18n-key="tasksPage.filters.taskGroupLabel">Task Group</label>
+                        <select id="filterTaskGroup" class="form-control">
+                            <option value="" data-i18n-key="tasksPage.filters.allGroupsOption">All Groups</option>
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="filterTaskType" data-i18n-key="tasksPage.filters.taskTypeLabel">Task Type</label>
+                        <select id="filterTaskType" class="form-control">
+                            <option value="" data-i18n-key="tasksPage.filters.allTypesOption">All Types</option>
+                            <!-- Options will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
+                        <label for="filterIsActive" data-i18n-key="tasksPage.filters.statusLabel">Status</label>
+                        <select id="filterIsActive" class="form-control">
+                            <option value="" data-i18n-key="tasksPage.filters.allStatusesOption">All Statuses</option>
+                            <option value="true" data-i18n-key="tasksPage.filters.statusActive">Active</option>
+                            <option value="false" data-i18n-key="tasksPage.filters.statusInactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" id="applyTaskFiltersBtn" class="btn btn-primary mr-2" data-i18n-key="tasksPage.filters.applyBtn">Apply Filters</button>
+                <button type="button" id="resetTaskFiltersBtn" class="btn btn-secondary" data-i18n-key="tasksPage.filters.resetBtn">Reset Filters</button>
+            </div>
+        </div>
+
         <table class="table table-striped table-hover">
             <thead class="thead-dark">
                 <tr>
@@ -434,6 +471,41 @@
 
             let selectedSourceNodeId = null;
             let selectedSourceElement = null;
+            let initialGroupPopulationDone = false;
+
+
+            function populateTaskTypeFilter() {
+                const typeSelect = $('#filterTaskType');
+                // Do not remove existing options if this is called multiple times by mistake,
+                // but typically it's called once. If it might be, ensure idempotency or call once.
+                if (typeSelect.find('option').length > 1) return; // Already populated
+
+                const taskTypes = [
+                    { value: "0", key: "tasksPage.modal.taskTypes.bean", defaultText: "Bean Task" },
+                    { value: "2", key: "tasksPage.modal.taskTypes.http", defaultText: "HTTP Task" },
+                    { value: "4", key: "tasksPage.modal.taskTypes.shell", defaultText: "Shell Script Task" },
+                    { value: "10", key: "tasksPage.modal.taskTypes.workflow", defaultText: "Workflow Task" }
+                ];
+                taskTypes.forEach(type => {
+                    typeSelect.append(`<option value="${type.value}">${i18n.translate(type.key, type.defaultText)}</option>`);
+                });
+            }
+
+            function populateGroupFilter(allTasks) {
+                const groupSelect = $('#filterTaskGroup');
+                groupSelect.find('option:gt(0)').remove(); // Clear existing groups except "All Groups"
+                const uniqueGroups = new Set();
+                allTasks.forEach(task => {
+                    if (task.taskGroup && task.taskGroup.trim() !== '') {
+                        uniqueGroups.add(task.taskGroup.trim());
+                    }
+                });
+                // Sort groups alphabetically for consistent order
+                Array.from(uniqueGroups).sort().forEach(group => {
+                    groupSelect.append(`<option value="${group}">${group}</option>`);
+                });
+                initialGroupPopulationDone = true;
+            }
 
             function loadUsersForSelects() {
                 makeApiCall('GET', '/api/users', null,
@@ -501,10 +573,32 @@
             }
 
             function loadTasks() {
-                makeApiCall('GET', '/tasks', null,
+                const filters = {
+                    taskName: $('#filterTaskName').val().trim(),
+                    taskGroup: $('#filterTaskGroup').val(),
+                    taskType: $('#filterTaskType').val() ? parseInt($('#filterTaskType').val()) : null,
+                    isActive: $('#filterIsActive').val() ? ($('#filterIsActive').val() === 'true') : null
+                };
+                Object.keys(filters).forEach(key => (filters[key] === null || filters[key] === '' || (typeof filters[key] === 'string' && filters[key].trim() === '')) && delete filters[key]);
+
+                const queryString = $.param(filters);
+                const apiUrl = queryString ? `/api/tasks?${queryString}` : '/api/tasks';
+
+                makeApiCall('GET', apiUrl, null,
                     function(tasks) {
                         const tableBody = $('#tasks-table-body');
                         tableBody.empty();
+
+                        if (!initialGroupPopulationDone && Object.keys(filters).length === 0) { // Only populate groups from the first full load
+                             // Fetch ALL tasks once to populate groups if not already done and no filters applied
+                            makeApiCall('GET', '/api/tasks', null, function(allTasks){
+                                populateGroupFilter(allTasks);
+                            }, function(jqXHR) {
+                                console.error("Error fetching all tasks for group population:", jqXHR);
+                            });
+                        }
+
+
                         tasks.forEach(function(task) {
                             const status = task.isActive ? `<span class="badge badge-success">${i18n.translate('tasksPage.table.statusActive', 'Active')}</span>` : `<span class="badge badge-secondary">${i18n.translate('tasksPage.table.statusInactive', 'Inactive')}</span>`;
                             const historyBtnText = i18n.translate('tasksPage.table.historyBtnShort', 'History');

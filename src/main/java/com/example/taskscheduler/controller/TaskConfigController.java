@@ -142,9 +142,30 @@ public class TaskConfigController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskConfigDto>> getAllTasks() {
-        List<TaskConfig> tasks = taskConfigDao.findAll();
-        List<TaskConfigDto> dtos = tasks.stream().map(this::convertToDto).collect(Collectors.toList());
+    public ResponseEntity<List<TaskConfigDto>> getTasksByFilters(
+            @RequestParam(required = false) String taskName,
+            @RequestParam(required = false) String taskGroup,
+            @RequestParam(required = false) Integer taskType,
+            @RequestParam(required = false) Boolean isActive) {
+
+        Map<String, Object> filters = new HashMap<>();
+        if (StringUtils.hasText(taskName)) {
+            filters.put("taskName", taskName.trim());
+        }
+        if (StringUtils.hasText(taskGroup)) {
+            filters.put("taskGroup", taskGroup.trim());
+        }
+        if (taskType != null) {
+            filters.put("taskType", taskType);
+        }
+        if (isActive != null) {
+            filters.put("isActive", isActive);
+        }
+
+        List<TaskConfig> tasks = taskConfigDao.findByFilters(filters);
+        List<TaskConfigDto> dtos = tasks.stream()
+                                        .map(this::convertToDto)
+                                        .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
