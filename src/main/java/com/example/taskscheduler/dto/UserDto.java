@@ -50,4 +50,10 @@ public class UserDto {
      * Timestamp of when the user account was created. Typically for response only.
      */
     private java.sql.Timestamp createTime;
+
+    /**
+     * JSON string for storing user-specific notification preferences.
+     * e.g., {"emailOnSuccess": true, "webhookOnFailure": false}
+     */
+    private String notificationPreferencesJson;
 }

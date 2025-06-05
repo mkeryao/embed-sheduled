@@ -104,6 +104,13 @@ public class TaskUserController {
         if (userDto.getWebhookAddress() != null) { // Allow unsetting webhook address
             existingUser.setWebhookAddress(userDto.getWebhookAddress().isEmpty() ? null : userDto.getWebhookAddress());
         }
+        // Update notificationPreferencesJson
+        if (userDto.getNotificationPreferencesJson() != null) {
+            existingUser.setNotificationPreferencesJson(userDto.getNotificationPreferencesJson().isEmpty() ? null : userDto.getNotificationPreferencesJson());
+        } else {
+            // If DTO field is null, explicitly set entity field to null to allow clearing via API
+            existingUser.setNotificationPreferencesJson(null);
+        }
 
 
         // Update password if provided

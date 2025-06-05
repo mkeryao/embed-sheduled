@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Task Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -306,6 +307,42 @@
     </div>
     <!-- End of Edge Properties Modal -->
 
+    <!-- Workflow Node Edit Modal -->
+    <div class="modal fade" id="workflowNodeEditModal" tabindex="-1" role="dialog" aria-labelledby="workflowNodeEditModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="workflowNodeEditModalLabel">Edit Workflow Node</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="editingNodeArrayIndex"> <!-- To store the index of the node in workflowNodesJson -->
+            <div class="form-group">
+              <label>Node ID:</label>
+              <p id="displayNodeId" class="form-control-static"></p> <!-- Read-only display -->
+            </div>
+            <div class="form-group">
+              <label>Task Config ID (Original Task):</label>
+              <p id="displayTaskConfigId" class="form-control-static"></p> <!-- Read-only display -->
+            </div>
+            <div class="form-group">
+              <label for="editNodeName">Node Name (Display Name)</label>
+              <input type="text" class="form-control" id="editNodeName">
+            </div>
+            <div class="form-group">
+              <label for="editNodeParams">Node-Specific Parameters (JSON)</label>
+              <textarea class="form-control" id="editNodeParams" rows="4" placeholder='{"key":"value"}'></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveNodeChangesBtn">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- End of Workflow Node Edit Modal -->
+
     <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
@@ -415,12 +452,13 @@
                                 <td>${status}</td>
                                 <td>${task.executionMode || 'BROADCAST'}</td>
                                 <td class="action-buttons">
-                                    <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}">Edit</button>
-                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}">Delete</button>
-                                    <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}">Trigger</button>
+                                    <a href="logs.html?taskId=${task.taskId}" class="btn btn-sm btn-outline-info mr-1" title="View Execution History">History</a>
+                                    <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}" title="Edit Task">Edit</button>
+                                    <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}" title="Delete Task">Delete</button>
+                                    <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}" title="Trigger Task Manually">Trigger</button>
                                     ${task.isActive
-                                        ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}">Disable</button>`
-                                        : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}">Enable</button>`
+                                        ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}" title="Disable Task">Disable</button>`
+                                        : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}" title="Enable Task">Enable</button>`
                                     }
                                 </td>
                             </tr>`;
@@ -535,9 +573,10 @@
                         // data-node-id is now on the group 'g'
                     g.append(rect);
 
+                    // Single click for edge creation
                     rect.on('click', function(event) {
-                        event.stopPropagation(); // Prevent event from bubbling to dagContainer
-                        const parentGroup = $(this).closest('g.node-group'); // Use closest
+                        event.stopPropagation();
+                        const parentGroup = $(this).closest('g.node-group');
                         const clickedNodeId = parentGroup.attr('data-node-id');
 
                         if (!selectedSourceNodeId) { // No source selected, select this one
@@ -566,6 +605,35 @@
                                 selectedSourceElement = null;
                             }
                         }
+                    });
+
+                    // Double click for editing node properties
+                    g.on('dblclick', function(event) {
+                        event.stopPropagation();
+                        const clickedNodeId = $(this).attr('data-node-id');
+
+                        let currentNodes = [];
+                        try {
+                            currentNodes = JSON.parse($('#workflowNodesJson').val() || '[]');
+                        } catch (e) {
+                            showFeedback('Error parsing workflowNodesJson for editing: ' + e.message, true);
+                            return;
+                        }
+                        const nodeIndex = currentNodes.findIndex(n => n.nodeId === clickedNodeId);
+                        if (nodeIndex === -1) {
+                            showFeedback('Could not find node data for editing.', true);
+                            return;
+                        }
+                        const nodeToEdit = currentNodes[nodeIndex];
+
+                        $('#editingNodeArrayIndex').val(nodeIndex);
+                        $('#displayNodeId').text(nodeToEdit.nodeId); // Display Node ID (read-only)
+                        $('#displayTaskConfigId').text(nodeToEdit.taskConfigId); // Display Task Config ID (read-only)
+                        $('#editNodeName').val(nodeToEdit.nodeName || '');
+                        $('#editNodeParams').val(nodeToEdit.parameters ? JSON.stringify(nodeToEdit.parameters, null, 2) : '{}');
+
+                        $('#workflowNodeEditModalLabel').text('Edit Workflow Node: ' + nodeToEdit.nodeId);
+                        $('#workflowNodeEditModal').modal('show');
                     });
 
                     // Node Name (or Node ID if name is missing)
@@ -753,11 +821,58 @@
             $('#dagContainer').on('click', function(event) {
                 // Deselect source node if clicking on the container background (not on a node or edge)
                 const target = $(event.target);
-                if (selectedSourceElement && (target.is('#dagContainer') || target.is('svg') || target.is('svg > defs') || target.is('svg > marker') || target.is('svg > path'))) {
-                    selectedSourceElement.find('rect').attr('fill', '#fff');
-                    selectedSourceNodeId = null;
-                    selectedSourceElement = null;
+                if (selectedSourceElement && (target.is('#dagContainer') || target.is('svg') || target.is('svg > defs') || target.is('svg > marker') || target.is('svg > path') || target.is('svg > rect') || target.is('svg > text'))) { // Expanded check
+                    // Check if the click target is NOT part of another node group or an edge line itself
+                    if (!target.closest('.node-group').length && !target.closest('.dag-edge').length) {
+                         selectedSourceElement.find('rect').attr('fill', '#fff');
+                         selectedSourceNodeId = null;
+                         selectedSourceElement = null;
+                    }
                 }
+            });
+
+            $('#saveNodeChangesBtn').on('click', function() {
+                const updatedNodeName = $('#editNodeName').val().trim();
+                const updatedNodeParamsString = $('#editNodeParams').val();
+                const nodeIndex = parseInt($('#editingNodeArrayIndex').val());
+
+                let updatedParams;
+                try {
+                    updatedParams = updatedNodeParamsString.trim() === '' ? {} : JSON.parse(updatedNodeParamsString);
+                } catch (e) {
+                    showFeedback('Invalid JSON in Node-Specific Parameters: ' + e.message, true);
+                    return;
+                }
+
+                let currentNodesJson = $('#workflowNodesJson').val();
+                let nodesArray = [];
+                try {
+                    if (currentNodesJson && currentNodesJson.trim() !== '') {
+                        nodesArray = JSON.parse(currentNodesJson);
+                    }
+                } catch (e) {
+                    showFeedback('Error parsing current Workflow Nodes JSON: ' + e.message, true);
+                    return;
+                }
+
+                if (nodeIndex >= 0 && nodeIndex < nodesArray.length) {
+                    nodesArray[nodeIndex].nodeName = updatedNodeName || nodesArray[nodeIndex].nodeId; // Default to nodeId if name cleared
+                    nodesArray[nodeIndex].parameters = updatedParams;
+
+                    $('#workflowNodesJson').val(JSON.stringify(nodesArray, null, 2));
+                    $('#workflowNodeEditModal').modal('hide');
+                    redrawDAG(); // Refresh DAG to show updated node name/details
+                } else {
+                    showFeedback('Error: Could not find node to update. Index out of bounds.', true);
+                }
+            });
+
+            $('#workflowNodeEditModal').on('hidden.bs.modal', function () {
+                $('#editNodeName').val('');
+                $('#editNodeParams').val('{}'); // Default to empty JSON object string
+                $('#displayNodeId').text('');
+                $('#displayTaskConfigId').text('');
+                $('#editingNodeArrayIndex').val('');
             });
 
 

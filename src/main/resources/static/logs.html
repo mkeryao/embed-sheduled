@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Task Logs - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -216,10 +217,27 @@
             });
 
             // Initial load
-            loadLogs();
+            // loadLogs(); // Will be called after checking URL params
             loadGlobalStats();
             loadTopSlowestTasks();
             loadTaskBreakdownStats();
+
+            // Check for taskId in URL and auto-filter
+            // Ensure getUrlParams() is available, e.g., from main.js or defined here
+            if (typeof getUrlParams === 'function') {
+                const urlParams = getUrlParams();
+                const taskIdFromUrl = urlParams['taskId'];
+                if (taskIdFromUrl) {
+                    $('#taskIdFilter').val(taskIdFromUrl);
+                    loadLogs(taskIdFromUrl); // Load logs for this specific task
+                } else {
+                    loadLogs(); // Load all logs if no specific taskId
+                }
+            } else {
+                console.error("getUrlParams function is not defined. Cannot process URL parameters.");
+                loadLogs(); // Fallback to loading all logs
+            }
+
 
             function loadGlobalStats() {
                 makeApiCall('GET', '/api/logs/statistics/global-counts', null,

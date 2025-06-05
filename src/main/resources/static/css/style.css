@@ -1,47 +1,141 @@
-/* Basic custom styles */
+/* General body styling */
 body {
-    padding-top: 56px; /* Adjust if using a fixed-top navbar */
-    font-family: 'Arial', sans-serif;
+    padding-top: 56px; /* Adjust if navbar height changes */
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+/* Navbar styling */
+.navbar {
+    background-color: #343a40; /* Dark background for navbar */
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: rgba(255,255,255,.75);
+}
+
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:focus {
+    color: #fff;
+}
+
+/* Active nav item */
+.navbar-dark .navbar-nav .nav-link.active,
+.navbar-dark .navbar-nav .show > .nav-link { /* For dropdowns if any */
+    color: #fff;
+    font-weight: 500; /* Slightly bolder for active link */
+}
+
+/* Spacing for icons in navbar links */
+.navbar-nav .nav-link .bi {
+    margin-right: 6px; /* Space between icon and text */
+    vertical-align: text-bottom; /* Aligns icon nicely with text */
+}
+
+
+/* Container adjustments */
 .container {
-    margin-top: 20px;
+    padding-top: 20px;
 }
 
-.table th, .table td {
-    vertical-align: middle;
+/* Table styling */
+.table thead th {
+    background-color: #343a40; /* Dark header for tables */
+    color: #fff;
+    border-color: #454d55;
 }
 
-.action-buttons .btn {
-    margin-right: 5px;
-    margin-bottom: 5px; /* For smaller screens */
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa; /* Light grey hover for table rows */
 }
 
-.modal-body form .form-group {
-    margin-bottom: 1rem;
+/* Button styling */
+.action-buttons button, .action-buttons a.btn {
+    margin-right: 5px; /* Spacing between action buttons in tables */
+}
+.action-buttons button:last-child, .action-buttons a.btn:last-child {
+    margin-right: 0;
 }
 
+
+/* Modal styling */
+.modal-header {
+    background-color: #007bff; /* Primary color for modal headers */
+    color: #fff;
+}
+
+.modal-header .close {
+    color: #fff;
+    opacity: 0.8;
+}
+.modal-header .close:hover {
+    opacity: 1;
+}
+
+/* Feedback message styling */
 #feedback-message {
     position: fixed;
-    top: 60px; /* Below navbar */
+    bottom: 20px;
     right: 20px;
-    z-index: 1050; /* Above most other elements */
+    z-index: 1050; /* Ensure it's above most other content */
     min-width: 250px;
     display: none; /* Hidden by default */
 }
 
-/* Center login form */
-.login-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - 56px); /* Full height minus navbar */
+/* DAG Specific Styles */
+.dag-node rect {
+    cursor: pointer;
+}
+.dag-node rect:hover {
+    filter: brightness(90%);
+}
+.dag-edge {
+    cursor: pointer;
+}
+.dag-edge:hover {
+    stroke: #0056b3; /* Darker blue on hover */
+    stroke-width: 3px;
 }
 
-.card-title {
-    margin-bottom: 1.5rem;
+/* Ensure dropdowns in navbar (if any) are styled correctly */
+.navbar-dark .dropdown-menu {
+    background-color: #343a40;
+    border-color: #454d55;
+}
+.navbar-dark .dropdown-item {
+    color: rgba(255,255,255,.75);
+}
+.navbar-dark .dropdown-item:hover,
+.navbar-dark .dropdown-item:focus {
+    color: #fff;
+    background-color: #007bff; /* Primary color for hover */
 }
 
-.navbar {
-    margin-bottom: 1.5rem;
+/* Custom card header styling for statistics */
+#globalStatsBody p,
+#topSlowestTasksBody .list-group-item,
+#taskBreakdownBody table {
+    font-size: 0.9rem; /* Slightly smaller font for dense info */
+}
+
+#globalStatsBody p strong {
+    min-width: 80px; /* Align keys a bit if needed */
+    display: inline-block;
+}
+
+/* Style for form-control-static in modals for read-only fields */
+.form-control-static {
+    padding-top: .375rem;
+    padding-bottom: .375rem;
+    margin-bottom: 0;
+    line-height: 1.5;
+    word-break: break-all; /* Break long node IDs if necessary */
+}
+
+/* Responsive table for task breakdown */
+.table-responsive {
+    margin-top: 1rem;
 }
