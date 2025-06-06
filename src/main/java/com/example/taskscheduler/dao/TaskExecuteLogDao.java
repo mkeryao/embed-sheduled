@@ -22,7 +22,7 @@ public interface TaskExecuteLogDao {
      * @param logId The ID of the log entry.
      * @return An {@link Optional} containing the log entry if found, or empty otherwise.
      */
-    Optional<TaskExecuteLog> findById(Integer logId);
+    Optional<TaskExecuteLog> findById(Long logId);
 
     /**
      * Retrieves all task execution logs.
@@ -46,7 +46,7 @@ public interface TaskExecuteLogDao {
      * @param taskId The task_id of the node.
      * @return A list of log entries.
      */
-    List<TaskExecuteLog> findByParentExecuteNoAndTaskId(long parentExecuteNo, int taskId);
+    List<TaskExecuteLog> findByParentExecuteNoAndTaskId(Integer parentExecuteNo, int taskId);
 
     /**
      * Updates an existing task execution log entry.
@@ -61,16 +61,17 @@ public interface TaskExecuteLogDao {
      *
      * @param logId The ID of the log entry to update.
      * @param state The final state of the task execution (e.g., SUCCESS, FAILED, TIMED_OUT).
+     * @param rtnMsg An optional return message.
      * @param exMsg An optional exception message if the task failed or timed out.
      */
-    void updateLogStatus(Integer logId, String state, String exMsg);
+    void updateLogStatus(Long logId, String state, String rtnMsg, String exMsg);
 
     /**
      * Updates only the return message (rtn_msg) of a specific log entry.
      * @param logId The ID of the log entry to update.
      * @param rtnMsg The new return message.
      */
-    void updateLogRtnMsg(long logId, String rtnMsg);
+    void updateLogRtnMsg(Long logId, String rtnMsg);
 
     // --- Statistics Methods ---
     /**
@@ -130,5 +131,5 @@ public interface TaskExecuteLogDao {
      * @param parentExecuteNo The log_id of the parent workflow execution.
      * @return A list of child log entries.
      */
-    List<TaskExecuteLog> findByParentExecuteNo(long parentExecuteNo);
+    List<TaskExecuteLog> findByParentExecuteNo(Integer parentExecuteNo);
 }

@@ -45,7 +45,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
 
     private final RowMapper<TaskExecuteLog> rowMapper = (rs, rowNum) -> {
         TaskExecuteLog log = new TaskExecuteLog();
-        log.setLogId(rs.getInt("log_id"));
+        log.setLogId(rs.getLong("log_id"));
         log.setTaskId(rs.getInt("task_id"));
         log.setStartTime(rs.getTimestamp("start_time"));
         log.setEndTime(rs.getTimestamp("end_time"));
@@ -79,13 +79,13 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         }, keyHolder);
 
         if (keyHolder.getKey() != null) {
-            log.setLogId(keyHolder.getKey().intValue());
+            log.setLogId(keyHolder.getKey().longValue());
         }
         return log;
     }
 
     @Override
-    public Optional<TaskExecuteLog> findById(Integer logId) {
+    public Optional<TaskExecuteLog> findById(Long logId) {
         try {
             return Optional.ofNullable(jdbcTemplate.queryForObject(SELECT_BY_ID_SQL, new Object[]{logId}, rowMapper));
         } catch (EmptyResultDataAccessException e) {
@@ -113,23 +113,33 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public void updateLogStatus(Integer logId, String state, String exMsg) {
-        String rtnMsgForUpdate = exMsg;
-        if ("SUCCESS".equals(state)) {
-           rtnMsgForUpdate = "Task completed successfully.";
-        }
+    public void updateLogStatus(Long logId, String state, String rtnMsg, String exMsg) {
+        String finalRtnMsg = rtnMsg;
+        String finalExMsg = exMsg;
+
         // Basic length capping to avoid DB errors
-        if (rtnMsgForUpdate != null && rtnMsgForUpdate.length() > 1950) {
-            rtnMsgForUpdate = rtnMsgForUpdate.substring(0, 1950) + "...";
+        if (finalRtnMsg != null && finalRtnMsg.length() > 1950) {
+            logger.warn("rtnMsg for log_id {} is too long ({} chars), truncating.", logId, finalRtnMsg.length());
+            finalRtnMsg = finalRtnMsg.substring(0, 1950) + "...";
         }
-        if (exMsg != null && exMsg.length() > 1950) {
-            exMsg = exMsg.substring(0, 1950) + "...";
+        if (finalExMsg != null && finalExMsg.length() > 1950) {
+            logger.warn("exMsg for log_id {} is too long ({} chars), truncating.", logId, finalExMsg.length());
+            finalExMsg = finalExMsg.substring(0, 1950) + "...";
         }
-        jdbcTemplate.update(UPDATE_LOG_STATUS_SQL, state, rtnMsgForUpdate, exMsg, logId);
+
+        try {
+            int affectedRows = jdbcTemplate.update(UPDATE_LOG_STATUS_SQL, state, finalRtnMsg, finalExMsg, logId);
+            if (affectedRows == 0) {
+                logger.warn("No log entry found with log_id {} to update status.", logId);
+            }
+        } catch (Exception e) {
+            logger.error("Error updating log status for log_id {}: {}", logId, e.getMessage(), e);
+            // Depending on requirements, could rethrow or just log
+        }
     }
 
     @Override
-    public void updateLogRtnMsg(long logId, String rtnMsg) {
+    public void updateLogRtnMsg(Long logId, String rtnMsg) {
         String sql = "UPDATE task_execute_log SET rtn_msg = ? WHERE log_id = ?";
         try {
             String messageToSave = rtnMsg;
@@ -281,7 +291,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public List<TaskExecuteLog> findByParentExecuteNo(long parentExecuteNo) {
+    public List<TaskExecuteLog> findByParentExecuteNo(Integer parentExecuteNo) {
         String sql = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE parent_execute_no = ? ORDER BY log_id ASC";
         try {
             return jdbcTemplate.query(sql, new Object[]{parentExecuteNo}, rowMapper);
@@ -292,7 +302,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public List<TaskExecuteLog> findByParentExecuteNoAndTaskId(long parentExecuteNo, int taskId) {
+    public List<TaskExecuteLog> findByParentExecuteNoAndTaskId(Integer parentExecuteNo, int taskId) {
         String sql = "SELECT " + LOG_COLUMNS +
                      " FROM task_execute_log " +
                      "WHERE parent_execute_no = ? AND task_id = ? " +

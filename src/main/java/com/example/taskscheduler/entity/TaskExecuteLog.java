@@ -17,7 +17,7 @@ import java.sql.Timestamp;
 @AllArgsConstructor
 public class TaskExecuteLog {
     /** Unique identifier for this log entry. */
-    private Integer logId;
+    private Long logId;
 
     /** ID of the {@link TaskConfig} this log entry pertains to. */
     private int taskId;

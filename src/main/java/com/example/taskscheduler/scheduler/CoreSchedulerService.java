@@ -218,10 +218,11 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      * @param completedAttemptNumber The attempt number that just completed.
      * @param executionLogId The ID of the log entry for the completed attempt.
      * @param originalInitialPattern The initialTaskPattern of the first attempt in this sequence.
+     * @param originalInitialPattern The initialTaskPattern of the first attempt in this sequence.
      * @param originalParentLogId The parentLogId of the first attempt in this sequence (if any).
      * @param workflowNodeId The ID of the workflow node, if this task is part of a workflow.
      */
-    public void handleTaskCompletion(TaskConfig taskConfig, String finalStatus, int completedAttemptNumber, long executionLogId,
+    public void handleTaskCompletion(TaskConfig taskConfig, String finalStatus, int completedAttemptNumber, Long executionLogId,
                                      String originalInitialPattern, Long originalParentLogId, String workflowNodeId) {
         MDC.put("task_id", String.valueOf(taskConfig.getTaskId()));
         MDC.put("task_name", taskConfig.getTaskName());
