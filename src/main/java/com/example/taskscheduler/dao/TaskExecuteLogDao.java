@@ -65,6 +65,13 @@ public interface TaskExecuteLogDao {
      */
     void updateLogStatus(Integer logId, String state, String exMsg);
 
+    /**
+     * Updates only the return message (rtn_msg) of a specific log entry.
+     * @param logId The ID of the log entry to update.
+     * @param rtnMsg The new return message.
+     */
+    void updateLogRtnMsg(long logId, String rtnMsg);
+
     // --- Statistics Methods ---
     /**
      * Gets the total counts for each execution state (SUCCESS, FAILED, etc.) across all logs.

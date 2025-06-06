@@ -85,7 +85,7 @@ public class TaskExecutionJob implements Runnable {
         }
 
         if (this.parentLogId != null) {
-            log.setParentExecuteNo(this.parentLogId);
+            log.setParentLogId(this.parentLogId.intValue()); // Corrected setter and added intValue() for Long to Integer conversion
         }
 
         // If a DB column `attempt_number` was added to `task_execute_log`, set it here:

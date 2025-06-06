@@ -129,6 +129,26 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
+    public void updateLogRtnMsg(long logId, String rtnMsg) {
+        String sql = "UPDATE task_execute_log SET rtn_msg = ? WHERE log_id = ?";
+        try {
+            String messageToSave = rtnMsg;
+            // Cap message length for DB, though TEXT type usually handles large strings.
+            // This is a general safeguard. 2000 is an arbitrary example.
+            if (rtnMsg != null && rtnMsg.length() > 2000) {
+                messageToSave = rtnMsg.substring(0, 1997) + "...";
+            }
+            int affectedRows = jdbcTemplate.update(sql, messageToSave, logId);
+            if (affectedRows == 0) {
+                logger.warn("No log entry found with log_id {} to update rtn_msg.", logId);
+            }
+        } catch (Exception e) {
+            logger.error("Error updating rtn_msg for log_id {}: {}", logId, e.getMessage(), e);
+            // Depending on requirements, could rethrow or just log
+        }
+    }
+
+    @Override
     public List<Map<String, Object>> getOverallStatusCounts() {
         String sql = "SELECT state, COUNT(*) as count FROM task_execute_log GROUP BY state";
         return jdbcTemplate.queryForList(sql);
