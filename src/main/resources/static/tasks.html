@@ -144,6 +144,7 @@
                                 <div class="form-group">
                                     <label for="beanParameters" data-i18n-key="tasksPage.modal.beanTaskFields.beanParamsLabel">Bean Parameters (JSON)</label>
                                     <textarea class="form-control" id="beanParameters" rows="2" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanParamsPlaceholder" placeholder='{"key": "value"}'></textarea>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="beanParameters" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
                                 </div>
                             </div>
 
@@ -189,10 +190,12 @@
                                 <div class="form-group">
                                     <label for="httpHeaders" data-i18n-key="tasksPage.modal.httpTaskFields.headersLabel">HTTP Headers (JSON)</label>
                                     <textarea class="form-control" id="httpHeaders" rows="2" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.headersPlaceholder" placeholder='{"Content-Type": "application/json", "X-API-KEY":"secret"}'></textarea>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="httpHeaders" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
                                 </div>
                                 <div class="form-group">
                                     <label for="httpBody" data-i18n-key="tasksPage.modal.httpTaskFields.bodyLabel">HTTP Body (e.g., JSON for POST/PUT)</label>
                                     <textarea class="form-control" id="httpBody" rows="3" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.bodyPlaceholder" placeholder='{"key": "value"}'></textarea>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="httpBody" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group col-md-6">
@@ -243,11 +246,13 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="globalParametersJson" data-i18n-key="tasksPage.modal.workflowTaskFields.globalParamsLabel">Global Parameters (JSON, Optional)</label>
-                                <textarea class="form-control" id="globalParametersJson" rows="3" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.globalParamsPlaceholder" placeholder='{"key": "globalValue", "api_url": "https://example.com"}'></textarea>
-                            </div>
+                                    <textarea class="form-control" id="globalParametersJson" rows="3" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.globalParamsPlaceholder" placeholder='{"key": "globalValue", "api_url": "https://example.com"}'></textarea>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="globalParametersJson" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
+                                </div>
                             <div class="form-group">
                                 <label for="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonLabel">Workflow Nodes (JSON)</label>
                                 <textarea class="form-control" id="workflowNodesJson" rows="5" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodesJsonPlaceholder" placeholder='[{"nodeId":"node1", "taskConfigId":1, "parameters": {"input": "${global_api_key}"} }]'></textarea>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="workflowNodesJson" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
                                 <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonNote">Define tasks (nodes). Parameters can use templating like `${nodeA_status}` or `${global_param}`.</small>
                             </div>
                             <div class="form-group">
@@ -261,6 +266,7 @@
                              <div class="form-group">
                                 <label for="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonLabel">Workflow Edges (JSON)</label>
                                 <textarea class="form-control" id="workflowEdgesJson" rows="4" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.edgesJsonPlaceholder" placeholder='[{"fromNodeId":"node1", "toNodeId":"node2", "expression": "${node1_status} == ''SUCCESS''"}]'></textarea>
+                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="workflowEdgesJson" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
                                 <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonNote">Define transitions and conditions between nodes.</small>
                             </div>
                         </div>
@@ -271,11 +277,11 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label for="startDate" data-i18n-key="tasksPage.modal.startDateLabel">Start Date (Optional)</label>
-                                <input type="date" class="form-control" id="startDate">
+                                <input type="datetime-local" class="form-control" id="startDate">
                             </div>
                             <div class="form-group col-md-6">
                                 <label for="endDate" data-i18n-key="tasksPage.modal.endDateLabel">End Date (Optional)</label>
-                                <input type="date" class="form-control" id="endDate">
+                                <input type="datetime-local" class="form-control" id="endDate">
                             </div>
                         </div>
                         <div class="form-row">
@@ -372,6 +378,7 @@
             <div class="form-group">
               <label for="editNodeParams" data-i18n-key="tasksPage.nodeEditModal.nodeParamsLabel">Node-Specific Parameters (JSON)</label>
               <textarea class="form-control" id="editNodeParams" rows="4" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanParamsPlaceholder" placeholder='{"key":"value"}'></textarea> <!-- Reused placeholder key -->
+              <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="editNodeParams" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
             </div>
           </div>
           <div class="modal-footer">
@@ -1144,8 +1151,8 @@
                     isActive: $('#isActive').is(':checked'),
                     beanName: $('#beanName').val(),
                     methodName: $('#methodName').val(),
-                    startDate: $('#startDate').val() || null,
-                    endDate: $('#endDate').val() || null,
+                    startDate: $('#startDate').val() ? ($('#startDate').val() + ":00") : null, // Append seconds for backend parsing
+                    endDate: $('#endDate').val() ? ($('#endDate').val() + ":00") : null,         // Append seconds for backend parsing
                     taskCalendarGroup: $('#taskCalendarGroup').val() || null,
                     taskExcludeTimes: $('#taskExcludeTimes').val() || null,
                     executeTimeoutSeconds: parseInt($('#executeTimeoutSeconds').val()) || 0,
@@ -1324,8 +1331,20 @@
                              $('#beanParameters').val(task.beanParameters);
                         }
 
-                        $('#startDate').val(task.startDate);
-                        $('#endDate').val(task.endDate);
+                        if (task.startDate) {
+                            const startDateVal = new Date(task.startDate);
+                            startDateVal.setMinutes(startDateVal.getMinutes() - startDateVal.getTimezoneOffset());
+                            $('#startDate').val(startDateVal.toISOString().slice(0,16));
+                        } else {
+                            $('#startDate').val('');
+                        }
+                        if (task.endDate) {
+                            const endDateVal = new Date(task.endDate);
+                            endDateVal.setMinutes(endDateVal.getMinutes() - endDateVal.getTimezoneOffset());
+                            $('#endDate').val(endDateVal.toISOString().slice(0,16));
+                        } else {
+                            $('#endDate').val('');
+                        }
                         $('#taskExcludeTimes').val(task.taskExcludeTimes);
                         $('#executeTimeoutSeconds').val(task.executeTimeoutSeconds != null ? task.executeTimeoutSeconds : 0);
 
@@ -1400,6 +1419,31 @@
                     throw e;
                 }
             }
+
+            // Generic handler for all "Format JSON" buttons
+            $('body').on('click', '.format-json-btn', function() {
+                const textareaId = $(this).data('target-textarea');
+                const $textarea = $('#' + textareaId);
+                if ($textarea.length) {
+                    const currentJson = $textarea.val();
+                    if (currentJson.trim() === '') {
+                        // Optionally show feedback that there's nothing to format, or just do nothing.
+                        return;
+                    }
+                    try {
+                        const parsedJson = JSON.parse(currentJson);
+                        const formattedJson = JSON.stringify(parsedJson, null, 2); // Pretty print with 2 spaces indent
+                        $textarea.val(formattedJson);
+                        showFeedback(i18n.translate('tasksPage.feedback.jsonFormatted', 'JSON formatted successfully.'), false);
+                    } catch (e) {
+                        const errorMsg = i18n.translate('tasksPage.feedback.invalidJsonFormat', 'Invalid JSON: Could not format. Please check syntax. {{error}}')
+                                            .replace('{{error}}', e.message);
+                        showFeedback(errorMsg, true);
+                    }
+                } else {
+                    console.warn('Format JSON button clicked, but target textarea not found:', textareaId);
+                }
+            });
         });
     </script>
 </body>

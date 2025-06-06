@@ -68,24 +68,18 @@ public class CustomTaskTrigger implements Trigger {
             // Convert to LocalDateTime for easier date/time checks
             LocalDateTime ldt = LocalDateTime.ofInstant(nextPotentialExecutionTime.toInstant(), ZoneId.systemDefault());
 
-            // 2. Check against taskConfig.startDate
-            if (taskConfig.getStartDate() != null) {
-                // Convert java.sql.Date to LocalDate then to Date at start of day for comparison
-                Date startDateAtMidnight = Date.from(taskConfig.getStartDate().toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
-                if (nextPotentialExecutionTime.before(startDateAtMidnight)) {
-                    logger.debug("Task ID {}: Candidate time {} is before start date {}. Skipping.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getStartDate());
-                    continue;
-                }
+            // 2. Check against taskConfig.startDate (now a Timestamp)
+            if (taskConfig.getStartDate() != null && nextPotentialExecutionTime.before(taskConfig.getStartDate())) {
+                logger.debug("Task ID {}: Candidate time {} is before start datetime {}. Skipping.",
+                             taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getStartDate());
+                continue;
             }
 
-            // 3. Check against taskConfig.endDate
-            if (taskConfig.getEndDate() != null) {
-                 // Convert java.sql.Date to LocalDate, then to Date at end of day for comparison
-                Date endDateAtEndOfDay = Date.from(taskConfig.getEndDate().toLocalDate().atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant());
-                if (nextPotentialExecutionTime.after(endDateAtEndOfDay)) {
-                    logger.warn("Task ID {}: Candidate time {} is after end date {}. No further valid executions.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getEndDate());
-                    return null; // No more valid executions
-                }
+            // 3. Check against taskConfig.endDate (now a Timestamp)
+            if (taskConfig.getEndDate() != null && nextPotentialExecutionTime.after(taskConfig.getEndDate())) {
+                logger.warn("Task ID {}: Candidate time {} is after end datetime {}. No further valid executions.",
+                             taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getEndDate());
+                return null; // No more valid executions
             }
 
             // 4. Check against taskConfig.taskCalendarGroup

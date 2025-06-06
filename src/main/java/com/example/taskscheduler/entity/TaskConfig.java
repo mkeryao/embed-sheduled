@@ -86,9 +86,9 @@ public class TaskConfig {
      */
     private String taskExcludeTimes;
     /** The task will not run before this date (inclusive). */
-    private Date startDate;
+    private Timestamp startDate;
     /** The task will not run after this date (inclusive). */
-    private Date endDate;
+    private Timestamp endDate;
     /** Maximum execution time in seconds for the task. 0 or null means no timeout. */
     private Integer executeTimeoutSeconds;
 

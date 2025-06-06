@@ -60,6 +60,7 @@
             "enableBtnShort": "启用"
         },
         "modal": {
+            "formatJsonBtn": "格式化JSON",
             "titleAdd": "添加任务",
             "titleEdit": "编辑任务",
             "taskNameLabel": "任务名称",
@@ -207,7 +208,25 @@
             "nodeEditErrorFinding": "错误：找不到要更新的节点。",
             "edgeErrorParse": "解析现有工作流边JSON时出错: {{message}}。正在使用新数组开始。",
             "edgeDeleteError": "错误：删除边的索引无效。",
-            "edgeDeleteNoEdges": "没有边可删除。"
+            "edgeDeleteNoEdges": "没有边可删除。",
+            "cycleDetected": "错误：此边线在工作流中创建了一个循环。请修正。",
+            "invalidJsonFormat": "无效的JSON：无法格式化。请检查语法。 {{error}}",
+            "jsonFormatted": "JSON格式化成功。"
+        },
+        "filters": {
+            "header": "任务筛选",
+            "taskNameLabel": "任务名称",
+            "taskNamePlaceholder": "输入任务名称...",
+            "taskGroupLabel": "任务分组",
+            "allGroupsOption": "所有分组",
+            "taskTypeLabel": "任务类型",
+            "allTypesOption": "所有类型",
+            "statusLabel": "状态",
+            "allStatusesOption": "所有状态",
+            "statusActive": "激活",
+            "statusInactive": "未激活",
+            "applyBtn": "应用筛选",
+            "resetBtn": "重置筛选"
         }
     },
     "usersPage": {

@@ -60,6 +60,7 @@
             "enableBtnShort": "Enable"
         },
         "modal": {
+            "formatJsonBtn": "Format JSON",
             "titleAdd": "Add Task",
             "titleEdit": "Edit Task",
             "taskNameLabel": "Task Name",
@@ -208,7 +209,9 @@
             "edgeErrorParse": "Error parsing existing Workflow Edges JSON: {{message}}. Starting with new array.",
             "edgeDeleteError": "Error: Invalid edge index for deletion.",
             "edgeDeleteNoEdges": "No edges to delete.",
-            "cycleDetected": "Error: This edge creates a cycle in the workflow. Please correct."
+            "cycleDetected": "Error: This edge creates a cycle in the workflow. Please correct.",
+            "invalidJsonFormat": "Invalid JSON: Could not format. Please check syntax. {{error}}",
+            "jsonFormatted": "JSON formatted successfully."
         },
         "filters": {
             "header": "Task Filters",

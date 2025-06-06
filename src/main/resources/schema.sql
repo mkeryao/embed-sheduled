@@ -14,8 +14,8 @@ CREATE TABLE task_config (
     -- Advanced features
     task_calendar_group VARCHAR(255), -- Name of the calendar group to check for exclusion days
     task_exclude_times TEXT, -- Comma-separated time ranges for exclusion, e.g., "00:00-08:00,22:00-23:59"
-    start_date DATE, -- Task will not run before this date
-    end_date DATE, -- Task will not run after this date
+    start_date DATETIME DEFAULT NULL, -- Task will not run before this date
+    end_date DATETIME DEFAULT NULL, -- Task will not run after this date
     execute_timeout_seconds INT DEFAULT 0, -- 0 means no timeout
 
     -- Notification settings
@@ -105,7 +105,7 @@ INSERT INTO task_config (
     workflow_nodes, workflow_edges, global_parameters
 ) VALUES
 ('MySampleSuccessTask', 'DEFAULT_GROUP', '0/30 * * * * ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"Hello from scheduler!", "value": 123}', 'A sample task that should succeed.', TRUE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, '1', '1', NULL, NULL, NULL),
-('MySampleFailedTask', 'DEFAULT_GROUP', '0/45 * * * * ?', 0, 'mySampleTask', 'executeFailed', '{"error":"Simulated failure"}', 'A sample task that is expected to fail.', TRUE, 'BROADCAST', 3, 60, NULL, NULL, NULL, NULL, 30, NULL, '1', NULL, NULL, NULL),
+('MySampleFailedTask', 'DEFAULT_GROUP', '0/45 * * * * ?', 0, 'mySampleTask', 'executeFailed', '{"error":"Simulated failure"}', 'A sample task that is expected to fail.', TRUE, 'BROADCAST', 3, 60, NULL, NULL, '2023-01-01 00:00:00', '2024-12-31 23:59:59', 30, NULL, '1', NULL, NULL, NULL),
 ('MyClusteredTask', 'DEFAULT_GROUP', '0/20 * * * * ?', 0, 'mySampleTask', 'simpleExecute', '{}', 'A sample task that runs in CLUSTER mode.', TRUE, 'CLUSTER', 0, 30, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
 ('MyInactiveTask', 'DEFAULT_GROUP', '0 0 0 1 1 ?', 0, 'mySampleTask', 'executeSuccess', '{"message":"This should not run", "value": 0}', 'An inactive sample task.', FALSE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL),
 ('MyFirstWorkflow', 'WORKFLOW_GROUP', '0 0 1 * * ?', 10, NULL, NULL, NULL, 'A sample workflow task.', TRUE, 'BROADCAST', 0, 30, NULL, NULL, NULL, NULL, 0, NULL, '1',

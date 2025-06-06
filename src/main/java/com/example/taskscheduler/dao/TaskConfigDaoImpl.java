@@ -84,8 +84,8 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
         task.setRetryIntervalSeconds(rs.getObject("retry_interval_seconds", Integer.class));
         task.setTaskCalendarGroup(rs.getString("task_calendar_group"));
         task.setTaskExcludeTimes(rs.getString("task_exclude_times"));
-        task.setStartDate(rs.getDate("start_date"));
-        task.setEndDate(rs.getDate("end_date"));
+        task.setStartDate(rs.getTimestamp("start_date"));
+        task.setEndDate(rs.getTimestamp("end_date"));
         task.setExecuteTimeoutSeconds(rs.getObject("execute_timeout_seconds", Integer.class));
         task.setNotifySuccessUserIds(rs.getString("notify_success_user_ids"));
         task.setNotifyFailedUserIds(rs.getString("notify_failed_user_ids"));
@@ -117,8 +117,8 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
             setObjectOrNull(ps, 12, taskConfig.getRetryIntervalSeconds(), java.sql.Types.INTEGER);
             ps.setString(13, taskConfig.getTaskCalendarGroup());
             ps.setString(14, taskConfig.getTaskExcludeTimes());
-            ps.setDate(15, taskConfig.getStartDate());
-            ps.setDate(16, taskConfig.getEndDate());
+            ps.setTimestamp(15, taskConfig.getStartDate());
+            ps.setTimestamp(16, taskConfig.getEndDate());
             setObjectOrNull(ps, 17, taskConfig.getExecuteTimeoutSeconds(), java.sql.Types.INTEGER);
             ps.setString(18, taskConfig.getNotifySuccessUserIds());
             ps.setString(19, taskConfig.getNotifyFailedUserIds());
