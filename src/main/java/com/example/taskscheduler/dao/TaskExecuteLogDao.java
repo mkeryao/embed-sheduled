@@ -40,6 +40,15 @@ public interface TaskExecuteLogDao {
     List<TaskExecuteLog> findByTaskId(Integer taskId);
 
     /**
+     * Finds all log entries associated with a specific parent workflow execution and a specific task ID (node task).
+     * Useful for getting all attempts for a particular node within a workflow instance.
+     * @param parentExecuteNo The log_id of the parent workflow execution.
+     * @param taskId The task_id of the node.
+     * @return A list of log entries.
+     */
+    List<TaskExecuteLog> findByParentExecuteNoAndTaskId(long parentExecuteNo, int taskId);
+
+    /**
      * Updates an existing task execution log entry.
      * @param log The log entry with updated values.
      * @return The number of rows affected.

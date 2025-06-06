@@ -207,4 +207,86 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
             return 0L;
         }
     }
+
+    @Override
+    public List<Map<String, Object>> getPerTaskSuccessFailureCounts() {
+        String sql = "SELECT l.task_id, tc.task_name, " +
+                     "SUM(CASE WHEN l.state = 'SUCCESS' THEN 1 ELSE 0 END) as success_count, " +
+                     "SUM(CASE WHEN l.state = 'FAILED' THEN 1 ELSE 0 END) as failed_count " +
+                     "FROM task_execute_log l " +
+                     "JOIN task_config tc ON l.task_id = tc.task_id " +
+                     "GROUP BY l.task_id, tc.task_name " +
+                     "ORDER BY tc.task_name ASC";
+        try {
+            return jdbcTemplate.queryForList(sql);
+        } catch (Exception e) {
+            logger.error("Error fetching per-task success/failure counts: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<Map<String, Object>> getTopNAverageExecutionTimes(int limit) {
+        // Using TIMESTAMPDIFF for MySQL compatibility primarily.
+        // H2 supports TIMESTAMPDIFF with different unit arguments.
+        String sql = "SELECT l.task_id, tc.task_name, " +
+                     "AVG(TIMESTAMPDIFF(MILLISECOND, l.start_time, l.end_time)) as avg_duration_ms " +
+                     "FROM task_execute_log l " +
+                     "JOIN task_config tc ON l.task_id = tc.task_id " +
+                     "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
+                     "GROUP BY l.task_id, tc.task_name " +
+                     "ORDER BY avg_duration_ms DESC " +
+                     "LIMIT ?";
+        try {
+            return jdbcTemplate.queryForList(sql, limit);
+        } catch (Exception e) {
+            logger.error("Error fetching top N average execution times with primary SQL: {}. Trying H2 specific.", e.getMessage());
+            // Attempt a more H2-specific version if primary one fails (basic fallback)
+            String h2Sql = "SELECT l.task_id, tc.task_name, " +
+                           "AVG(CAST(DATEDIFF('MILLISECOND', l.start_time, l.end_time) AS DOUBLE)) as avg_duration_ms " +
+                           "FROM task_execute_log l " +
+                           "JOIN task_config tc ON l.task_id = tc.task_id " +
+                           "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
+                           "GROUP BY l.task_id, tc.task_name " +
+                           "ORDER BY avg_duration_ms DESC " +
+                           "LIMIT ?";
+            try {
+                logger.info("Attempting H2-specific SQL for getTopNAverageExecutionTimes.");
+                return jdbcTemplate.queryForList(h2Sql, limit);
+            } catch (Exception e2) {
+                logger.error("Error fetching top N average execution times with H2-specific SQL: {}", e2.getMessage(), e2);
+                return new ArrayList<>(); // Return empty list on error
+            }
+        }
+    }
+
+    @Override
+    public List<TaskExecuteLog> findByParentExecuteNo(long parentExecuteNo) {
+        String sql = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE parent_execute_no = ? ORDER BY log_id ASC";
+        try {
+            return jdbcTemplate.query(sql, new Object[]{parentExecuteNo}, rowMapper);
+        } catch (Exception e) {
+            logger.error("Error fetching logs by parent_execute_no {}: {}", parentExecuteNo, e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public List<TaskExecuteLog> findByParentExecuteNoAndTaskId(long parentExecuteNo, int taskId) {
+        String sql = "SELECT " + LOG_COLUMNS +
+                     " FROM task_execute_log " +
+                     "WHERE parent_execute_no = ? AND task_id = ? " +
+                     "ORDER BY log_id ASC";
+        try {
+            return jdbcTemplate.query(sql, new Object[]{parentExecuteNo, taskId}, rowMapper);
+        } catch (EmptyResultDataAccessException e) {
+            // This exception is typically not thrown for queryForList, which returns an empty list.
+            // Including for defensive coding, though it might be unreachable with Spring JDBC's default behavior.
+            logger.warn("No logs found for parentExecuteNo {} and taskId {} (EmptyResultDataAccessException). Returning empty list.", parentExecuteNo, taskId);
+            return new ArrayList<>();
+        } catch (Exception e) {
+            logger.error("Error fetching logs by parentExecuteNo {} and taskId {}: {}", parentExecuteNo, taskId, e.getMessage(), e);
+            return new ArrayList<>();
+        }
+    }
 }
