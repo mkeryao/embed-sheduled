@@ -3,6 +3,7 @@
         "brand": "任务调度器",
         "tasks": "任务管理",
         "logs": "执行日志",
+        "statistics": "统计信息",
         "calendars": "日历管理",
         "users": "用户管理",
         "logout": "登出",
@@ -276,12 +277,13 @@
     },
     "logsPage": {
         "title": "任务日志 - 任务调度器",
-        "header": "任务执行统计",
-        "stats": {
+        "header": "任务执行统计", // 将由后续步骤针对logs.html更新
+        "mainHeader": "详细执行日志", // logs.html 主标题的新键
+        "stats": { // 此部分在拆分后，logs.html 将基本不再使用
             "globalCountsHeader": "全局统计",
             "slowestTasksHeader": "最慢的5个任务 (平均成功执行时间)",
             "taskBreakdownHeader": "各任务成功/失败次数",
-            "loading": "加载中...",
+            "loading": "加载中...", // 如果统计函数未覆盖，此特定键可能仍被使用
             "noGlobalStats": "暂无全局统计数据。",
             "noSlowestTasks": "暂无最慢任务数据 (或无成功执行记录)。",
             "noTaskBreakdown": "暂无各任务分解数据。",
@@ -289,7 +291,7 @@
             "successHeader": "成功",
             "failedHeader": "失败"
         },
-        "detailedLogsHeader": "详细日志",
+        "detailedLogsHeader": "详细日志", // 如果需要，可保留作为子标题，否则如果mainHeader足够，则可移除
         "filters": {
             "taskIdLabel": "按任务ID筛选:",
             "taskIdPlaceholder": "输入任务ID",
@@ -349,6 +351,88 @@
             "not_executed": "未执行",
             "not_configured": "未配置",
             "unknown": "未知"
+        }
+    },
+    "statisticsPage": {
+        "title": "任务统计 - 任务调度器",
+        "header": "任务执行统计",
+        "stats": {
+            "globalCountsHeader": "全局统计",
+            "slowestTasksHeader": "最慢的5个任务 (平均成功执行时间)",
+            "taskBreakdownHeader": "各任务成功/失败次数",
+            "noGlobalStats": "暂无全局统计数据。",
+            "noSlowestTasks": "暂无最慢任务数据 (或无成功执行记录)。",
+            "noTaskBreakdown": "暂无各任务分解数据。",
+            "taskNameIdHeader": "任务名称 (ID)",
+            "successHeader": "成功",
+            "failedHeader": "失败"
+        },
+        "feedback": {
+             "errorLoadingGlobalStats": "加载全局统计数据失败。",
+             "errorLoadingSlowestTasks": "加载最慢任务数据失败。",
+             "errorLoadingTaskBreakdown": "加载任务分解数据失败。"
+        }
+    },
+    "calendarsPage": {
+        "title": "日历管理 - 任务调度器",
+        "header": "日历管理",
+        "addCalendarBtn": "添加日历",
+        "table": {
+            "id": "ID",
+            "name": "日历名称 (分组)",
+            "description": "描述 (备注)",
+            "actions": "操作",
+            "manageDaysBtn": "管理日期",
+            "manageDaysBtnTitle": "管理日期",
+            "deleteCalendarBtnTitle": "删除日历"
+        },
+        "calendarFormModal": {
+            "titleAdd": "添加日历",
+            "nameLabel": "日历名称 (分组)",
+            "namePlaceholder": "输入日历名称",
+            "descriptionLabel": "描述 (备注)",
+            "descriptionPlaceholder": "输入描述",
+            "saveBtn": "保存日历"
+        },
+        "daysModal": {
+            "title": "管理日历日期 {{calendarName}}",
+            "addNewDayHeader": "添加新日期条目",
+            "dateLabel": "日期",
+            "datePlaceholder": "事件日期",
+            "descriptionLabel": "描述",
+            "descriptionPlaceholder": "日期描述",
+            "isWorkingDayLabel": "是否工作日?",
+            "addDayBtn": "添加日期",
+            "existingDaysHeader": "现有日期",
+            "table": {
+                "date": "日期",
+                "description": "描述",
+                "workingDay": "工作日?",
+                "actions": "操作"
+            },
+            "noDaysFound": "此日历下未找到日期条目。"
+        },
+        "dayTypes": {
+            "working": "是",
+            "nonWorking": "否"
+        },
+        "feedback": {
+            "errorLoadingCalendars": "加载日历时出错: {{error}}",
+            "editingNotSupported": "此表单不支持编辑现有日历。",
+            "calendarSaved": "日历保存成功！",
+            "errorSavingCalendar": "保存日历时出错: {{error}}",
+            "confirmDeleteCalendar": "您确定要删除日历 '{{name}}' (ID: {{id}}) 吗？其所有日期条目也将被删除。",
+            "calendarDeleted": "日历删除成功！",
+            "errorDeletingCalendar": "删除日历时出错: {{error}}",
+            "noCalendarSelected": "错误：未选择日历进行日期操作。",
+            "errorLoadingDays": "加载日期时出错。",
+            "errorLoadingDaysDetailed": "加载日历日期时出错: {{error}}",
+            "dayAdded": "日期条目添加成功！",
+            "errorAddingDay": "添加日期条目时出错: {{error}}",
+            "dayExists": "该日期的条目已存在。",
+            "confirmDeleteDay": "您确定要删除此日期条目吗？",
+            "dayDeleted": "日期条目删除成功！",
+            "errorDeletingDay": "删除日期条目时出错: {{error}}"
         }
     }
 }

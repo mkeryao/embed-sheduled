@@ -454,9 +454,14 @@
 
         $(document).ready(function() {
             if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => console.log("i18n initialized for tasks.html"));
+                i18n.init().then(() => {
+                    console.log("i18n initialized for tasks.html");
+                    populateTaskTypeFilter(); // Call the function here
+                });
             } else {
                 console.error("i18n object not defined in tasks.html");
+                // Potentially call populateTaskTypeFilter() here too if i18n is optional or has fallbacks
+                populateTaskTypeFilter();
             }
             $("#navbar-container").load("_navbar.html", function() {
                 // Ensure scripts in _navbar.html are also processed if any are there
@@ -515,19 +520,42 @@
             }
 
             function loadUsersForSelects() {
+                console.log("loadUsersForSelects: Function called.");
+                const successSelect = $('#notifySuccessUserIds');
+                const failSelect = $('#notifyFailedUserIds');
+
+                console.log("loadUsersForSelects: Making API call to /users"); // Assuming makeApiCall prepends /api or it's not needed.
                 makeApiCall('GET', '/users', null,
                     function(users) {
-                        const successSelect = $('#notifySuccessUserIds');
-                        const failSelect = $('#notifyFailedUserIds');
-                        successSelect.empty();
-                        failSelect.empty();
-                        users.forEach(function(user) {
-                            const option = `<option value='${user.userId}'>${user.username}</option>`;
-                            successSelect.append(option);
-                            failSelect.append(option.clone());
-                        });
+                        console.log("loadUsersForSelects: API call successful. Received users:", users);
+                        successSelect.empty(); // Clear previous options
+                        failSelect.empty();   // Clear previous options
+
+                        if (users && Array.isArray(users)) {
+                            console.log("loadUsersForSelects: Number of users received:", users.length);
+                            let optionsAdded = 0;
+                            users.forEach(function(user) {
+                                const option = `<option value='${user.userId}'>${user.username}</option>`;
+                                successSelect.append(option);
+                                failSelect.append(option.clone());
+                                optionsAdded++;
+                            });
+                            console.log("loadUsersForSelects: Options added to dropdowns:", optionsAdded);
+                            if (optionsAdded === 0 && users.length > 0) {
+                                // This case should not happen if users is not empty and loop runs
+                                console.warn("loadUsersForSelects: Users received, but no options added (unexpected).");
+                            } else if (users.length === 0) {
+                                console.warn("loadUsersForSelects: API returned an empty list of users.");
+                            }
+                        } else {
+                            console.warn("loadUsersForSelects: API response was not an array or was null/undefined for users.");
+                        }
                     },
                     function(jqXHR) {
+                        console.error("loadUsersForSelects: API call to /users failed.", jqXHR);
+                        // The original function already had a showFeedback call here.
+                        // If makeApiCall also calls showFeedback by default, this might be redundant.
+                        // Restoring the original specific feedback for clarity.
                         showFeedback(i18n.translate('tasksPage.feedback.errorLoadingUsers', 'Error loading users: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
@@ -550,21 +578,43 @@
             }
 
             function loadAvailableTasksForNodes() {
+                console.log("loadAvailableTasksForNodes: Function called.");
                 const select = $('#availableTasksForNodes');
                 const placeholderText = i18n.translate('tasksPage.modal.workflowTaskFields.selectTaskPlaceholder', '-- Select a Task --');
                 select.empty().append(`<option value="">${placeholderText}</option>`);
 
-                makeApiCall('GET', '/tasks', null,
+                console.log("loadAvailableTasksForNodes: Making API call to /tasks"); // Corrected API path
+                makeApiCall('GET', '/tasks', null, // Assuming makeApiCall prepends /api prefix or it's not needed. If /api/tasks is needed, adjust here.
                     function(tasks) {
-                        tasks.forEach(function(task) {
-                            if (task.taskType !== 10 && task.isActive) {
-                                const optionText = `${task.taskName} (ID: ${task.taskId}, Group: ${task.taskGroup || 'N/A'})`;
-                                select.append(`<option value='${task.taskId}'>${optionText}</option>`);
+                        console.log("loadAvailableTasksForNodes: API call successful. Received tasks:", tasks);
+                        if (tasks && Array.isArray(tasks)) {
+                            console.log("loadAvailableTasksForNodes: Number of tasks received:", tasks.length);
+                            let optionsAdded = 0;
+                            tasks.forEach(function(task) {
+                                // console.log("loadAvailableTasksForNodes: Considering task:", task); // Can be too verbose, enable if needed
+                                if (task.taskType !== 10 && task.isActive) {
+                                    const optionText = `${task.taskName} (ID: ${task.taskId}, Group: ${task.taskGroup || 'N/A'})`;
+                                    select.append(`<option value='${task.taskId}'>${optionText}</option>`);
+                                    optionsAdded++;
+                                }
+                            });
+                            console.log("loadAvailableTasksForNodes: Options added to dropdown:", optionsAdded);
+                            if (optionsAdded === 0 && tasks.length > 0) {
+                                console.warn("loadAvailableTasksForNodes: No tasks met the criteria (type != 10 and isActive) to be added as nodes.");
+                            } else if (tasks.length === 0) {
+                                console.warn("loadAvailableTasksForNodes: API returned an empty list of tasks.");
                             }
-                        });
+                        } else {
+                            console.warn("loadAvailableTasksForNodes: API response was not an array or was null/undefined.");
+                        }
                     },
                     function(jqXHR) {
-                        showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTasksForNode', 'Error loading tasks for node selection: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
+                        console.error("loadAvailableTasksForNodes: API call failed.", jqXHR);
+                        // showFeedback is already called by makeApiCall's default error handler or the one in the original code.
+                        // The original code had a specific showFeedback call here, which is fine.
+                        // If makeApiCall handles all feedback, this console.error is supplementary.
+                        // For safety, re-adding the original feedback if it was more specific and got removed.
+                        // Original: showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTasksForNode', 'Error loading tasks for node selection: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
             }

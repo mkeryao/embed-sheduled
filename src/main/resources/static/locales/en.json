@@ -3,6 +3,7 @@
         "brand": "Task Scheduler",
         "tasks": "Tasks",
         "logs": "Logs",
+        "statistics": "Statistics",
         "calendars": "Calendars",
         "users": "Users",
         "logout": "Logout",
@@ -276,12 +277,13 @@
     },
     "logsPage": {
         "title": "Task Logs - Task Scheduler",
-        "header": "Task Execution Statistics",
-        "stats": {
+        "header": "Task Execution Statistics", // This will be updated by a later step for logs.html
+        "mainHeader": "Detailed Execution Logs", // New key for logs.html main header
+        "stats": { // This section will be largely unused by logs.html after the split
             "globalCountsHeader": "Global Counts",
             "slowestTasksHeader": "Top 5 Slowest Tasks (Avg. Success Execution Time)",
             "taskBreakdownHeader": "Per-Task Success/Failure Counts",
-            "loading": "Loading...",
+            "loading": "Loading...", // This specific one might be used by stats functions if not overridden
             "noGlobalStats": "No global statistics available.",
             "noSlowestTasks": "No data for slowest tasks (or no successful executions recorded).",
             "noTaskBreakdown": "No task breakdown data available.",
@@ -289,7 +291,7 @@
             "successHeader": "Success",
             "failedHeader": "Failed"
         },
-        "detailedLogsHeader": "Detailed Logs",
+        "detailedLogsHeader": "Detailed Logs", // This can remain as a sub-header if needed, or removed if mainHeader is enough
         "filters": {
             "taskIdLabel": "Filter by Task ID:",
             "taskIdPlaceholder": "Enter Task ID",
@@ -349,6 +351,88 @@
             "not_executed": "Not Executed",
             "not_configured": "Not Configured",
             "unknown": "Unknown"
+        }
+    },
+    "statisticsPage": {
+        "title": "Task Statistics - Task Scheduler",
+        "header": "Task Execution Statistics",
+        "stats": {
+            "globalCountsHeader": "Global Counts",
+            "slowestTasksHeader": "Top 5 Slowest Tasks (Avg. Success Execution Time)",
+            "taskBreakdownHeader": "Per-Task Success/Failure Counts",
+            "noGlobalStats": "No global statistics available.",
+            "noSlowestTasks": "No data for slowest tasks (or no successful executions recorded).",
+            "noTaskBreakdown": "No task breakdown data available.",
+            "taskNameIdHeader": "Task Name (ID)",
+            "successHeader": "Success",
+            "failedHeader": "Failed"
+        },
+        "feedback": {
+             "errorLoadingGlobalStats": "Failed to load global stats.",
+             "errorLoadingSlowestTasks": "Failed to load slowest tasks data.",
+             "errorLoadingTaskBreakdown": "Failed to load task breakdown data."
+        }
+    },
+    "calendarsPage": {
+        "title": "Calendar Management - Task Scheduler",
+        "header": "Calendar Management",
+        "addCalendarBtn": "Add Calendar",
+        "table": {
+            "id": "ID",
+            "name": "Calendar Name (Group)",
+            "description": "Description (Remark)",
+            "actions": "Actions",
+            "manageDaysBtn": "Manage Days",
+            "manageDaysBtnTitle": "Manage Days",
+            "deleteCalendarBtnTitle": "Delete Calendar"
+        },
+        "calendarFormModal": {
+            "titleAdd": "Add Calendar",
+            "nameLabel": "Calendar Name (Group)",
+            "namePlaceholder": "Enter calendar name",
+            "descriptionLabel": "Description (Remark)",
+            "descriptionPlaceholder": "Enter description",
+            "saveBtn": "Save Calendar"
+        },
+        "daysModal": {
+            "title": "Manage Calendar Days for {{calendarName}}",
+            "addNewDayHeader": "Add New Day Entry",
+            "dateLabel": "Date",
+            "datePlaceholder": "Event Date",
+            "descriptionLabel": "Description",
+            "descriptionPlaceholder": "Day Description",
+            "isWorkingDayLabel": "Is Working Day?",
+            "addDayBtn": "Add Day",
+            "existingDaysHeader": "Existing Days",
+            "table": {
+                "date": "Date",
+                "description": "Description",
+                "workingDay": "Working Day?",
+                "actions": "Actions"
+            },
+            "noDaysFound": "No day entries found for this calendar."
+        },
+        "dayTypes": {
+            "working": "Yes",
+            "nonWorking": "No"
+        },
+        "feedback": {
+            "errorLoadingCalendars": "Error loading calendars: {{error}}",
+            "editingNotSupported": "Editing existing calendars via this form is not supported.",
+            "calendarSaved": "Calendar saved successfully!",
+            "errorSavingCalendar": "Error saving calendar: {{error}}",
+            "confirmDeleteCalendar": "Are you sure you want to delete calendar '{{name}}' (ID: {{id}})? This will also delete all its day entries.",
+            "calendarDeleted": "Calendar deleted successfully!",
+            "errorDeletingCalendar": "Error deleting calendar: {{error}}",
+            "noCalendarSelected": "Error: No calendar selected for day operation.",
+            "errorLoadingDays": "Error loading days.",
+            "errorLoadingDaysDetailed": "Error loading calendar days: {{error}}",
+            "dayAdded": "Day entry added successfully!",
+            "errorAddingDay": "Error adding day entry: {{error}}",
+            "dayExists": "Day entry for this date already exists.",
+            "confirmDeleteDay": "Are you sure you want to delete this day entry?",
+            "dayDeleted": "Day entry deleted successfully!",
+            "errorDeletingDay": "Error deleting day entry: {{error}}"
         }
     }
 }

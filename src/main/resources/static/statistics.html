@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title data-i18n-key="statisticsPage.title">Task Statistics - Task Scheduler</title>
+    <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/i18n.js"></script>
+</head>
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container">
+        <h2 class="my-3" data-i18n-key="statisticsPage.header">Task Execution Statistics</h2>
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header" data-i18n-key="statisticsPage.stats.globalCountsHeader">Global Counts</div>
+                    <div class="card-body" id="globalStatsBody">
+                        <p class="text-muted" data-i18n-key="common.loading">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header" data-i18n-key="statisticsPage.stats.slowestTasksHeader">Top 5 Slowest Tasks (Avg. Success Execution Time)</div>
+                    <div class="card-body" id="topSlowestTasksBody">
+                        <p class="text-muted" data-i18n-key="common.loading">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-header" data-i18n-key="statisticsPage.stats.taskBreakdownHeader">Per-Task Success/Failure Counts</div>
+            <div class="card-body" id="taskBreakdownBody">
+                <p class="text-muted" data-i18n-key="common.loading">Loading...</p>
+            </div>
+        </div>
+        <!-- Removed the <hr> as it might not be needed or can be added later if styling requires -->
+    </div>
+
+    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    <script src="libs/popperjs/popper.min.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        $(document).ready(function() {
+            if (typeof i18n !== 'undefined') {
+                i18n.init().then(() => {
+                    console.log("i18n initialized for statistics.html");
+                    i18n.applyTranslations(); // Apply translations to static content
+                    loadGlobalStats();
+                    loadTopSlowestTasks();
+                    loadTaskBreakdownStats();
+                });
+            } else {
+                console.error("i18n object not defined in statistics.html. Content may not be translated.");
+                // Fallback if i18n fails
+                loadGlobalStats();
+                loadTopSlowestTasks();
+                loadTaskBreakdownStats();
+            }
+
+            $("#navbar-container").load("_navbar.html", function() {
+                 const currentUsername = localStorage.getItem('username');
+                 if (currentUsername) {
+                    $('#loggedInUser').text(currentUsername);
+                 }
+                 $('#logout-link').on('click', function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+                if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to navbar
+            });
+        });
+
+        // Utility function for status badges (duplicated from logs.html for now)
+        function getBadgeClass(state) {
+            if (!state) return 'badge-secondary';
+            switch(state.toUpperCase()) {
+                case 'SUCCESS': return 'badge-success';
+                case 'FAILED': return 'badge-danger';
+                case 'RUNNING': return 'badge-info';
+                case 'SKIPPED': return 'badge-warning'; // Or 'badge-secondary'
+                case 'TIMED_OUT': return 'badge-warning';
+                case 'CANCELLED': return 'badge-dark';
+                default: return 'badge-secondary';
+            }
+        }
+
+        function loadGlobalStats() {
+            $('#globalStatsBody').html(`<p class="text-muted">${i18n.translate('common.loading', 'Loading...')}</p>`);
+            makeApiCall('GET', '/logs/statistics/global-counts', null,
+                function(data) {
+                    let html = '';
+                    const statesOrder = ["SUCCESS", "FAILED", "RUNNING", "SKIPPED", "TIMED_OUT", "CANCELLED"];
+                    let foundStates = 0;
+                    statesOrder.forEach(state => {
+                        if (data.hasOwnProperty(state)) {
+                            // Assuming logsPage.logStatuses keys are available or moved to common/statisticsPage
+                            const translatedStateName = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
+                            html += `<p class="mb-1"><strong>${translatedStateName}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
+                            foundStates++;
+                        }
+                    });
+                    // Add any other states not in the preferred order
+                    for (const state in data) {
+                        if (!statesOrder.includes(state.toUpperCase())) {
+                             const translatedStateName = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
+                            html += `<p class="mb-1"><strong>${translatedStateName}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
+                            foundStates++;
+                        }
+                    }
+                    $('#globalStatsBody').html(foundStates > 0 ? html : `<p>${i18n.translate('statisticsPage.stats.noGlobalStats', 'No global statistics available.')}</p>`);
+                },
+                function(jqXHR) {
+                    const errorMsg = i18n.translate('statisticsPage.feedback.errorLoadingGlobalStats', 'Failed to load global stats.');
+                    $('#globalStatsBody').html(`<p class="text-danger">${errorMsg}</p>`);
+                    console.error("Error loading global stats: ", jqXHR);
+                }
+            );
+        }
+
+        function loadTopSlowestTasks() {
+             $('#topSlowestTasksBody').html(`<p class="text-muted">${i18n.translate('common.loading', 'Loading...')}</p>`);
+            makeApiCall('GET', '/logs/statistics/top-avg-execution-time?limit=5', null,
+                function(tasks) {
+                    let html = '';
+                    if (tasks && tasks.length > 0) {
+                        html = '<ul class="list-group list-group-flush">';
+                        tasks.forEach(task => {
+                            html += `<li class="list-group-item d-flex justify-content-between align-items-center small p-2">
+                                        <span>${task.task_name || 'N/A'} (ID: ${task.task_id})</span>
+                                        <span class="badge badge-primary badge-pill">${parseFloat(task.avg_duration_ms).toFixed(2)} ms</span>
+                                     </li>`;
+                        });
+                        html += '</ul>';
+                    } else {
+                        html = `<p>${i18n.translate('statisticsPage.stats.noSlowestTasks', 'No data for slowest tasks (or no successful executions recorded).')}</p>`;
+                    }
+                    $('#topSlowestTasksBody').html(html);
+                },
+                function(jqXHR) {
+                    const errorMsg = i18n.translate('statisticsPage.feedback.errorLoadingSlowestTasks', 'Failed to load slowest tasks data.');
+                    $('#topSlowestTasksBody').html(`<p class="text-danger">${errorMsg}</p>`);
+                    console.error("Error loading top slowest tasks: ", jqXHR);
+                }
+            );
+        }
+
+        function loadTaskBreakdownStats() {
+            $('#taskBreakdownBody').html(`<p class="text-muted">${i18n.translate('common.loading', 'Loading...')}</p>`);
+            makeApiCall('GET', '/logs/statistics/task-breakdown', null,
+                function(tasks) {
+                    let html = '';
+                    if (tasks && tasks.length > 0) {
+                        html = `<div class="table-responsive">
+                                    <table class="table table-sm table-bordered table-hover" style="font-size: 0.85rem;">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th data-i18n-key="statisticsPage.stats.taskNameIdHeader">Task Name (ID)</th>
+                                                <th class="text-center" data-i18n-key="statisticsPage.stats.successHeader">Success</th>
+                                                <th class="text-center" data-i18n-key="statisticsPage.stats.failedHeader">Failed</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
+                        tasks.forEach(task => {
+                            html += `<tr>
+                                        <td>${task.task_name || 'N/A'} (ID: ${task.task_id})</td>
+                                        <td class="text-center"><span class="badge badge-success">${task.success_count}</span></td>
+                                        <td class="text-center"><span class="badge badge-danger">${task.failed_count}</span></td>
+                                     </tr>`;
+                        });
+                        html += '</tbody></table></div>';
+                    } else {
+                        html = `<p>${i18n.translate('statisticsPage.stats.noTaskBreakdown', 'No task breakdown data available.')}</p>`;
+                    }
+                    $('#taskBreakdownBody').html(html);
+                    if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to new table headers
+                },
+                function(jqXHR) {
+                    const errorMsg = i18n.translate('statisticsPage.feedback.errorLoadingTaskBreakdown', 'Failed to load task breakdown data.');
+                    $('#taskBreakdownBody').html(`<p class="text-danger">${errorMsg}</p>`);
+                    console.error("Error loading task breakdown stats: ", jqXHR);
+                }
+            );
+        }
+    </script>
+</body>
+</html>

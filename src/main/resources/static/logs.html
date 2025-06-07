@@ -12,33 +12,9 @@
     <div id="navbar-container"></div>
 
     <div class="container">
-        <h2 class="my-3" data-i18n-key="logsPage.header">Task Execution Statistics</h2>
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header" data-i18n-key="logsPage.stats.globalCountsHeader">Global Counts</div>
-                    <div class="card-body" id="globalStatsBody">
-                        <p class="text-muted" data-i18n-key="logsPage.stats.loading">Loading...</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header" data-i18n-key="logsPage.stats.slowestTasksHeader">Top 5 Slowest Tasks (Avg. Success Execution Time)</div>
-                    <div class="card-body" id="topSlowestTasksBody">
-                        <p class="text-muted" data-i18n-key="logsPage.stats.loading">Loading...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="card mb-4">
-            <div class="card-header" data-i18n-key="logsPage.stats.taskBreakdownHeader">Per-Task Success/Failure Counts</div>
-            <div class="card-body" id="taskBreakdownBody">
-                <p class="text-muted" data-i18n-key="logsPage.stats.loading">Loading...</p>
-            </div>
-        </div>
-        <hr>
-        <h3 class="my-3" data-i18n-key="logsPage.detailedLogsHeader">Detailed Logs</h3>
+        <h2 class="my-3" data-i18n-key="logsPage.mainHeader">Detailed Execution Logs</h2>
+        {{~~ Following h3 is now redundant due to main H2 header change, or could be kept if desired for style ~~}}
+        {{~~ <h3 class="my-3" data-i18n-key="logsPage.detailedLogsHeader">Detailed Logs</h3> ~~}}
         <div class="form-row mb-3">
             <div class="form-group col-md-4">
                 <label for="taskIdFilter" data-i18n-key="logsPage.filters.taskIdLabel">Filter by Task ID:</label>
@@ -163,9 +139,9 @@
                     console.log("i18n initialized for logs.html");
                     // Initial load of static elements is handled by i18n.applyTranslations in init()
                     // Now, explicitly translate dynamic parts or re-apply after dynamic content is loaded.
-                    loadGlobalStats(); // These will use i18n.translate internally for their content
-                    loadTopSlowestTasks();
-                    loadTaskBreakdownStats();
+                    // loadGlobalStats(); // These will use i18n.translate internally for their content // MOVED
+                    // loadTopSlowestTasks(); // MOVED
+                    // loadTaskBreakdownStats(); // MOVED
 
                     // Initial log load based on URL or default
                     if (typeof getUrlParams === 'function') {
@@ -185,9 +161,9 @@
             } else {
                 console.error("i18n object not defined in logs.html. Content will not be translated.");
                 // Fallback if i18n fails (optional, or just let it show keys)
-                loadGlobalStats();
-                loadTopSlowestTasks();
-                loadTaskBreakdownStats();
+                // loadGlobalStats(); // MOVED
+                // loadTopSlowestTasks(); // MOVED
+                // loadTaskBreakdownStats(); // MOVED
                 loadLogs();
             }
 
@@ -454,102 +430,8 @@
                 loadLogs(); // Load all logs
             });
 
-
-            function loadGlobalStats() {
-                $('#globalStatsBody').html(`<p class="text-muted">${i18n.translate('logsPage.stats.loading', 'Loading...')}</p>`);
-                makeApiCall('GET', '/logs/statistics/global-counts', null,
-                    function(data) {
-                        let html = '';
-                        const statesOrder = ["SUCCESS", "FAILED", "RUNNING", "SKIPPED", "TIMED_OUT", "CANCELLED"];
-                        let foundStates = 0;
-                        statesOrder.forEach(state => {
-                            if (data.hasOwnProperty(state)) {
-                                const translatedStateName = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
-                                html += `<p class="mb-1"><strong>${translatedStateName}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
-                                foundStates++;
-                            }
-                        });
-                        for (const state in data) { // For any other states not in preferred order
-                            if (!statesOrder.includes(state.toUpperCase())) {
-                                const translatedStateName = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
-                                html += `<p class="mb-1"><strong>${translatedStateName}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
-                                foundStates++;
-                            }
-                        }
-                        $('#globalStatsBody').html(foundStates > 0 ? html : `<p>${i18n.translate('logsPage.stats.noGlobalStats', 'No global statistics available.')}</p>`);
-                    },
-                    function(jqXHR) {
-                        const errorMsg = i18n.translate('logsPage.feedback.errorLoadingGlobalStats', 'Failed to load global stats.');
-                        $('#globalStatsBody').html(`<p class="text-danger">${errorMsg}</p>`);
-                        console.error("Error loading global stats: ", jqXHR);
-                    }
-                );
-            }
-
-            function loadTopSlowestTasks() {
-                 $('#topSlowestTasksBody').html(`<p class="text-muted">${i18n.translate('logsPage.stats.loading', 'Loading...')}</p>`);
-                makeApiCall('GET', '/logs/statistics/top-avg-execution-time?limit=5', null,
-                    function(tasks) {
-                        let html = '';
-                        if (tasks && tasks.length > 0) {
-                            html = '<ul class="list-group list-group-flush">';
-                            tasks.forEach(task => {
-                                html += `<li class="list-group-item d-flex justify-content-between align-items-center small p-2">
-                                            <span>${task.task_name || 'N/A'} (ID: ${task.task_id})</span>
-                                            <span class="badge badge-primary badge-pill">${parseFloat(task.avg_duration_ms).toFixed(2)} ms</span>
-                                         </li>`;
-                            });
-                            html += '</ul>';
-                        } else {
-                            html = `<p>${i18n.translate('logsPage.stats.noSlowestTasks', 'No data for slowest tasks (or no successful executions recorded).')}</p>`;
-                        }
-                        $('#topSlowestTasksBody').html(html);
-                    },
-                    function(jqXHR) {
-                        const errorMsg = i18n.translate('logsPage.feedback.errorLoadingSlowestTasks', 'Failed to load slowest tasks data.');
-                        $('#topSlowestTasksBody').html(`<p class="text-danger">${errorMsg}</p>`);
-                        console.error("Error loading top slowest tasks: ", jqXHR);
-                    }
-                );
-            }
-
-            function loadTaskBreakdownStats() {
-                $('#taskBreakdownBody').html(`<p class="text-muted">${i18n.translate('logsPage.stats.loading', 'Loading...')}</p>`);
-                makeApiCall('GET', '/logs/statistics/task-breakdown', null,
-                    function(tasks) {
-                        let html = '';
-                        if (tasks && tasks.length > 0) {
-                            html = `<div class="table-responsive">
-                                        <table class="table table-sm table-bordered table-hover" style="font-size: 0.85rem;">
-                                            <thead class="thead-light">
-                                                <tr>
-                                                    <th data-i18n-key="logsPage.stats.taskNameIdHeader">Task Name (ID)</th>
-                                                    <th class="text-center" data-i18n-key="logsPage.stats.successHeader">Success</th>
-                                                    <th class="text-center" data-i18n-key="logsPage.stats.failedHeader">Failed</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>`;
-                            tasks.forEach(task => {
-                                html += `<tr>
-                                            <td>${task.task_name || 'N/A'} (ID: ${task.task_id})</td>
-                                            <td class="text-center"><span class="badge badge-success">${task.success_count}</span></td>
-                                            <td class="text-center"><span class="badge badge-danger">${task.failed_count}</span></td>
-                                         </tr>`;
-                            });
-                            html += '</tbody></table></div>';
-                        } else {
-                            html = `<p>${i18n.translate('logsPage.stats.noTaskBreakdown', 'No task breakdown data available.')}</p>`;
-                        }
-                        $('#taskBreakdownBody').html(html);
-                        if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to new table headers
-                    },
-                    function(jqXHR) {
-                        const errorMsg = i18n.translate('logsPage.feedback.errorLoadingTaskBreakdown', 'Failed to load task breakdown data.');
-                        $('#taskBreakdownBody').html(`<p class="text-danger">${errorMsg}</p>`);
-                        console.error("Error loading task breakdown stats: ", jqXHR);
-                    }
-                );
-            }
+            // getBadgeClass is kept here as it's also used by displayLogs/formatStateWithBadge
+            // loadGlobalStats, loadTopSlowestTasks, loadTaskBreakdownStats functions are moved to statistics.html
 
             $('#logs-table-body').on('click', '.view-workflow-btn', function() {
                 const workflowLogId = $(this).data('workflow-log-id');

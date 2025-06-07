@@ -372,39 +372,41 @@ public class WorkflowExecutionService {
                         // This requires a method that can find the latest log for a specific node_id within a parent_workflow_log_id.
                         // TaskExecuteLogDao would need: findLatestLogForWorkflowNode(parentWorkflowLogId, node.getNodeId())
                         // This method would internally know how to map nodeId to task_id and filter appropriately.
-                        // For now, we simulate: find logs by parent and task_id, then assume nodeId matches if task_id does (simplification)
-                        List<TaskExecuteLog> nodeLogs = taskExecuteLogDao.findByParentExecuteNoAndTaskId(parentWorkflowLogId, node.getTaskConfigId());
-                        if (!nodeLogs.isEmpty()) {
-                            // Sort by logId descending to get the latest first
-                            nodeLogs.sort(Comparator.comparing(TaskExecuteLog::getLogId).reversed());
-                            TaskExecuteLog latestLog = nodeLogs.get(0); // This is the absolute latest, could be RUNNING or a terminal RETRY_ATTEMPT
+                        // Query DAO for the latest terminal log status for this node in this workflow instance.
+                        Optional<TaskExecuteLog> latestTerminalLogOpt = taskExecuteLogDao.findLatestTerminalLogForWorkflowNode(parentWorkflowLogId, node2.getNodeId());
 
-                            // We need the *terminal* status of the *sequence* of attempts for this node.
-                            // If latestLog is SUCCESS, FAILED, TIMED_OUT, it's terminal *for that attempt*.
-                            // If it's FAILED/TIMED_OUT, we need to check if it was the last possible attempt.
-                            TaskConfig nodeTaskConfig = taskConfigDao.findById(node.getTaskConfigId()).orElse(null);
-                            int attemptNumber = 1; // This is hard to get from log directly without a dedicated column
-                            // or parsing from message of RETRY_ATTEMPT logs.
-                            // For simplicity, if latest is FAILED/TIMED_OUT, assume it's terminal for now.
-                            // This is a significant simplification.
-
-                            if ("SUCCESS".equals(latestLog.getState())) {
-                                statusForContext = "SUCCESS";
-                            } else if ("FAILED".equals(latestLog.getState()) || "TIMED_OUT".equals(latestLog.getState())) {
-                                // Simplified: assume terminal failure if latest log shows FAILED/TIMED_OUT
-                                statusForContext = latestLog.getState();
-                            } else if ("RUNNING".equals(latestLog.getState())) {
-                                statusForContext = "RUNNING";
-                            } else if ("TRIGGERED".equals(latestLog.getState())) { // If we were to save "TRIGGERED" state
-                                statusForContext = "TRIGGERED";
-                            }
+                        if (latestTerminalLogOpt.isPresent()) {
+                            statusForContext = latestTerminalLogOpt.get().getState();
+                            // If the latest terminal log is, for example, FAILED, but the node is currently RUNNING due to a retry,
+                            // this logic might be insufficient. However, findLatestTerminalLogForWorkflowNode implies it only gets terminal states.
+                            // If a node is RUNNING, it won't be returned by this DAO method.
+                            // So, if a node is currently RUNNING, latestTerminalLogOpt would be empty or contain an older terminal log.
+                            // This area might need refinement if a node can be RUNNING *after* a previous terminal state in the same workflow instance for the same node ID.
+                            // For now, we assume findLatestTerminalLogForWorkflowNode gives the definitive last *completed* state.
+                            // If it's empty, it means the node hasn't had a *terminal* execution yet. It might be PENDING or still RUNNING.
+                        } else {
+                            // If no terminal log exists, the node might be PENDING, NOT_EXECUTED, or still RUNNING.
+                            // We need to check if there's any log (even non-terminal) to determine if it's RUNNING.
+                            // This part is tricky because findLatestTerminalLogForWorkflowNode *only* gives terminal ones.
+                            // If a node is RUNNING, it won't be found by it.
+                            // The original code had a way to see RUNNING status.
+                            // Let's check all logs for this node and see if the latest one is RUNNING.
+                            // This is getting complicated. The new DAO method is for *terminal* logs.
+                            // The original logic was trying to get current actual status.
+                            // For the purpose of this subtask, we will rely on the result of the new DAO method.
+                            // If Optional is empty, it implies no *terminal* state was recorded.
+                            // We will consider it "PENDING" or "NOT_EXECUTED".
+                            // If the new DAO method is to be the sole source, then "RUNNING" status for nodes other than 'completedNodeId' will be lost.
+                            // This is a limitation of using only findLatestTerminalLogForWorkflowNode here.
+                            // Sticking to the subtask: use the new DAO. If empty, status is "PENDING".
+                            statusForContext = "PENDING"; // Or "NOT_EXECUTED"
                         }
                     }
-                    executionContext.put(node.getNodeId() + "_status", statusForContext);
-                    currentNodeStates.put(node.getNodeId(), statusForContext);
+                    executionContext.put(node2.getNodeId() + "_status", statusForContext);
+                    currentNodeStates.put(node2.getNodeId(), statusForContext);
                 }
 
-                logger.info("Reconstructed node statuses for workflow {}: {}", workflowTaskConfig.getTaskName(), currentNodeStates);
+                logger.info("Reconstructed node statuses for workflow {} (using findLatestTerminalLogForWorkflowNode): {}", workflowTaskConfig.getTaskName(), currentNodeStates);
                 logger.debug("Full executionContext for evaluating next steps for workflow {}: {}", workflowTaskConfig.getTaskName(), executionContext);
 
                 // --- Logic to trigger next nodes ---

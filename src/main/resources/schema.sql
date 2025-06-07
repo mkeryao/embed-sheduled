@@ -52,6 +52,7 @@ CREATE TABLE task_execute_log (
     instance_id VARCHAR(255), -- Identifier of the scheduler instance that ran the task
     parent_execute_no INT, -- For workflow steps, references the main workflow's log_id
     task_pattern VARCHAR(50), -- e.g. NORMAL, WORKFLOW_PARENT, WORKFLOW_STEP
+    workflow_node_id VARCHAR(255) DEFAULT NULL, -- New column for specific node ID in workflow
     FOREIGN KEY (task_id) REFERENCES task_config(task_id) ON DELETE CASCADE,
     FOREIGN KEY (parent_execute_no) REFERENCES task_execute_log(log_id) ON DELETE SET NULL
 );

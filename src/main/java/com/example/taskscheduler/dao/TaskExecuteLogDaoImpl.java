@@ -34,9 +34,12 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private static final String LOG_COLUMNS = "log_id, task_id, start_time, end_time, state, rtn_msg, ex_msg, instance_id, parent_execute_no, task_pattern";
-    private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, start_time, state, instance_id, parent_execute_no, task_pattern, rtn_msg, ex_msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, instance_id=?, parent_execute_no=?, task_pattern=? WHERE log_id=?";
+    // Added workflow_node_id to LOG_COLUMNS
+    private static final String LOG_COLUMNS = "log_id, task_id, start_time, end_time, state, rtn_msg, ex_msg, instance_id, parent_execute_no, task_pattern, workflow_node_id";
+    // Modified INSERT_SQL to include workflow_node_id
+    private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, start_time, state, instance_id, parent_execute_no, task_pattern, rtn_msg, ex_msg, workflow_node_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    // Modified UPDATE_SQL to include workflow_node_id
+    private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, instance_id=?, parent_execute_no=?, task_pattern=?, workflow_node_id=? WHERE log_id=?";
     private static final String SELECT_BY_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE log_id=?";
     private static final String SELECT_ALL_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log ORDER BY start_time DESC";
     private static final String SELECT_BY_TASK_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE task_id=? ORDER BY start_time DESC";
@@ -55,6 +58,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         log.setInstanceId(rs.getString("instance_id"));
         log.setParentLogId(rs.getObject("parent_execute_no", Integer.class));
         log.setTaskPattern(rs.getString("task_pattern"));
+        log.setWorkflowNodeId(rs.getString("workflow_node_id")); // Added mapping for workflow_node_id
         return log;
     };
 
@@ -75,6 +79,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
             ps.setString(6, log.getTaskPattern());
             ps.setString(7, log.getRtnMsg());
             ps.setString(8, log.getExMsg());
+            ps.setString(9, log.getWorkflowNodeId()); // Added workflow_node_id to save
             return ps;
         }, keyHolder);
 
@@ -108,7 +113,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         return jdbcTemplate.update(UPDATE_SQL,
                 log.getTaskId(), log.getStartTime(), log.getEndTime(),
                 log.getState(), log.getRtnMsg(), log.getExMsg(), log.getInstanceId(),
-                log.getParentLogId(), log.getTaskPattern(),
+                log.getParentLogId(), log.getTaskPattern(), log.getWorkflowNodeId(), // Added workflow_node_id to update
                 log.getLogId());
     }
 
@@ -317,6 +322,27 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         } catch (Exception e) {
             logger.error("Error fetching logs by parentExecuteNo {} and taskId {}: {}", parentExecuteNo, taskId, e.getMessage(), e);
             return new ArrayList<>();
+        }
+    }
+
+    @Override
+    public Optional<TaskExecuteLog> findLatestTerminalLogForWorkflowNode(Long parentWorkflowLogId, String workflowNodeId) {
+        // LOG_COLUMNS now includes workflow_node_id, and rowMapper handles it.
+        String sql = "SELECT " + LOG_COLUMNS + " FROM task_execute_log " +
+                     "WHERE parent_execute_no = ? " +
+                     "  AND workflow_node_id = ? " +
+                     "  AND state IN ('SUCCESS', 'FAILED', 'TIMED_OUT', 'CANCELLED') " +
+                     "ORDER BY log_id DESC " +
+                     "LIMIT 1";
+        try {
+            TaskExecuteLog log = jdbcTemplate.queryForObject(sql, new Object[]{parentWorkflowLogId, workflowNodeId}, rowMapper);
+            return Optional.ofNullable(log);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty(); // No log found, which is a valid outcome.
+        } catch (Exception e) {
+            logger.error("Error in findLatestTerminalLogForWorkflowNode for parentWorkflowLogId {} and workflowNodeId {}: {}",
+                         parentWorkflowLogId, workflowNodeId, e.getMessage(), e);
+            return Optional.empty(); // Return empty on other errors.
         }
     }
 }

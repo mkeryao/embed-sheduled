@@ -55,4 +55,11 @@ public class TaskExecuteLog {
      * "WORKFLOW_PARENT" for the main log of a workflow, or "WORKFLOW_STEP" for individual steps in a workflow.
      */
     private String taskPattern;
+
+    /**
+     * If this log entry is for a step within a workflow (i.e., taskPattern is "WORKFLOW_STEP"),
+     * this field stores the specific node ID from the workflow definition that this execution corresponds to.
+     * Null for other types of tasks or if not applicable.
+     */
+    private String workflowNodeId;
 }

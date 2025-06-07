@@ -132,4 +132,15 @@ public interface TaskExecuteLogDao {
      * @return A list of child log entries.
      */
     List<TaskExecuteLog> findByParentExecuteNo(Long parentExecuteNo);
+
+    /**
+     * Finds the latest terminal log entry for a specific node within a given workflow instance.
+     * A terminal state is typically SUCCESS, FAILED, TIMED_OUT, or CANCELLED.
+     * The "latest" is determined by the highest log_id.
+     *
+     * @param parentWorkflowLogId The log_id of the parent workflow execution.
+     * @param workflowNodeId The unique ID of the node within the workflow definition.
+     * @return An {@link Optional} containing the {@link TaskExecuteLog} if found, or empty otherwise.
+     */
+    Optional<TaskExecuteLog> findLatestTerminalLogForWorkflowNode(Long parentWorkflowLogId, String workflowNodeId);
 }

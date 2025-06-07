@@ -88,6 +88,11 @@ public class TaskExecutionJob implements Runnable {
             log.setParentLogId(this.parentLogId.intValue()); // Corrected setter and added intValue() for Long to Integer conversion
         }
 
+        // Set workflow_node_id if this is a workflow step
+        if ("WORKFLOW_STEP".equals(log.getTaskPattern()) && this.workflowNodeId != null && !this.workflowNodeId.isEmpty()) {
+            log.setWorkflowNodeId(this.workflowNodeId);
+        }
+
         // If a DB column `attempt_number` was added to `task_execute_log`, set it here:
         // log.setAttemptNumber(this.attemptNumber);
 
