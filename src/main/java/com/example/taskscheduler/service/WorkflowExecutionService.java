@@ -283,7 +283,8 @@ public class WorkflowExecutionService {
         if (message != null && message.length() > 2000) { // Cap message length for DB
             finalMessage = message.substring(0, 1997) + "...";
         }
-        taskExecuteLogDao.updateLogStatus(logId, status, finalMessage);
+        // Pass null for exMsg when updating workflow log status/message this way
+        taskExecuteLogDao.updateLogStatus(logId, status, finalMessage, null);
     }
 
     // New method to be called by CoreSchedulerService upon node completion
