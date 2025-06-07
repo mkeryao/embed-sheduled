@@ -456,30 +456,36 @@
             if (typeof i18n !== 'undefined') {
                 i18n.init().then(() => {
                     console.log("i18n initialized for tasks.html");
-                    populateTaskTypeFilter(); // Call the function here
+                    populateTaskTypeFilter();
+
+                    // Moved these calls inside the .then() callback
+                    loadTasks();
+                    loadUsersForSelects();
+                    loadCalendarsForSelect();
                 });
             } else {
-                console.error("i18n object not defined in tasks.html");
-                // Potentially call populateTaskTypeFilter() here too if i18n is optional or has fallbacks
-                populateTaskTypeFilter();
+                console.error("i18n object not defined in tasks.html. Page-specific content might not load correctly.");
+                // Optionally call them here if they should run even without i18n,
+                // but they might show keys or default English text.
+                // loadTasks();
+                // loadUsersForSelects();
+                // loadCalendarsForSelect();
             }
+
             $("#navbar-container").load("_navbar.html", function() {
-                // Ensure scripts in _navbar.html are also processed if any are there
-                // For simple text setting like username, it should work fine.
-                // Complex JS might need re-initialization.
-                const currentUsername = localStorage.getItem('username');
+                 const currentUsername = localStorage.getItem('username');
                  if (currentUsername) {
                     $('#loggedInUser').text(currentUsername);
                  }
-                 $('#logout-link').on('click', function(e) { // Re-bind if not delegated
+                 $('#logout-link').on('click', function(e) {
                     e.preventDefault();
                     logout();
                 });
-                if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to navbar
+                if (typeof i18n !== 'undefined') {
+                    i18n.applyTranslations(); // For the navbar
+                }
             });
-            loadTasks();
-            loadUsersForSelects();
-            loadCalendarsForSelect();
+            // Other initializations not dependent on i18n or not creating translated text can remain outside
 
             let selectedSourceNodeId = null;
             let selectedSourceElement = null;

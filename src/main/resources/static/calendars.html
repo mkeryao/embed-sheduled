@@ -119,10 +119,11 @@
             if (typeof i18n !== 'undefined') {
                 i18n.init().then(() => {
                     console.log("i18n initialized for calendars.html");
-                    // Any dynamic updates post-init can re-apply or use i18n.translate
+                    loadCalendars(); // Moved inside
                 });
             } else {
-                console.error("i18n object not defined in calendars.html");
+                console.error("i18n object not defined in calendars.html.");
+                // loadCalendars(); // Optional fallback: If i18n fails, load calendars without full translation support for dynamic parts.
             }
 
             $("#navbar-container").load("_navbar.html", function() {
@@ -136,7 +137,7 @@
                 });
                 if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to navbar
             });
-            loadCalendars();
+            // loadCalendars(); // Removed from here
 
             function loadCalendars() {
                 makeApiCall('GET', '/calendars', null,

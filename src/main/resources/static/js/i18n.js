@@ -6,85 +6,97 @@ const i18n = {
 
     async loadTranslations(lang) {
         try {
-            const response = await fetch(`locales/${lang}.json?v=${new Date().getTime()}`); // Cache busting for dev
+            const response = await fetch(`locales/${lang}.json?v=${new Date().getTime()}`); // Cache busting
             if (!response.ok) {
                 console.error(`Could not load translations for ${lang}. Status: ${response.status}`);
-                if (lang !== this.defaultLang) { // Fallback to default if specific lang fails
+                this.translations[lang] = {}; // Initialize to prevent errors
+                if (lang !== this.defaultLang) {
                     console.warn(`Falling back to default language: ${this.defaultLang}`);
-                    return this.loadTranslations(this.defaultLang);
+                    return await this.loadTranslations(this.defaultLang); // Await the fallback
                 }
-                this.translations[lang] = {}; // Ensure translations[lang] exists to prevent errors
-                return false;
+                return false; // Failed to load default language
             }
             this.translations[lang] = await response.json();
-            this.currentLang = lang;
-            localStorage.setItem('preferredLang', lang);
-            console.log(`Translations loaded for ${lang}`);
+            this.currentLang = lang; // Set currentLang only on successful load of the target 'lang' or a successful fallback
+            localStorage.setItem('preferredLang', lang); // Store the originally intended language
+            console.log(`Translations successfully loaded for ${this.currentLang}`);
             return true;
         } catch (error) {
-            console.error(`Error loading translations for ${lang}:`, error);
+            console.error(`Error loading or parsing translations for ${lang}:`, error);
+            this.translations[lang] = {}; // Initialize on error
             if (lang !== this.defaultLang) {
                console.warn(`Falling back to default language: ${this.defaultLang} after error.`);
-               return this.loadTranslations(this.defaultLang);
+               return await this.loadTranslations(this.defaultLang); // Await the fallback
             }
-            this.translations[lang] = {}; // Ensure translations[lang] exists
-            return false;
+            return false; // Failed to load default language after error
         }
     },
 
     translate(key, fallback = '') {
         const keys = key.split('.');
-        let currentTranslations = this.translations[this.currentLang] || {};
-        let result = currentTranslations;
+        let currentTrans = this.translations[this.currentLang] || {};
+        let result = currentTrans;
 
         for (const k of keys) {
             if (result && typeof result === 'object' && k in result) {
                 result = result[k];
             } else {
-                // Fallback to default language if key not found in current
-                if (this.currentLang !== this.defaultLang && this.translations[this.defaultLang]) {
-                    let defaultLangTranslations = this.translations[this.defaultLang] || {};
-                    let defaultLangResult = defaultLangTranslations;
+                // Fallback to default language
+                if (this.currentLang !== this.defaultLang) {
+                    let defaultTrans = this.translations[this.defaultLang] || {};
+                    let defaultResult = defaultTrans;
                     for (const k_fb of keys) {
-                        if (defaultLangResult && typeof defaultLangResult === 'object' && k_fb in defaultLangResult) {
-                            defaultLangResult = defaultLangResult[k_fb];
+                        if (defaultResult && typeof defaultResult === 'object' && k_fb in defaultResult) {
+                            defaultResult = defaultResult[k_fb];
                         } else {
-                            return fallback || key; // Key not found in default either
+                            return fallback || key; // Not found in default lang either
                         }
                     }
-                    if (typeof defaultLangResult === 'string') return defaultLangResult;
+                    if (typeof defaultResult === 'string') return defaultResult;
                 }
-                return fallback || key; // Key not found
+                return fallback || key; // Not found in current, and current is default or default has no key
             }
         }
         return typeof result === 'string' ? result : (fallback || key);
     },
 
     applyTranslations() {
-        if (!this.translations[this.currentLang]) {
-            console.warn(`No translations loaded for ${this.currentLang}. Cannot apply.`);
-            // Attempt to load default if current lang's translations are missing
-            if (this.currentLang !== this.defaultLang) {
-                console.warn(`Attempting to load default translations (${this.defaultLang}) and re-apply.`);
-                this.loadTranslations(this.defaultLang).then(() => this.applyTranslations());
-            }
-            return;
+        if (!this.translations[this.currentLang] || Object.keys(this.translations[this.currentLang]).length === 0) {
+            console.error(`Translations for '${this.currentLang}' are not loaded or empty. UI elements will show keys or fallback text.`);
+            // Do not attempt to reload here; init should handle initial load failures.
+            // Fallback to rendering keys for all elements.
         }
-        document.querySelectorAll('[data-i18n-key]').forEach(element => {
-            const key = element.getAttribute('data-i18n-key');
-            const translation = this.translate(key);
+        console.log(`Applying translations for ${this.currentLang}. Translation data available:`, !!(this.translations[this.currentLang] && Object.keys(this.translations[this.currentLang]).length > 0));
 
-            if (element.tagName === 'TITLE') {
-                document.title = translation;
-            } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-                if (element.placeholder) {
-                    element.placeholder = translation;
+        document.querySelectorAll('[data-i18n-key], [data-i18n-key-placeholder], [data-i18n-key-title]').forEach(element => {
+            const mainKey = element.getAttribute('data-i18n-key');
+            const placeholderKey = element.getAttribute('data-i18n-key-placeholder');
+            const titleKey = element.getAttribute('data-i18n-key-title');
+
+            if (mainKey) {
+                const translation = this.translate(mainKey, mainKey); // Fallback to key
+                if (element.tagName === 'TITLE') {
+                    document.title = translation;
+                } else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                    if (element.type === 'submit' || element.type === 'button') {
+                        element.value = translation;
+                    } else if (!placeholderKey && element.placeholder !== undefined) { // Only if no specific placeholder key
+                        element.placeholder = translation;
+                    } else {
+                         // If it's not a button and not a placeholder, set textContent if it's not an input that shows content another way
+                         // This case might be rare for inputs with data-i18n-key directly for textContent
+                    }
+                } else {
+                    element.textContent = translation;
                 }
-                if (element.type === 'submit' || element.type === 'button') {
-                    element.value = translation;
-                }
-            } else {
-                element.textContent = translation;
+            }
+
+            if (placeholderKey) {
+                element.placeholder = this.translate(placeholderKey, placeholderKey); // Fallback to key
+            }
+
+            if (titleKey) {
+                element.title = this.translate(titleKey, titleKey); // Fallback to key
             }
         });
         console.log("Translations applied for language:", this.currentLang);
@@ -92,9 +104,18 @@ const i18n = {
 
     async init(initialLang = null) {
         const preferredLang = initialLang || localStorage.getItem('preferredLang') || navigator.language.split('-')[0] || this.defaultLang;
-        let langToLoad = (preferredLang === 'zh') ? 'zh' : this.defaultLang;
+        let langToLoad = (preferredLang === 'zh') ? 'zh' : this.defaultLang; // Default to 'en' if not 'zh'
 
-        await this.loadTranslations(langToLoad);
+        // currentLang will be updated by loadTranslations upon successful load of a file
+        // or will remain the initial this.currentLang (e.g. 'en') if all loads fail.
+        const loadedSuccessfully = await this.loadTranslations(langToLoad);
+
+        if (!loadedSuccessfully) {
+            // This means even the default language failed to load.
+            // this.currentLang would still be the initial defaultLang ('en') but this.translations[this.defaultLang] would be {}
+            console.error(`Initial translation load failed for preferred language '${langToLoad}' and fallback default language '${this.defaultLang}'. UI will display keys.`);
+        }
+        // Always call applyTranslations. It will use keys/fallbacks if data is missing.
         this.applyTranslations();
         this.updateLanguageSwitcherState(this.currentLang);
     },
@@ -122,4 +143,4 @@ const i18n = {
     }
 };
 
-console.log("i18n.js overwritten and loaded");
+// console.log("i18n.js overwritten and loaded"); // Commented out or removed
