@@ -134,7 +134,7 @@ public class HttpTaskExecutor {
             // Update the log entry in the database
             // Log message (rtnMsg) can be used for success details or brief error summary
             logEntry.setRtnMsg(responseSummary != null ? responseSummary : (logEntry.getExMsg() != null ? logEntry.getExMsg().substring(0, Math.min(logEntry.getExMsg().length(), 500)) : "Execution finished."));
-            taskExecuteLogDao.updateLogStatus(logEntry.getLogId(), logEntry.getState(), logEntry.getExMsg());
+            taskExecuteLogDao.updateLogStatus(logEntry.getLogId(), logEntry.getState(), null , logEntry.getExMsg());
         }
     }
 

@@ -291,7 +291,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public List<TaskExecuteLog> findByParentExecuteNo(Integer parentExecuteNo) {
+    public List<TaskExecuteLog> findByParentExecuteNo(Long parentExecuteNo) {
         String sql = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE parent_execute_no = ? ORDER BY log_id ASC";
         try {
             return jdbcTemplate.query(sql, new Object[]{parentExecuteNo}, rowMapper);
@@ -302,7 +302,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public List<TaskExecuteLog> findByParentExecuteNoAndTaskId(Integer parentExecuteNo, int taskId) {
+    public List<TaskExecuteLog> findByParentExecuteNoAndTaskId(Long parentExecuteNo, int taskId) {
         String sql = "SELECT " + LOG_COLUMNS +
                      " FROM task_execute_log " +
                      "WHERE parent_execute_no = ? AND task_id = ? " +

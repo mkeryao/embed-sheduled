@@ -16,12 +16,9 @@ import com.example.taskscheduler.entity.TaskConfig; // Added
 import com.example.taskscheduler.entity.TaskExecuteLog; // Added
 import com.alibaba.fastjson.JSON; // Added
 import org.springframework.util.StringUtils; // Added
-import java.util.ArrayList; // Added
-import java.util.Comparator; // Added
-import java.util.HashMap; // Added
-import java.util.List; // Added
-import java.util.Map; // Added
-import java.util.Optional; // Added
+
+import java.util.*;
+
 import org.slf4j.Logger; // Added
 import org.slf4j.LoggerFactory; // Added
 
@@ -86,7 +83,7 @@ public class TaskExecuteLogController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TaskExecuteLog> getLogById(@PathVariable Integer id) {
+    public ResponseEntity<TaskExecuteLog> getLogById(@PathVariable Long id) {
         return taskExecuteLogDao.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -111,7 +108,7 @@ public class TaskExecuteLogController {
 
     @GetMapping("/workflow-instance/{workflowLogId}")
     public ResponseEntity<?> getWorkflowInstanceDetails(@PathVariable long workflowLogId) {
-        Optional<TaskExecuteLog> mainLogOpt = taskExecuteLogDao.findById((int) workflowLogId); // Cast to int for current findById
+        Optional<TaskExecuteLog> mainLogOpt = taskExecuteLogDao.findById( workflowLogId); // Cast to int for current findById
         if (!mainLogOpt.isPresent()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Main workflow log not found with ID: " + workflowLogId);
         }

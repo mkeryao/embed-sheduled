@@ -34,7 +34,7 @@ public class TaskConfigDto {
      *   <li>{@code 10}: Workflow Task - Orchestrates a series of other tasks.</li>
      * </ul>
      */
-    private int taskType;
+    private Integer taskType;
 
     // Fields for BEAN task_type (taskType=0)
     private String beanName;

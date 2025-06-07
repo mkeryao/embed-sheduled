@@ -40,7 +40,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
     private static final String ACQUIRE_OR_REFRESH_LOCK_SQL =
         "UPDATE task_lock SET owner_instance_id = ?, lock_acquired_time = CURRENT_TIMESTAMP, lease_duration_ms = ?, version = version + 1 " +
         "WHERE lock_name = ? AND " +
-        "(owner_instance_id IS NULL OR owner_instance_id = ? OR (lock_acquired_time IS NOT NULL AND lease_duration_ms IS NOT NULL AND CURRENT_TIMESTAMP > TIMESTAMPADD(MILLISECOND, lease_duration_ms, lock_acquired_time)))";
+        "(owner_instance_id IS NULL OR owner_instance_id = ? OR (lock_acquired_time IS NOT NULL AND lease_duration_ms IS NOT NULL AND CURRENT_TIMESTAMP > TIMESTAMPADD(MICROSECOND, lease_duration_ms, lock_acquired_time)))";
 
     private static final String RELEASE_LOCK_SQL =
         "UPDATE task_lock SET owner_instance_id = NULL, lock_acquired_time = NULL, lease_duration_ms = NULL, version = version + 1 " +

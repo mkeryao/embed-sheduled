@@ -10,7 +10,6 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.net.UnknownHostException;
-import java.util.UUID;
 
 /**
  * Service for managing distributed locks using a database table (`task_lock`).
@@ -21,7 +20,7 @@ import java.util.UUID;
 public class DistributedLockService {
 
     private static final Logger logger = LoggerFactory.getLogger(DistributedLockService.class);
-    private static final int DEFAULT_CLUSTER_LOCK_LEASE_SEC = 60; // 60 seconds
+    private static final int DEFAULT_CLUSTER_LOCK_LEASE_SEC = 10; // 60 seconds
 
     @Autowired
     private TaskLockDao taskLockDao;
@@ -57,10 +56,11 @@ public class DistributedLockService {
         if (!StringUtils.hasText(schedulerInstanceId)) {
             //获取当前机器的IP和Name
             this.schedulerInstanceId = java.net.InetAddress.getLocalHost().getHostName()
-                    + ":" + java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-            logger.info("scheduler.instance.id not configured, hostName: {}", schedulerInstanceId);
+                    + ":" + java.net.InetAddress.getLocalHost().getHostAddress() ;
+                   // + ":" + java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            logger.info("scheduler.instance.id not configured, instance id: {}", schedulerInstanceId);
         } else {
-            schedulerInstanceId = configuredInstanceId;
+            this.schedulerInstanceId = configuredInstanceId;
             logger.info("scheduler.instance.id configured as: {}", schedulerInstanceId);
         }
         logger.info("DistributedLockService initialized. Max lock attempts: {}, Retry delay: {}ms", maxLockAttempts, lockRetryDelayMs);

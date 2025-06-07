@@ -20,7 +20,7 @@ public class TaskExecuteLog {
     private Long logId;
 
     /** ID of the {@link TaskConfig} this log entry pertains to. */
-    private int taskId;
+    private Integer taskId;
 
     /** Timestamp of when the task execution started. */
     private Timestamp startTime;

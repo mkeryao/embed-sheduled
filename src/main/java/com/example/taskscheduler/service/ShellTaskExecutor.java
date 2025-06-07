@@ -216,7 +216,7 @@ public class ShellTaskExecutor {
             if (logEntry.getExMsg() != null && logEntry.getExMsg().length() > 1950) { // Max length for ex_msg
                 logEntry.setExMsg(logEntry.getExMsg().substring(0, 1950) + "...");
             }
-            taskExecuteLogDao.updateLogStatus(logEntry.getLogId(), logEntry.getState(), logEntry.getExMsg());
+            taskExecuteLogDao.updateLogStatus(logEntry.getLogId(), logEntry.getState(), null , logEntry.getExMsg() );
         }
     }
 

@@ -366,7 +366,7 @@
                 // For now, filtering is client-side after one initial fetch or fetch by TaskID
                 // If allLogsCache is null, it means we haven't fetched the full list yet or it was reset.
                 if (allLogsCache === null && !filters.taskId) { // Fetch all only if no task ID filter from URL and cache is empty
-                     makeApiCall('GET', '/api/logs', null, // This endpoint fetches ALL logs
+                     makeApiCall('GET', '/logs', null, // This endpoint fetches ALL logs
                         function(logs) {
                             allLogsCache = logs.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
                             filterAndDisplayLogs(filters);
@@ -380,7 +380,7 @@
                     );
                 } else if (filters.taskId && (allLogsCache === null || (allLogsCache && !allLogsCache.some(log => log.taskId == filters.taskId)))) {
                     // If a specific task ID is given and we don't have its logs or the cache is empty, fetch for that task.
-                     makeApiCall('GET', `/api/logs/task/${filters.taskId}`, null,
+                     makeApiCall('GET', `/logs/task/${filters.taskId}`, null,
                         function(logs) {
                             // This response is specific to a task, so it becomes our currentLogs.
                             // Don't overwrite allLogsCache unless this IS the "all logs" view.
@@ -415,9 +415,9 @@
 
             function loadLogs(filters = {}) { // filters can be {taskId: val, status: val}
                 currentPage = 1;
-                let endpoint = '/api/logs'; // Default to all logs
+                let endpoint = '/logs'; // Default to all logs
                 if (filters.taskId) {
-                    endpoint = `/api/logs/task/${filters.taskId}`;
+                    endpoint = `/logs/task/${filters.taskId}`;
                 }
                 // Note: The backend /api/logs doesn't currently support status filtering server-side.
                 // The current implementation fetches all (or by task ID) then filters client-side.
@@ -457,7 +457,7 @@
 
             function loadGlobalStats() {
                 $('#globalStatsBody').html(`<p class="text-muted">${i18n.translate('logsPage.stats.loading', 'Loading...')}</p>`);
-                makeApiCall('GET', '/api/logs/statistics/global-counts', null,
+                makeApiCall('GET', '/logs/statistics/global-counts', null,
                     function(data) {
                         let html = '';
                         const statesOrder = ["SUCCESS", "FAILED", "RUNNING", "SKIPPED", "TIMED_OUT", "CANCELLED"];
@@ -488,7 +488,7 @@
 
             function loadTopSlowestTasks() {
                  $('#topSlowestTasksBody').html(`<p class="text-muted">${i18n.translate('logsPage.stats.loading', 'Loading...')}</p>`);
-                makeApiCall('GET', '/api/logs/statistics/top-avg-execution-time?limit=5', null,
+                makeApiCall('GET', '/logs/statistics/top-avg-execution-time?limit=5', null,
                     function(tasks) {
                         let html = '';
                         if (tasks && tasks.length > 0) {
@@ -515,7 +515,7 @@
 
             function loadTaskBreakdownStats() {
                 $('#taskBreakdownBody').html(`<p class="text-muted">${i18n.translate('logsPage.stats.loading', 'Loading...')}</p>`);
-                makeApiCall('GET', '/api/logs/statistics/task-breakdown', null,
+                makeApiCall('GET', '/logs/statistics/task-breakdown', null,
                     function(tasks) {
                         let html = '';
                         if (tasks && tasks.length > 0) {
@@ -559,7 +559,7 @@
                 $('#visSelectedNodeDetails').hide();
                 i18n.applyTranslations(); // Apply to "Loading..."
 
-                makeApiCall('GET', `/api/logs/workflow-instance/${workflowLogId}`, null,
+                makeApiCall('GET', `/logs/workflow-instance/${workflowLogId}`, null,
                     function(response) {
                         $('#visWorkflowName').text(response.workflowTaskName || 'N/A');
                         // Call the new DAG drawing function

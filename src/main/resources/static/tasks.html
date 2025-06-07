@@ -515,7 +515,7 @@
             }
 
             function loadUsersForSelects() {
-                makeApiCall('GET', '/api/users', null,
+                makeApiCall('GET', '/users', null,
                     function(users) {
                         const successSelect = $('#notifySuccessUserIds');
                         const failSelect = $('#notifyFailedUserIds');
@@ -534,7 +534,7 @@
             }
 
             function loadCalendarsForSelect() {
-                makeApiCall('GET', '/api/calendars', null,
+                makeApiCall('GET', '/calendars', null,
                     function(calendars) {
                         const calendarSelect = $('#taskCalendarGroup');
                         calendarSelect.find('option:gt(0)').remove(); // Keep the first "-- Select Calendar --" option
@@ -554,7 +554,7 @@
                 const placeholderText = i18n.translate('tasksPage.modal.workflowTaskFields.selectTaskPlaceholder', '-- Select a Task --');
                 select.empty().append(`<option value="">${placeholderText}</option>`);
 
-                makeApiCall('GET', '/api/tasks', null,
+                makeApiCall('GET', '/tasks', null,
                     function(tasks) {
                         tasks.forEach(function(task) {
                             if (task.taskType !== 10 && task.isActive) {
@@ -589,7 +589,7 @@
                 Object.keys(filters).forEach(key => (filters[key] === null || filters[key] === '' || (typeof filters[key] === 'string' && filters[key].trim() === '')) && delete filters[key]);
 
                 const queryString = $.param(filters);
-                const apiUrl = queryString ? `/api/tasks?${queryString}` : '/api/tasks';
+                const apiUrl = queryString ? `/tasks?${queryString}` : '/tasks';
 
                 makeApiCall('GET', apiUrl, null,
                     function(tasks) {
@@ -598,7 +598,7 @@
 
                         if (!initialGroupPopulationDone && Object.keys(filters).length === 0) { // Only populate groups from the first full load
                              // Fetch ALL tasks once to populate groups if not already done and no filters applied
-                            makeApiCall('GET', '/api/tasks', null, function(allTasks){
+                            makeApiCall('GET', '/tasks', null, function(allTasks){
                                 populateGroupFilter(allTasks);
                             }, function(jqXHR) {
                                 console.error("Error fetching all tasks for group population:", jqXHR);
@@ -1092,7 +1092,7 @@
 
                 resultDiv.html(`<div class="alert alert-info">${i18n.translate('tasksPage.modal.cronValidation.validating')}</div>`).show();
 
-                makeApiCall('GET', `/api/tasks/validate-cron?cronExpression=${encodeURIComponent(cronExpr)}&count=5`, null,
+                makeApiCall('GET', `/tasks/validate-cron?cronExpression=${encodeURIComponent(cronExpr)}&count=5`, null,
                     function(response) {
                         let htmlContent = '';
                         if (response.isValid) {
@@ -1194,7 +1194,7 @@
 
 
                 const method = taskId ? 'PUT' : 'POST';
-                const endpoint = taskId ? `/api/tasks/${taskId}` : '/api/tasks';
+                const endpoint = taskId ? `/tasks/${taskId}` : '/tasks';
 
                 makeApiCall(method, endpoint, taskData,
                     function(response) {
@@ -1269,7 +1269,7 @@
 
             $('#tasks-table-body').on('click', '.edit-btn', function() {
                 const taskId = $(this).data('id');
-                makeApiCall('GET', `/api/tasks/${taskId}`, null,
+                makeApiCall('GET', `/tasks/${taskId}`, null,
                     function(task) {
                         $('#taskFormModalLabel').text(i18n.translate('tasksPage.modal.titleEdit', 'Edit Task'));
                         $('#taskId').val(task.taskId);
@@ -1365,7 +1365,7 @@
             $('#tasks-table-body').on('click', '.delete-btn', function() {
                 const taskId = $(this).data('id');
                 if (confirm(i18n.translate('tasksPage.feedback.confirmDelete', "Are you sure you want to delete task {{taskId}}?").replace('{{taskId}}', taskId))) {
-                    makeApiCall('DELETE', `/api/tasks/${taskId}`, null,
+                    makeApiCall('DELETE', `/tasks/${taskId}`, null,
                         function() {
                             showFeedback(i18n.translate('tasksPage.feedback.taskDeleted'), false);
                             loadTasks();
@@ -1379,7 +1379,7 @@
 
             $('#tasks-table-body').on('click', '.trigger-btn', function() {
                 const taskId = $(this).data('id');
-                makeApiCall('POST', `/api/tasks/${taskId}/trigger`, null,
+                makeApiCall('POST', `/tasks/${taskId}/trigger`, null,
                     function() {
                         showFeedback(i18n.translate('tasksPage.feedback.taskTriggered', "Task {{taskId}} triggered successfully!").replace('{{taskId}}', taskId), false);
                     },

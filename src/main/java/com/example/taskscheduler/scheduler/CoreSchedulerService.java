@@ -58,8 +58,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     private TaskExecuteLogDao taskExecuteLogDao;
 
     // Ensure this is the ThreadPoolTaskScheduler for scheduling with delay/specific time
-    @Autowired
     private ThreadPoolTaskScheduler taskScheduler;
+
     @Autowired
     private ApplicationContext applicationContext; // To get BeanTaskExecutor
     @Autowired
@@ -98,13 +98,11 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         this.taskRegistrar = taskRegistrar;
         // If taskScheduler is not autowired or needs specific configuration not achievable via autowiring alone:
-        if (this.taskScheduler == null) {
-            ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
-            threadPoolTaskScheduler.setPoolSize(15); // Example pool size
-            threadPoolTaskScheduler.setThreadNamePrefix("core-scheduler-");
-            threadPoolTaskScheduler.initialize();
-            this.taskScheduler = threadPoolTaskScheduler;
-        }
+        ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
+        threadPoolTaskScheduler.setPoolSize(15); // Example pool size
+        threadPoolTaskScheduler.setThreadNamePrefix("core-scheduler-");
+        threadPoolTaskScheduler.initialize();
+        this.taskScheduler = threadPoolTaskScheduler;
         taskRegistrar.setScheduler(this.taskScheduler);
     }
 

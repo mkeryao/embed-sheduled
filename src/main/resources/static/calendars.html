@@ -139,7 +139,7 @@
             loadCalendars();
 
             function loadCalendars() {
-                makeApiCall('GET', '/api/calendars', null,
+                makeApiCall('GET', '/calendars', null,
                     function(calendars) {
                         const tableBody = $('#calendars-table-body');
                         tableBody.empty();
@@ -181,7 +181,7 @@
                      return;
                 }
 
-                makeApiCall('POST', '/api/calendars', calendarData,
+                makeApiCall('POST', '/calendars', calendarData,
                     function(response) {
                         $('#calendarFormModal').modal('hide');
                         showFeedback(i18n.translate('calendarsPage.feedback.calendarSaved'), false);
@@ -200,7 +200,7 @@
                                    .replace('{{id}}', calId)
                                    .replace('{{name}}', calName);
                 if (confirm(confirmMsg)) {
-                    makeApiCall('DELETE', `/api/calendars/${calId}`, null,
+                    makeApiCall('DELETE', `/calendars/${calId}`, null,
                         function() {
                             showFeedback(i18n.translate('calendarsPage.feedback.calendarDeleted'), false);
                             loadCalendars();
@@ -226,7 +226,7 @@
             });
 
             function loadCalendarDays(calendarId) {
-                makeApiCall('GET', `/api/calendars/${calendarId}/days`, null,
+                makeApiCall('GET', `/calendars/${calendarId}/days`, null,
                     function(days) {
                         const daysList = $('#calendar-days-list');
                         daysList.empty();
@@ -265,7 +265,7 @@
                     isWorkingDay: $('#isWorkingDay').is(':checked')
                 };
 
-                makeApiCall('POST', `/api/calendars/${calendarId}/days`, dayData,
+                makeApiCall('POST', `/calendars/${calendarId}/days`, dayData,
                     function(response) {
                         showFeedback(i18n.translate('calendarsPage.feedback.dayAdded'), false);
                         loadCalendarDays(calendarId);
@@ -289,7 +289,7 @@
                 const calendarId = $('#currentCalendarIdForDays').val();
                 const confirmMsg = i18n.translate('calendarsPage.feedback.confirmDeleteDay', "Are you sure you want to delete this day entry?");
                 if (confirm(confirmMsg)) {
-                    makeApiCall('DELETE', `/api/calendars/${calendarId}/days/${dayId}`, null,
+                    makeApiCall('DELETE', `/calendars/${calendarId}/days/${dayId}`, null,
                         function() {
                             showFeedback(i18n.translate('calendarsPage.feedback.dayDeleted'), false);
                             loadCalendarDays(calendarId);

@@ -46,7 +46,7 @@ public interface TaskExecuteLogDao {
      * @param taskId The task_id of the node.
      * @return A list of log entries.
      */
-    List<TaskExecuteLog> findByParentExecuteNoAndTaskId(Integer parentExecuteNo, int taskId);
+    List<TaskExecuteLog> findByParentExecuteNoAndTaskId(Long parentExecuteNo, int taskId);
 
     /**
      * Updates an existing task execution log entry.
@@ -131,5 +131,5 @@ public interface TaskExecuteLogDao {
      * @param parentExecuteNo The log_id of the parent workflow execution.
      * @return A list of child log entries.
      */
-    List<TaskExecuteLog> findByParentExecuteNo(Integer parentExecuteNo);
+    List<TaskExecuteLog> findByParentExecuteNo(Long parentExecuteNo);
 }
