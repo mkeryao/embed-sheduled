@@ -205,12 +205,60 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 taskData.beanName = null;
                 taskData.methodName = null;
             } else if (taskData.taskType === 10) {
-                taskData.workflowNodes = parseJsonOrNull($('#workflowNodesJson').val());
-                taskData.workflowEdges = parseJsonOrNull($('#workflowEdgesJson').val());
-                taskData.globalParameters = parseJsonOrNull($('#globalParametersJson').val());
+                console.log("保存工作流任务，类型ID: 10");
+                
+                // 确保工作流处于安全状态
+                if (typeof window.checkWorkflowSafetyState === 'function') {
+                    window.checkWorkflowSafetyState();
+                }
+                
+                // 确保所有工作流位置变更都被应用到JSON
+                if (typeof window.ensureWorkflowChangesSaved === 'function') {
+                    console.log("执行工作流保存前检查");
+                    const saveResult = window.ensureWorkflowChangesSaved();
+                    if (saveResult === false) {
+                        // ensureWorkflowChangesSaved 返回 false 表示有错误发生
+                        console.error("工作流保存预处理失败，停止提交");
+                        showFeedback(i18n.translate('tasksPage.feedback.workflowPreSaveFailed', '工作流保存前检查失败，请修正错误后再尝试保存'), true);
+                        return; // 停止保存操作
+                    }
+                }
+                
+                try {
+                    // 获取并解析工作流数据
+                    const nodesJson = $('#workflowNodesJson').val();
+                    const edgesJson = $('#workflowEdgesJson').val();
+                    const globalParamsJson = $('#globalParametersJson').val();
+                    
+                    taskData.workflowNodes = parseJsonOrNull(nodesJson);
+                    taskData.workflowEdges = parseJsonOrNull(edgesJson);
+                    taskData.globalParameters = parseJsonOrNull(globalParamsJson);
+                    
+                    // 额外验证
+                    if (!taskData.workflowNodes || !Array.isArray(taskData.workflowNodes) || taskData.workflowNodes.length === 0) {
+                        showFeedback(i18n.translate('tasksPage.feedback.nodesRequired', '工作流必须包含至少一个节点'), true);
+                        return;
+                    }
+                    
+                    console.log(`工作流数据已准备好保存: ${taskData.workflowNodes.length} 个节点, ${taskData.workflowEdges ? taskData.workflowEdges.length : 0} 条边`);
+                } catch (e) {
+                    console.error("解析工作流数据时出错:", e);
+                    showFeedback(i18n.translate('tasksPage.feedback.workflowParseError', '解析工作流数据时出错: ') + e.message, true);
+                    return;
+                }
+                
                 taskData.beanName = null;
                 taskData.methodName = null;
                 taskData.beanParameters = null;
+                
+                // 检查节点和边缘数据是否有效
+                if (!taskData.workflowNodes || taskData.workflowNodes.length === 0) {
+                    console.warn("工作流节点数据为空");
+                }
+                
+                console.log("准备保存工作流数据:", 
+                    "节点数:", taskData.workflowNodes ? taskData.workflowNodes.length : 0,
+                    "边数:", taskData.workflowEdges ? taskData.workflowEdges.length : 0);
             }
 
             const method = taskId ? 'PUT' : 'POST';
@@ -219,11 +267,66 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             makeApiCall(method, endpoint, taskData,
                 function (response) {
                     $('#taskFormModal').modal('hide');
-                    showFeedback(i18n.translate('tasksPage.feedback.taskSaved', 'Task saved successfully!'), false);
+                    
+                    // 根据任务类型提供更具体的成功消息
+                    let successMsg = '';
+                    if (taskData.taskType === 10) {
+                        successMsg = i18n.translate('tasksPage.feedback.workflowSaved', '工作流任务已成功保存!');
+                        
+                        // 获取包含信息的成功消息
+                        const workflowDetails = `ID: ${response.taskId}, 名称: ${response.taskName}`;
+                        console.log(`工作流保存成功! ${workflowDetails}`);
+                        
+                        // 清除状态，防止再次编辑时出现问题
+                        window.nodePositionChanged = false;
+                        
+                        // 提供更详细的成功反馈
+                        successMsg += ` (${workflowDetails})`;
+                    } else {
+                        successMsg = i18n.translate('tasksPage.feedback.taskSaved', 'Task saved successfully!');
+                    }
+                    
+                    showFeedback(successMsg, false);
+                    
+                    // 重新加载任务列表
                     loadTasks();
+                    
+                    // 确保所有临时状态被清除
+                    if (taskData.taskType === 10 && typeof window.checkWorkflowSafetyState === 'function') {
+                        setTimeout(function() {
+                            window.checkWorkflowSafetyState();
+                        }, 500);
+                    }
                 },
                 function (jqXHR) {
-                    showFeedback(i18n.translate('tasksPage.feedback.errorSaving', "Error saving task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
+                    // 提供更详细的错误信息
+                    let errorDetails = jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText;
+                    let errorMsg = '';
+                    
+                    if (taskData.taskType === 10) {
+                        errorMsg = i18n.translate('tasksPage.feedback.errorSavingWorkflow', "保存工作流任务失败: {{error}}").replace("{{error}}", errorDetails);
+                        
+                        console.error("工作流保存失败:", jqXHR);
+                        
+                        // 如果错误与工作流节点或边缘有关，提供更明确的提示
+                        if (errorDetails && errorDetails.toLowerCase().includes('nodes')) {
+                            errorMsg += '\n' + i18n.translate('tasksPage.feedback.checkNodesJson', "请检查工作流节点配置是否正确");
+                        }
+                        if (errorDetails && errorDetails.toLowerCase().includes('edges')) {
+                            errorMsg += '\n' + i18n.translate('tasksPage.feedback.checkEdgesJson', "请检查工作流边缘配置是否正确");
+                        }
+                        
+                        // 尝试恢复到安全状态
+                        setTimeout(function() {
+                            if (typeof window.checkWorkflowSafetyState === 'function') {
+                                window.checkWorkflowSafetyState();
+                            }
+                        }, 500);
+                    } else {
+                        errorMsg = i18n.translate('tasksPage.feedback.errorSaving', "Error saving task: {{error}}").replace("{{error}}", errorDetails);
+                    }
+                    
+                    showFeedback(errorMsg, true);
                 }
             );
         });
@@ -702,6 +805,29 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             $('#displayNodeId').text('');
             $('#editTaskConfigId').empty(); // 清空任务选择下拉框
             $('#editingNodeArrayIndex').val('');
+            
+            // 恢复节点样式，避免 selectedSourceElement 为 null 时引起的错误
+            if (window.selectedSourceElement) {
+                window.selectedSourceElement.find('rect')
+                    .attr('fill', '#fff')
+                    .attr('stroke', '#007bff')
+                    .attr('stroke-width', 2)
+                    .css('filter', 'none');
+            }
+            
+            // 清理临时元素和状态
+            $('#tempAnimatedEdge').remove();
+            $('#tempEdgeAnimation').remove();
+            $('#dagContainer').find('.node-action-status').remove();
+            
+            // 重置选择状态
+            window.selectedSourceNodeId = null;
+            window.selectedSourceElement = null;
+            
+            // 确保全局安全检查，防止出现其他不一致的状态
+            if (typeof window.checkWorkflowSafetyState === 'function') {
+                window.checkWorkflowSafetyState();
+            }
         });
 
         // 添加工作流DAG上下文菜单功能

@@ -148,6 +148,11 @@ if (typeof window.tasksWorkflowInitialized === 'undefined') {
         if (window.graphModeEnabled && typeof window.ensureNodeHelperVisible === 'function') {
             window.ensureNodeHelperVisible();
         }
+        
+        // 进行安全检查
+        if (typeof window.checkWorkflowSafetyState === 'function') {
+            window.checkWorkflowSafetyState();
+        }
 
         if (window.selectedSourceElement) {
             window.selectedSourceElement.find('rect').attr('fill', '#fff');
@@ -291,11 +296,13 @@ if (typeof window.tasksWorkflowInitialized === 'undefined') {
                 } else {
                     if (window.selectedSourceNodeId === clickedNodeId) {
                         // 用户点击了相同节点 - 取消选择
-                        window.selectedSourceElement.find('rect')
-                            .attr('fill', '#fff')
-                            .attr('stroke', '#007bff')
-                            .attr('stroke-width', 2)
-                            .css('filter', 'none');
+                        if (window.selectedSourceElement) {
+                            window.selectedSourceElement.find('rect')
+                                .attr('fill', '#fff')
+                                .attr('stroke', '#007bff')
+                                .attr('stroke-width', 2)
+                                .css('filter', 'none');
+                        }
                         window.selectedSourceNodeId = null;
                         window.selectedSourceElement = null;
                         
@@ -325,7 +332,10 @@ if (typeof window.tasksWorkflowInitialized === 'undefined') {
                             .css('filter', 'drop-shadow(0 0 4px rgba(40, 167, 69, 0.5))');
                         
                         // 创建表示边缘的临时动画SVG线条
-                        const sourcePos = window.selectedSourceElement.data('nodeCenter');
+                        let sourcePos = null;
+                        if (window.selectedSourceElement) {
+                            sourcePos = window.selectedSourceElement.data('nodeCenter');
+                        }
                         const targetPos = parentGroup.data('nodeCenter');
                         
                         if (sourcePos && targetPos) {
@@ -390,8 +400,12 @@ if (typeof window.tasksWorkflowInitialized === 'undefined') {
                             .replace('{{from}}', window.selectedSourceNodeId)
                             .replace('{{to}}', clickedNodeId));
                         
-                        // 显示模态框
-                        $('#edgePropertyModal').modal('show');
+                        // 显示模态框（使用安全显示函数）
+                        if (typeof window.safeShowModal === 'function') {
+                            window.safeShowModal('#edgePropertyModal');
+                        } else {
+                            $('#edgePropertyModal').modal('show');
+                        }
                         
                         // 当模态框关闭后恢复节点样式
                         $('#edgePropertyModal').one('hidden.bs.modal', function () {
@@ -403,11 +417,13 @@ if (typeof window.tasksWorkflowInitialized === 'undefined') {
                                 .css('filter', 'none');
                             
                             // 恢复源节点样式
-                            window.selectedSourceElement.find('rect')
-                                .attr('fill', '#fff')
-                                .attr('stroke', '#007bff')
-                                .attr('stroke-width', 2)
-                                .css('filter', 'none');
+                            if (window.selectedSourceElement) {
+                                window.selectedSourceElement.find('rect')
+                                    .attr('fill', '#fff')
+                                    .attr('stroke', '#007bff')
+                                    .attr('stroke-width', 2)
+                                    .css('filter', 'none');
+                            }
                                 
                             // 清理临时动画元素
                             $('#tempAnimatedEdge').remove();
@@ -458,7 +474,13 @@ if (typeof window.tasksWorkflowInitialized === 'undefined') {
                 $('#editNodeParams').val(nodeToEdit.parameters ? JSON.stringify(nodeToEdit.parameters, null, 2) : '{}');
 
                 $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeEditModal.title', "Edit Workflow Node: {{nodeId}}").replace('{{nodeId}}', nodeToEdit.nodeId));
-                $('#workflowNodeEditModal').modal('show');
+                
+                // 在显示节点编辑模态框前进行安全检查
+                if (typeof window.safeShowModal === 'function') {
+                    window.safeShowModal('#workflowNodeEditModal');
+                } else {
+                    $('#workflowNodeEditModal').modal('show');
+                }
             });
 
             const textNodeName = $(document.createElementNS(svgNS, 'text'));
@@ -1185,6 +1207,96 @@ window.applyGraphModeChanges = function() {
     }
 };
 
+// 确保工作流更改保存 - 在保存工作流前调用此函数确保所有节点位置更改都被应用
+window.ensureWorkflowChangesSaved = function() {
+    console.log('准备保存工作流，确保所有更改已应用');
+    try {
+        // 关闭打开的模态窗口
+        const openModals = $('.modal.show');
+        if (openModals.length > 0) {
+            console.log(`保存工作流前关闭 ${openModals.length} 个打开的模态窗口`);
+            openModals.modal('hide');
+        }
+
+        // 如果节点位置有变更，自动应用更改
+        if (window.nodePositionChanged && typeof window.applyGraphModeChanges === 'function') {
+            console.log('自动应用工作流节点位置更改');
+            window.applyGraphModeChanges();
+        }
+        
+        // 确保 JSON 数据是有效的且符合工作流要求
+        const nodesJson = $('#workflowNodesJson').val();
+        const edgesJson = $('#workflowEdgesJson').val();
+        
+        // 验证节点数据
+        if (!nodesJson || nodesJson.trim() === '') {
+            console.error("节点数据为空");
+            showFeedback(i18n.translate('tasksPage.feedback.nodesJsonEmpty', "工作流节点数据不能为空"), true);
+            return false;
+        }
+        
+        let nodes = [];
+        try {
+            nodes = JSON.parse(nodesJson);
+            if (!Array.isArray(nodes)) {
+                console.error("节点数据不是数组");
+                showFeedback(i18n.translate('tasksPage.feedback.nodesJsonNotArray', "工作流节点数据必须是数组"), true);
+                return false;
+            }
+            
+            if (nodes.length === 0) {
+                console.error("节点数组为空");
+                showFeedback(i18n.translate('tasksPage.feedback.nodesArrayEmpty', "工作流必须至少包含一个节点"), true);
+                return false;
+            }
+            
+            console.log(`工作流节点数据有效，共 ${nodes.length} 个节点`);
+        } catch (e) {
+            console.error("工作流节点 JSON 无效:", e);
+            showFeedback(i18n.translate('tasksPage.feedback.nodesJsonInvalid', "工作流节点 JSON 格式无效，请检查") + ": " + e.message, true);
+            return false;
+        }
+        
+        // 验证边缘数据
+        if (edgesJson && edgesJson.trim() !== '') {
+            try {
+                const edges = JSON.parse(edgesJson);
+                if (!Array.isArray(edges)) {
+                    console.error("边缘数据不是数组");
+                    showFeedback(i18n.translate('tasksPage.feedback.edgesJsonNotArray', "工作流边缘数据必须是数组"), true);
+                    return false;
+                }
+                console.log(`工作流边数据有效，共 ${edges.length} 条边`);
+            } catch (e) {
+                console.error("工作流边 JSON 无效:", e);
+                showFeedback(i18n.translate('tasksPage.feedback.edgesJsonInvalid', "工作流边 JSON 格式无效，请检查") + ": " + e.message, true);
+                return false;
+            }
+        }
+        
+        // 进行安全检查
+        if (typeof window.checkWorkflowSafetyState === 'function') {
+            console.log("执行工作流保存前的安全检查");
+            window.checkWorkflowSafetyState();
+        }
+        
+        // 清理任何可能干扰保存的状态
+        window.selectedSourceNodeId = null;
+        window.selectedSourceElement = null;
+        
+        // 移除所有临时元素
+        $('#tempAnimatedEdge, #tempEdgeAnimation, .node-action-status, #edgeVisualGuide').remove();
+        $('#dagContainer').off('mousemove.edgeGuide');
+        
+        console.log('工作流准备好保存了');
+        return true;
+    } catch (e) {
+        console.error("保存工作流前处理失败:", e);
+        showFeedback(i18n.translate('tasksPage.feedback.prepareWorkflowError', "准备保存工作流时出错: {{error}}").replace("{{error}}", e.message), true);
+        return false;
+    }
+};
+
 // 放大/缩小DAG图
 window.zoomDag = function(factor) {
     const svgContainer = $('#dagContainer');
@@ -1905,3 +2017,105 @@ function addNodeAtPosition(nodeType, posX, posY) {
     // 显示成功消息
     window.showFloatingInfo('节点已添加', `已在指定位置添加新节点: ${nodeId}`, 'success');
 }
+
+// 工作流安全检查工具
+window.checkWorkflowSafetyState = function() {
+    // 记录已执行的安全检查操作
+    console.log("执行工作流状态安全检查");
+    
+    try {
+        // 检查所有关键的全局变量状态
+        if (window.selectedSourceElement === null && window.selectedSourceNodeId !== null) {
+            console.warn("不一致的状态: selectedSourceNodeId 存在但 selectedSourceElement 为 null");
+            window.selectedSourceNodeId = null;
+        }
+        
+        // 检查另一种不一致的状态
+        if (window.selectedSourceElement !== null && window.selectedSourceNodeId === null) {
+            console.warn("不一致的状态: selectedSourceElement 存在但 selectedSourceNodeId 为 null");
+            window.selectedSourceElement = null;
+        }
+        
+        // 检查临时元素是否需要清理
+        if (window.selectedSourceNodeId === null) {
+            const tempElements = $('#tempAnimatedEdge, #tempEdgeAnimation, .node-action-status');
+            if (tempElements.length > 0) {
+                console.log(`清理 ${tempElements.length} 个临时元素`);
+                $('#tempAnimatedEdge').remove();
+                $('#tempEdgeAnimation').remove();
+                $('.node-action-status').remove();
+            }
+        }
+        
+        // 确保没有节点保持高亮状态但没有被选中
+        if (!window.selectedSourceNodeId) {
+            $('#dagContainer svg g.node-group rect').each(function() {
+                const fill = $(this).attr('fill');
+                if (fill && fill !== '#fff' && !$(this).closest('.selected-node').length) {
+                    console.log(`重置节点样式: ${$(this).closest('g.node-group').attr('data-node-id')}`);
+                    $(this).attr('fill', '#fff')
+                           .attr('stroke', '#007bff')
+                           .attr('stroke-width', 2)
+                           .css('filter', 'none');
+                }
+            });
+        }
+        
+        // 检查边缘视觉指引
+        if (window.selectedSourceNodeId === null && $('#edgeVisualGuide').length > 0) {
+            console.log("清理未使用的边缘视觉指引");
+            $('#edgeVisualGuide').remove();
+            $('#dagContainer').off('mousemove.edgeGuide');
+        }
+        
+        return true;
+    } catch (e) {
+        console.error("工作流状态安全检查出错:", e);
+        return false;
+    }
+};
+
+// 在显示模态窗口前进行安全检查
+window.safeShowModal = function(modalId) {
+    console.log(`安全显示模态窗口: ${modalId}`);
+    
+    try {
+        // 首先关闭可能已经打开的其他模态窗口
+        $('.modal').each(function() {
+            const currentModalId = '#' + $(this).attr('id');
+            if ($(this).hasClass('show') && currentModalId !== modalId) {
+                console.log(`关闭已打开的模态窗口: ${currentModalId}`);
+                $(currentModalId).modal('hide');
+            }
+        });
+        
+        // 在显示模态窗口前进行安全检查
+        if (typeof window.checkWorkflowSafetyState === 'function') {
+            const safetyCheckResult = window.checkWorkflowSafetyState();
+            if (!safetyCheckResult) {
+                console.warn(`${modalId} 安全检查失败，但仍继续显示模态窗口`);
+            }
+        }
+        
+        // 显示指定的模态窗口
+        $(modalId).modal('show');
+        console.log(`${modalId} 模态窗口已显示`);
+        
+        return true;
+    } catch (e) {
+        console.error(`显示模态窗口 ${modalId} 时出错:`, e);
+        // 尝试恢复到安全状态
+        window.selectedSourceNodeId = null;
+        window.selectedSourceElement = null;
+        $('#tempAnimatedEdge, #tempEdgeAnimation, .node-action-status, #edgeVisualGuide').remove();
+        
+        // 如果仍然需要显示模态窗口，使用原生方法
+        try {
+            $(modalId).modal('show');
+            return true;
+        } catch (e2) {
+            console.error(`尝试恢复后显示模态窗口 ${modalId} 仍然失败:`, e2);
+            return false;
+        }
+    }
+};
