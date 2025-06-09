@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <title data-i18n-key="loginPage.title">Login - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
     <script src="js/i18n.js"></script> <!-- Load i18n early -->
+    <script src="js/i18n-init.js"></script>
 </head>
 <body>
     <div class="container">
@@ -39,14 +39,21 @@
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function() {
-            // Initialize i18n
-            if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => {
-                    console.log("i18n initialized for login page.");
-                    // Any login-specific dynamic text updates after init can go here
-                }).catch(err => console.error("Error initializing i18n for login page:", err));
+            // 使用全局初始化函数
+            if (typeof window.initializeI18n === 'function') {
+                window.initializeI18n().then(() => {
+                    console.log("i18n初始化完成，登录页面准备就绪");
+                }).catch(err => console.error("登录页面初始化i18n时出错:", err));
             } else {
-                console.error("i18n object is not available on login page.");
+                console.error("全局初始化函数未定义，尝试使用传统方式");
+                // 回退到原始方法
+                if (typeof i18n !== 'undefined') {
+                    i18n.init().then(() => {
+                        console.log("使用原始方法初始化i18n完成");
+                    });
+                } else {
+                    console.error("i18n对象未定义，登录页面无法使用国际化");
+                }
             }
 
             // If token exists, redirect to tasks.html (existing logic)

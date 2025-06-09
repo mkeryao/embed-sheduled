@@ -1,24 +1,22 @@
 package com.example.taskscheduler.scheduler;
 
-import com.example.taskscheduler.dao.TaskExecuteLogDao;
-import com.example.taskscheduler.entity.TaskConfig;
-import com.example.taskscheduler.entity.TaskExecuteLog;
-import com.example.taskscheduler.enums.ExecutionMode;
-import com.example.taskscheduler.service.BeanTaskExecutor;
-import com.example.taskscheduler.service.HttpTaskExecutor;
-import com.example.taskscheduler.service.ShellTaskExecutor;
-import com.example.taskscheduler.service.WorkflowExecutionService;
-import com.example.taskscheduler.service.DistributedLockService;
-import com.example.taskscheduler.service.NotificationService; // Added
+import java.sql.Timestamp;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.context.ApplicationContext;
 
-import java.sql.Timestamp;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeoutException;
+import com.example.taskscheduler.dao.TaskExecuteLogDao;
+import com.example.taskscheduler.entity.TaskConfig;
+import com.example.taskscheduler.entity.TaskExecuteLog;
+import com.example.taskscheduler.enums.ExecutionMode;
+import com.example.taskscheduler.service.BeanTaskExecutor; // Added
+import com.example.taskscheduler.service.DistributedLockService;
+import com.example.taskscheduler.service.HttpTaskExecutor;
+import com.example.taskscheduler.service.NotificationService;
+import com.example.taskscheduler.service.ShellTaskExecutor;
+import com.example.taskscheduler.service.WorkflowExecutionService;
 
 public class TaskExecutionJob implements Runnable {
 
@@ -39,17 +37,17 @@ public class TaskExecutionJob implements Runnable {
     private Long executionLogId; // To store the log ID for this specific attempt
 
     public TaskExecutionJob(TaskConfig taskConfig,
-                            ApplicationContext applicationContext,
-                            TaskExecuteLogDao taskExecuteLogDao,
-                            DistributedLockService distributedLockService,
-                            CoreSchedulerService coreSchedulerService,
-                            NotificationService notificationService,
-                            String instanceId,
-                            int attemptNumber,
-                            String initialTaskPattern,
-                            Long parentLogId,
-                            String effectiveBeanParametersJson,
-                            String workflowNodeId) {
+            ApplicationContext applicationContext,
+            TaskExecuteLogDao taskExecuteLogDao,
+            DistributedLockService distributedLockService,
+            CoreSchedulerService coreSchedulerService,
+            NotificationService notificationService,
+            String instanceId,
+            int attemptNumber,
+            String initialTaskPattern,
+            Long parentLogId,
+            String effectiveBeanParametersJson,
+            String workflowNodeId) {
         this.taskConfig = taskConfig;
         this.applicationContext = applicationContext;
         this.taskExecuteLogDao = taskExecuteLogDao;
@@ -95,7 +93,6 @@ public class TaskExecutionJob implements Runnable {
 
         // If a DB column `attempt_number` was added to `task_execute_log`, set it here:
         // log.setAttemptNumber(this.attemptNumber);
-
         TaskExecuteLog savedLog = taskExecuteLogDao.save(log);
         this.executionLogId = savedLog.getLogId();
         MDC.put("execute_no", String.valueOf(this.executionLogId));
@@ -123,7 +120,6 @@ public class TaskExecutionJob implements Runnable {
             // Exclusion checks (date, calendar, time) - These are now primarily handled by CustomTaskTrigger for cron.
             // For manual triggers or direct retries, these checks might still be relevant here if not done by caller.
             // For simplicity of retry logic, assuming these checks are bypassed for retries, or handled if necessary.
-
             logger.info("Executing task: {} (ID: {}, Log ID: {}, Attempt: {})",
                     taskConfig.getTaskName(), taskConfig.getTaskId(), this.executionLogId, this.attemptNumber);
 
@@ -178,11 +174,10 @@ public class TaskExecutionJob implements Runnable {
                     logger.error(exceptionMessage + " for task ID: {}", taskConfig.getTaskId());
                     break;
             }
-             if ("RUNNING".equals(finalStatus) && "SUCCESS".equals(taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog).getState())) {
+            if ("RUNNING".equals(finalStatus) && "SUCCESS".equals(taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog).getState())) {
                 // If executor updated to SUCCESS inside its method.
                 finalStatus = "SUCCESS";
             }
-
 
         } catch (BeanTaskExecutor.TaskTimeoutException e) {
             logger.error("Task {} (ID: {}) timed out on attempt {}.", taskConfig.getTaskName(), taskConfig.getTaskId(), this.attemptNumber, e);
@@ -202,7 +197,7 @@ public class TaskExecutionJob implements Runnable {
             // If an executor (HTTP/Shell/Workflow) already set a terminal state, respect it.
             TaskExecuteLog currentLogState = taskExecuteLogDao.findById(this.executionLogId).orElse(null);
             if (currentLogState != null && "RUNNING".equals(currentLogState.getState())) {
-                 taskExecuteLogDao.updateLogStatus(this.executionLogId, finalStatus, returnMessage, exceptionMessage);
+                taskExecuteLogDao.updateLogStatus(this.executionLogId, finalStatus, returnMessage, exceptionMessage);
             } else if (currentLogState == null) { // Should not happen
                 logger.error("Log entry {} disappeared before final update for task {}", this.executionLogId, taskConfig.getTaskId());
             }
@@ -215,12 +210,12 @@ public class TaskExecutionJob implements Runnable {
             // Call completion handler for retry logic (or final success logging)
             // Pass the final status of *this attempt*, and context for potential retries.
             coreSchedulerService.handleTaskCompletion(taskConfig,
-                                                     finalLogEntry.getState(),
-                                                     this.attemptNumber,
-                                                     this.executionLogId,
-                                                     this.initialTaskPattern,
-                                                     this.parentLogId,
-                                                     this.workflowNodeId); // Pass workflowNodeId for context
+                    finalLogEntry.getState(),
+                    this.attemptNumber,
+                    this.executionLogId,
+                    this.initialTaskPattern,
+                    this.parentLogId,
+                    this.workflowNodeId); // Pass workflowNodeId for context
 
             MDC.clear();
         }

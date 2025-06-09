@@ -1,7 +1,7 @@
 // js/i18n.js
 const i18n = {
-    defaultLang: 'en',
-    currentLang: 'en',
+    defaultLang: 'zh',
+    currentLang: 'zh',
     translations: {},
 
     async loadTranslations(lang) {

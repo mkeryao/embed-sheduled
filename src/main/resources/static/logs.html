@@ -4,17 +4,17 @@
     <meta charset="UTF-8">
     <title data-i18n-key="logsPage.title">Task Logs - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
     <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
 </head>
 <body>
     <div id="navbar-container"></div>
 
     <div class="container">
         <h2 class="my-3" data-i18n-key="logsPage.mainHeader">Detailed Execution Logs</h2>
-        {{~~ Following h3 is now redundant due to main H2 header change, or could be kept if desired for style ~~}}
-        {{~~ <h3 class="my-3" data-i18n-key="logsPage.detailedLogsHeader">Detailed Logs</h3> ~~}}
+       
+        
         <div class="form-row mb-3">
             <div class="form-group col-md-4">
                 <label for="taskIdFilter" data-i18n-key="logsPage.filters.taskIdLabel">Filter by Task ID:</label>
@@ -134,14 +134,10 @@
 
     <script>
         $(document).ready(function() {
-            if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => {
+            // 使用全局初始化函数
+            if (typeof window.initializeI18n === 'function') {
+                window.initializeI18n().then(() => {
                     console.log("i18n initialized for logs.html");
-                    // Initial load of static elements is handled by i18n.applyTranslations in init()
-                    // Now, explicitly translate dynamic parts or re-apply after dynamic content is loaded.
-                    // loadGlobalStats(); // These will use i18n.translate internally for their content // MOVED
-                    // loadTopSlowestTasks(); // MOVED
-                    // loadTaskBreakdownStats(); // MOVED
 
                     // Initial log load based on URL or default
                     if (typeof getUrlParams === 'function') {

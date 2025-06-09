@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <title data-i18n-key="calendarsPage.title">Calendar Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
     <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -114,16 +114,23 @@
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
     <script src="js/main.js"></script>
-    <script>
-        $(document).ready(function() {
-            if (typeof i18n !== 'undefined') {
+    <script>        $(document).ready(function() {
+            // 使用全局初始化函数
+            if (typeof window.initializeI18n === 'function') {
+                window.initializeI18n().then(() => {
+                    console.log("i18n initialized for calendars.html using global function");
+                    loadCalendars();
+                });
+            } else if (typeof i18n !== 'undefined') {
+                // 回退到原始方法
                 i18n.init().then(() => {
-                    console.log("i18n initialized for calendars.html");
-                    loadCalendars(); // Moved inside
+                    console.log("i18n initialized for calendars.html using traditional method");
+                    loadCalendars();
                 });
             } else {
-                console.error("i18n object not defined in calendars.html.");
-                // loadCalendars(); // Optional fallback: If i18n fails, load calendars without full translation support for dynamic parts.
+                console.error("无法初始化i18n，日历页面将无法正确显示国际化内容");
+                // 最后的回退方案
+                loadCalendars();
             }
 
             $("#navbar-container").load("_navbar.html", function() {

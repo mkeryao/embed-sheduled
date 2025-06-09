@@ -1,32 +1,40 @@
 package com.example.taskscheduler.controller;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors; // Fastjson import
+
+import org.slf4j.Logger; // Fastjson TypeReference
+import org.slf4j.LoggerFactory; // Added for beanParameters validation
+import org.springframework.beans.BeanUtils; // Added
+import org.springframework.beans.factory.annotation.Autowired; // Added
+import org.springframework.http.HttpStatus; // Added
+import org.springframework.http.ResponseEntity; // Added
+import org.springframework.scheduling.support.CronExpression; // Added for new endpoint
+import org.springframework.util.StringUtils; // Added
+import org.springframework.web.bind.annotation.DeleteMapping; // Added for new endpoint
+import org.springframework.web.bind.annotation.GetMapping; // Added for new endpoint
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping; // Added for CRON validation
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController; // Added for DAG cycle detection
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
 import com.example.taskscheduler.dao.TaskConfigDao;
 import com.example.taskscheduler.dto.TaskConfigDto;
 import com.example.taskscheduler.dto.workflow.WorkflowEdge;
 import com.example.taskscheduler.dto.workflow.WorkflowNode;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.scheduler.CoreSchedulerService;
-import com.alibaba.fastjson.JSON; // Fastjson import
-import com.alibaba.fastjson.TypeReference; // Fastjson TypeReference
-import com.alibaba.fastjson.JSONException; // Added for beanParameters validation
-import org.slf4j.Logger; // Added
-import org.slf4j.LoggerFactory; // Added
-import org.springframework.util.StringUtils; // Added
-import java.util.Map; // Added
-import java.util.HashMap; // Added for new endpoint
-import java.util.List; // Added
-import java.util.ArrayList; // Added for new endpoint
-import java.time.LocalDateTime; // Added for new endpoint
-import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.support.CronExpression; // Added for CRON validation
-import org.springframework.web.bind.annotation.*;
-import com.example.taskscheduler.util.DagCycleDetector; // Added for DAG cycle detection
-
-import java.util.Optional;
-import java.util.stream.Collectors;
+import com.example.taskscheduler.util.DagCycleDetector;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -43,10 +51,11 @@ public class TaskConfigController {
     // ObjectMapper is no longer needed here if Fastjson is the primary via HttpMessageConverter
     // @Autowired
     // private ObjectMapper objectMapper;
-
     // --- DTO Mappers ---
     private TaskConfigDto convertToDto(TaskConfig taskConfig) {
-        if (taskConfig == null) return null;
+        if (taskConfig == null) {
+            return null;
+        }
         TaskConfigDto dto = new TaskConfigDto();
         BeanUtils.copyProperties(taskConfig, dto, "workflowNodesJson", "workflowEdgesJson", "globalParametersJson");
 
@@ -58,7 +67,8 @@ public class TaskConfigController {
                 dto.setWorkflowEdges(JSON.parseArray(taskConfig.getWorkflowEdgesJson(), WorkflowEdge.class));
             }
             if (StringUtils.hasText(taskConfig.getGlobalParametersJson())) {
-                dto.setGlobalParameters(JSON.parseObject(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {}));
+                dto.setGlobalParameters(JSON.parseObject(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {
+                }));
             }
         } catch (Exception e) { // Fastjson might throw different exceptions
             logger.error("Error parsing workflow/global params JSON (Fastjson) to DTO for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
@@ -67,7 +77,9 @@ public class TaskConfigController {
     }
 
     private TaskConfig convertToEntity(TaskConfigDto dto) {
-        if (dto == null) return null;
+        if (dto == null) {
+            return null;
+        }
         TaskConfig entity = new TaskConfig();
         BeanUtils.copyProperties(dto, entity, "workflowNodes", "workflowEdges", "globalParameters");
 
@@ -94,7 +106,6 @@ public class TaskConfigController {
     }
 
     // --- API Endpoints ---
-
     @PostMapping
     public ResponseEntity<?> createTask(@RequestBody TaskConfigDto taskConfigDto) {
         if (taskConfigDto == null || !StringUtils.hasText(taskConfigDto.getTaskName()) || !StringUtils.hasText(taskConfigDto.getCronExpression())) {
@@ -164,8 +175,8 @@ public class TaskConfigController {
 
         List<TaskConfig> tasks = taskConfigDao.findByFilters(filters);
         List<TaskConfigDto> dtos = tasks.stream()
-                                        .map(this::convertToDto)
-                                        .collect(Collectors.toList());
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
@@ -178,7 +189,9 @@ public class TaskConfigController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTask(@PathVariable Integer id, @RequestBody TaskConfigDto taskConfigDto) {
-        if (taskConfigDto == null) return ResponseEntity.badRequest().body("Request body cannot be null.");
+        if (taskConfigDto == null) {
+            return ResponseEntity.badRequest().body("Request body cannot be null.");
+        }
 
         // CRON Validation (if cron expression is part of the update)
         if (StringUtils.hasText(taskConfigDto.getCronExpression()) && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
@@ -232,7 +245,6 @@ public class TaskConfigController {
             // without merging with existing entity's nodes/edges first.
             // The current DTO structure and convertToEntity seems to handle full replacements or
             // relies on frontend sending complete node/edge lists if they are part of the update.
-
             if (workflowNodes != null && !workflowNodes.isEmpty() && workflowEdges != null && !workflowEdges.isEmpty()) {
                 DagCycleDetector detector = new DagCycleDetector();
                 if (detector.hasCycle(workflowNodes, workflowEdges)) {
@@ -252,8 +264,12 @@ public class TaskConfigController {
 
         // Preserve fields not typically updated or if they are null in DTO but set in DB
         TaskConfig existingEntity = existingTaskOptional.get();
-        if (taskConfigToUpdate.getTaskName() == null) taskConfigToUpdate.setTaskName(existingEntity.getTaskName());
-        if (taskConfigToUpdate.getCronExpression() == null) taskConfigToUpdate.setCronExpression(existingEntity.getCronExpression());
+        if (taskConfigToUpdate.getTaskName() == null) {
+            taskConfigToUpdate.setTaskName(existingEntity.getTaskName());
+        }
+        if (taskConfigToUpdate.getCronExpression() == null) {
+            taskConfigToUpdate.setCronExpression(existingEntity.getCronExpression());
+        }
         // Add other fields as necessary to preserve from existingEntity if not provided in DTO
 
         int updatedRows = taskConfigDao.update(taskConfigToUpdate);
@@ -290,7 +306,7 @@ public class TaskConfigController {
             coreSchedulerService.triggerTaskManually(id);
             return ResponseEntity.ok("Task " + id + " triggered successfully.");
         } catch (IllegalArgumentException e) {
-             return ResponseEntity.notFound().build(); // If task not found by triggerTaskManually
+            return ResponseEntity.notFound().build(); // If task not found by triggerTaskManually
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error triggering task " + id + ": " + e.getMessage());
         }

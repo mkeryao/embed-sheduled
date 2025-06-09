@@ -75,6 +75,83 @@ body {
     opacity: 1;
 }
 
+/* 确保模态窗口内容可滚动 */
+.modal-dialog {
+    max-height: 90vh;
+}
+
+.modal-content {
+    max-height: 90vh;
+}
+
+.modal-body {
+    max-height: calc(90vh - 120px); /* 减去header和footer的高度 */
+    overflow-y: auto;
+}
+
+/* 为工作流编辑模态窗口设置特定样式 */
+#taskFormModal .modal-body {
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+}
+
+/* 确保表单字段和标签正确显示 */
+.form-group label {
+    display: block;
+    white-space: normal; /* 允许标签文本换行 */
+    overflow: visible;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    display: block;
+    padding: 0.375rem 0.75rem;
+}
+
+/* 修复表单行中的字段显示问题 */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-right: -10px;
+    margin-left: -10px;
+    width: 100%;
+}
+
+.form-row > .form-group {
+    padding-right: 10px;
+    padding-left: 10px;
+    min-width: 200px;
+    width: 100%;
+}
+
+/* 确保输入框在模态窗口中完全可见 */
+#taskFormModal input[type="text"],
+#taskFormModal input[type="number"],
+#taskFormModal input[type="datetime-local"],
+#taskFormModal select,
+#taskFormModal textarea {
+    width: 100%;
+    box-sizing: border-box;
+    display: block;
+}
+
+/* 特别处理Bean任务字段，确保它们可见 */
+#beanName, #methodName {
+    width: 100% !important;
+}
+
+/* 改进模态窗口中表单的显示 */
+#taskFormModal .form-group {
+    margin-bottom: 1rem;
+}
+
+#taskFormModal .form-row .form-group {
+    flex: 1 0 200px;
+}
+
+
 /* Feedback message styling */
 #feedback-message {
     position: fixed;

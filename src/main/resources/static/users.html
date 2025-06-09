@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <title data-i18n-key="usersPage.title">User Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
     <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
 </head>
 <body>
     <div id="navbar-container"></div>
@@ -86,10 +86,12 @@
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function() {
-            if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => console.log("i18n initialized for users.html"));
+            if (typeof window.initializeI18n === 'function') {
+                window.initializeI18n().then(() => console.log("i18n initialized for users.html"));
+            } else if (typeof i18n !== 'undefined') {
+                i18n.init().then(() => console.log("i18n initialized using traditional method"));
             } else {
-                console.error("i18n object not defined in users.html");
+                console.error("无法初始化i18n，用户管理页面将无法正确显示国际化内容");
             }
             $("#navbar-container").load("_navbar.html", function() {
                  const currentUsername = localStorage.getItem('username');

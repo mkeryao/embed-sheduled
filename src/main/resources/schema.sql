@@ -29,7 +29,7 @@ CREATE TABLE task_config (
     -- Retry configuration
     max_retry_attempts INT DEFAULT 0 COMMENT 'Maximum number of retry attempts upon failure (0 means no retries)',
     retry_interval_seconds INT DEFAULT 30 COMMENT 'Interval in seconds between retry attempts',
-
+    retry_Interval_multiplier  INT DEFAULT 1 COMMENT 'Interval in seconds between retry attempts',
     -- Workflow specific fields (for task_type=10)
     workflow_nodes TEXT, -- JSON array of WorkflowNode, defines the structure
     workflow_edges TEXT, -- JSON array of WorkflowEdge, defines transitions

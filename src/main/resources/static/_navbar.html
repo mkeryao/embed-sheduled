@@ -41,6 +41,7 @@
 
 <!-- i18n script needs to be loaded before main.js if main.js might use i18n, or before this navbar script if it uses i18n -->
 <script src="js/i18n.js"></script>
+<script src="js/i18n-init.js"></script>
 <script>
 $(document).ready(function() {
     // Set logged-in username
@@ -62,24 +63,9 @@ $(document).ready(function() {
             $(this).removeClass('active');
             $(this).removeAttr('aria-current');
         }
-    });
-
-    // Language Switcher Logic
-    if (typeof i18n !== 'undefined') {
-        $('.lang-select-btn').on('click', function(e) {
-            e.preventDefault();
-            const selectedLang = $(this).data('lang');
-            i18n.init(selectedLang).then(() => {
-                // The i18n.applyTranslations() is called within i18n.init()
-                // If specific components on the page need to re-render based on language,
-                // they should listen to a custom event or be manually updated here.
-                // For example, if table headers are dynamically generated:
-                // if (typeof updateTableHeaders === 'function') { updateTableHeaders(); }
-                console.log(`Language switched to ${selectedLang} via _navbar.html handler.`);
-            }).catch(err => console.error("Error during language switch in navbar:", err));
-        });
-    } else {
-        console.error("i18n object not found in _navbar.html. Language switcher will not work.");
-    }
+    });    // Language Switcher Logic
+    // 我们使用i18n-init.js中的全局函数处理语言切换
+    // DOM ContentLoaded事件中会自动绑定语言切换按钮
+    // 这里不需要额外绑定事件，为了兼容性保留此代码块
 });
 </script>

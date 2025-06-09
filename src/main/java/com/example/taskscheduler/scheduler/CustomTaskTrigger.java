@@ -1,7 +1,12 @@
 package com.example.taskscheduler.scheduler;
 
-import com.example.taskscheduler.dao.TaskCalendarDao;
-import com.example.taskscheduler.entity.TaskConfig;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.TimeZone;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.Trigger;
@@ -9,12 +14,8 @@ import org.springframework.scheduling.TriggerContext;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.TimeZone;
+import com.example.taskscheduler.dao.TaskCalendarDao;
+import com.example.taskscheduler.entity.TaskConfig;
 
 public class CustomTaskTrigger implements Trigger {
 
@@ -25,7 +26,7 @@ public class CustomTaskTrigger implements Trigger {
     private final CronTrigger cronTrigger; // Internal CronTrigger
 
     // Safety limits for finding next execution
-    private static final int MAX_ITERATIONS = 1000; // Max attempts to find a valid time
+    private static final int MAX_ITERATIONS = 6 * 60 * 24; // Max attempts to find a valid time
     private static final int MAX_YEARS_IN_FUTURE = 5; // Max years to look ahead
 
     public CustomTaskTrigger(TaskConfig taskConfig, TaskCalendarDao taskCalendarDao) {
@@ -46,7 +47,6 @@ public class CustomTaskTrigger implements Trigger {
         // or we are predicting from 'now'.
         // For prediction via API, lastScheduledExecutionTime might be set to 'now'.
         Date nextPotentialExecutionTime = (lastExecutionTime != null) ? lastExecutionTime : new Date();
-
 
         Calendar maxFutureDate = Calendar.getInstance();
         maxFutureDate.add(Calendar.YEAR, MAX_YEARS_IN_FUTURE);
@@ -71,14 +71,14 @@ public class CustomTaskTrigger implements Trigger {
             // 2. Check against taskConfig.startDate (now a Timestamp)
             if (taskConfig.getStartDate() != null && nextPotentialExecutionTime.before(taskConfig.getStartDate())) {
                 logger.debug("Task ID {}: Candidate time {} is before start datetime {}. Skipping.",
-                             taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getStartDate());
+                        taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getStartDate());
                 continue;
             }
 
             // 3. Check against taskConfig.endDate (now a Timestamp)
             if (taskConfig.getEndDate() != null && nextPotentialExecutionTime.after(taskConfig.getEndDate())) {
                 logger.warn("Task ID {}: Candidate time {} is after end datetime {}. No further valid executions.",
-                             taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getEndDate());
+                        taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getEndDate());
                 return null; // No more valid executions
             }
 
@@ -86,9 +86,9 @@ public class CustomTaskTrigger implements Trigger {
             if (StringUtils.hasText(taskConfig.getTaskCalendarGroup())) {
                 java.sql.Date executionSqlDate = new java.sql.Date(nextPotentialExecutionTime.getTime());
                 boolean isExcludedByCalendar = taskCalendarDao.findCalendarByName(taskConfig.getTaskCalendarGroup())
-                    .flatMap(calendar -> taskCalendarDao.findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), executionSqlDate))
-                    .map(calendarDay -> !calendarDay.isWorkingDay()) // true if it's a non-working day (excluded)
-                    .orElse(false); // Not in calendar or is a working day -> not excluded
+                        .flatMap(calendar -> taskCalendarDao.findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), executionSqlDate))
+                        .map(calendarDay -> !calendarDay.isWorkingDay()) // true if it's a non-working day (excluded)
+                        .orElse(false); // Not in calendar or is a working day -> not excluded
 
                 if (isExcludedByCalendar) {
                     logger.debug("Task ID {}: Candidate time {} is excluded by calendar group '{}'. Skipping.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getTaskCalendarGroup());
@@ -132,10 +132,11 @@ public class CustomTaskTrigger implements Trigger {
     }
 
     /**
-     * Simple TriggerContext implementation for use when the full context is not available
-     * (e.g., predicting next execution time from a specific point).
+     * Simple TriggerContext implementation for use when the full context is not
+     * available (e.g., predicting next execution time from a specific point).
      */
     private static class SimpleTriggerContext implements TriggerContext {
+
         private final Date lastScheduledExecutionTime;
         private final Date lastActualExecutionTime;
         private final Date lastCompletionTime;

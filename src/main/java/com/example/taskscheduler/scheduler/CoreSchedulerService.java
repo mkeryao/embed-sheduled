@@ -1,50 +1,44 @@
 package com.example.taskscheduler.scheduler;
 
-import com.example.taskscheduler.dao.TaskCalendarDao;
-import com.example.taskscheduler.dao.TaskConfigDao;
-import com.example.taskscheduler.dao.TaskExecuteLogDao;
-import com.example.taskscheduler.entity.TaskCalendarDay;
-import com.example.taskscheduler.entity.TaskConfig;
-import com.example.taskscheduler.entity.TaskExecuteLog;
-import com.example.taskscheduler.enums.ExecutionMode; // Import ExecutionMode
-import com.example.taskscheduler.service.BeanTaskExecutor;
-import com.example.taskscheduler.service.ShellTaskExecutor; // Added
-import com.example.taskscheduler.service.HttpTaskExecutor; // Added
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.util.StringUtils; // Added
-import com.example.taskscheduler.service.DistributedLockService;
-import com.example.taskscheduler.service.NotificationService;
-import com.example.taskscheduler.service.WorkflowExecutionService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.annotation.SchedulingConfigurer;
-import org.springframework.scheduling.config.CronTask;
-import org.springframework.scheduling.config.ScheduledTaskRegistrar;
-// import org.springframework.scheduling.support.CronTrigger; // Replaced by CustomTaskTrigger
-import org.springframework.stereotype.Service;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-// import java.util.UUID; // No longer used for instanceId directly here
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
+import javax.annotation.PreDestroy;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory; // Import ExecutionMode
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired; // Added
+import org.springframework.context.ApplicationContext; // Added
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.scheduling.annotation.SchedulingConfigurer;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler; // Added
+import org.springframework.scheduling.config.CronTask;
+import org.springframework.scheduling.config.ScheduledTaskRegistrar;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.example.taskscheduler.dao.TaskCalendarDao;
+import com.example.taskscheduler.dao.TaskConfigDao;
+import com.example.taskscheduler.dao.TaskExecuteLogDao;
+import com.example.taskscheduler.entity.TaskConfig;
+import com.example.taskscheduler.entity.TaskExecuteLog;
+import com.example.taskscheduler.enums.ExecutionMode;
+import com.example.taskscheduler.service.BeanTaskExecutor;
+import com.example.taskscheduler.service.DistributedLockService;
+import com.example.taskscheduler.service.NotificationService;
+import com.example.taskscheduler.service.WorkflowExecutionService;
+
 /**
- * Core service responsible for managing the lifecycle of scheduled tasks.
- * It implements {@link SchedulingConfigurer} to dynamically register and manage tasks
- * based on configurations stored in the database. It handles scheduling, cancellation,
- * manual triggering, and integrates with other services for lock management,
- * task execution, and notifications.
+ * Core service responsible for managing the lifecycle of scheduled tasks. It
+ * implements {@link SchedulingConfigurer} to dynamically register and manage
+ * tasks based on configurations stored in the database. It handles scheduling,
+ * cancellation, manual triggering, and integrates with other services for lock
+ * management, task execution, and notifications.
  */
 @Service
 public class CoreSchedulerService implements SchedulingConfigurer, ApplicationListener<ContextRefreshedEvent> {
@@ -72,7 +66,6 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     @org.springframework.context.annotation.Lazy // To handle potential circular dependency
     private WorkflowExecutionService workflowExecutionService;
 
-
     private BeanTaskExecutor beanTaskExecutor; // Lazily initialized
 
     // Keep track of scheduled tasks
@@ -81,8 +74,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     private ScheduledTaskRegistrar taskRegistrar;
 
     /**
-     * Initializes the service after dependency injection.
-     * It loads and schedules all active tasks from the database.
+     * Initializes the service after dependency injection. It loads and
+     * schedules all active tasks from the database.
      */
     public void init() {
         // beanTaskExecutor = applicationContext.getBean(BeanTaskExecutor.class); // Initialize if needed immediately, or on first use
@@ -90,8 +83,9 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Configures tasks with the Spring task registrar.
-     * This method is part of the {@link SchedulingConfigurer} interface.
+     * Configures tasks with the Spring task registrar. This method is part of
+     * the {@link SchedulingConfigurer} interface.
+     *
      * @param taskRegistrar The registrar for scheduled tasks.
      */
     @Override
@@ -107,8 +101,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Loads all active tasks from the database and schedules them.
-     * This is typically called on application startup.
+     * Loads all active tasks from the database and schedules them. This is
+     * typically called on application startup.
      */
     public void loadAndScheduleInitialTasks() {
         logger.info("Loading and scheduling initial tasks...");
@@ -118,11 +112,12 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Schedules a single task based on its configuration.
-     * If the task is already scheduled, it will not be scheduled again unless cancelled first.
+     * Schedules a single task based on its configuration. If the task is
+     * already scheduled, it will not be scheduled again unless cancelled first.
      *
      * @param taskConfig The configuration of the task to schedule.
-     * @return {@code true} if the task was successfully scheduled, {@code false} otherwise (e.g., inactive, invalid cron).
+     * @return {@code true} if the task was successfully scheduled,
+     * {@code false} otherwise (e.g., inactive, invalid cron).
      */
     public boolean scheduleTask(TaskConfig taskConfig) {
         if (taskConfig == null || !taskConfig.isActive()) {
@@ -147,6 +142,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         try {
             // Use CustomTaskTrigger instead of standard CronTrigger
             CustomTaskTrigger customTaskTrigger = new CustomTaskTrigger(taskConfig, taskCalendarDao);
+
             ScheduledFuture<?> future;
 
             future = taskScheduler.schedule(taskRunnable, customTaskTrigger);
@@ -154,6 +150,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             synchronized (scheduledTasks) {
                 scheduledTasks.put(taskConfig.getTaskId(), future);
             }
+
             logger.info("Task {} ({}) scheduled successfully with CustomTaskTrigger using cron: [{}].",
                     taskConfig.getTaskId(), taskConfig.getTaskName(), taskConfig.getCronExpression());
             return true;
@@ -169,20 +166,26 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Creates a {@link Runnable} for the given task configuration.
-     * This runnable encapsulates the logic for executing the task. Key aspects include:
+     * Creates a {@link Runnable} for the given task configuration. This
+     * runnable encapsulates the logic for executing the task. Key aspects
+     * include:
      * <ul>
-     *   <li>Logging task attempts and outcomes to {@link TaskExecuteLog}.</li>
-     *   <li>Handling {@link ExecutionMode#CLUSTER}: Acquires a distributed lock (derived from task ID)
-     *       to ensure single-instance execution in a cluster. If the lock is not acquired, the task is skipped.
-     *       {@link ExecutionMode#BROADCAST} tasks run without locking.</li>
-     *   <li>Performing pre-execution checks: start/end dates, calendar exclusions, and daily time exclusions.
-     *       If any exclusion applies, the task is skipped.</li>
-     *   <li>Executing the task based on its {@code taskType} (Bean, HTTP, Shell, Workflow) via respective executors.</li>
-     *   <li>Capturing exceptions, including {@link BeanTaskExecutor.TaskTimeoutException}.</li>
-     *   <li>Updating the final status in {@link TaskExecuteLog}.</li>
-     *   <li>Releasing the distributed lock (if acquired) in a finally block.</li>
-     *   <li>Triggering notifications via {@link NotificationService} based on task outcome and configuration.</li>
+     * <li>Logging task attempts and outcomes to {@link TaskExecuteLog}.</li>
+     * <li>Handling {@link ExecutionMode#CLUSTER}: Acquires a distributed lock
+     * (derived from task ID) to ensure single-instance execution in a cluster.
+     * If the lock is not acquired, the task is skipped.
+     * {@link ExecutionMode#BROADCAST} tasks run without locking.</li>
+     * <li>Performing pre-execution checks: start/end dates, calendar
+     * exclusions, and daily time exclusions. If any exclusion applies, the task
+     * is skipped.</li>
+     * <li>Executing the task based on its {@code taskType} (Bean, HTTP, Shell,
+     * Workflow) via respective executors.</li>
+     * <li>Capturing exceptions, including
+     * {@link BeanTaskExecutor.TaskTimeoutException}.</li>
+     * <li>Updating the final status in {@link TaskExecuteLog}.</li>
+     * <li>Releasing the distributed lock (if acquired) in a finally block.</li>
+     * <li>Triggering notifications via {@link NotificationService} based on
+     * task outcome and configuration.</li>
      * </ul>
      *
      * @param taskConfig The configuration of the task.
@@ -202,26 +205,32 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 this.distributedLockService.getSchedulerInstanceId(),
                 1, // Initial attempt for a cron-scheduled run
                 "NORMAL", // initialTaskPattern for cron
-                null,     // parentLogId for cron
-                null,     // effectiveBeanParametersJson for cron
-                null      // workflowNodeId for cron
+                null, // parentLogId for cron
+                null, // effectiveBeanParametersJson for cron
+                null // workflowNodeId for cron
         );
     }
 
     /**
-     * Handles the completion of a task execution attempt, scheduling retries if applicable.
+     * Handles the completion of a task execution attempt, scheduling retries if
+     * applicable.
      *
      * @param taskConfig The configuration of the task that completed.
-     * @param finalStatus The final status of the just-completed attempt (e.g., "FAILED", "TIMED_OUT", "SUCCESS").
+     * @param finalStatus The final status of the just-completed attempt (e.g.,
+     * "FAILED", "TIMED_OUT", "SUCCESS").
      * @param completedAttemptNumber The attempt number that just completed.
      * @param executionLogId The ID of the log entry for the completed attempt.
-     * @param originalInitialPattern The initialTaskPattern of the first attempt in this sequence.
-     * @param originalInitialPattern The initialTaskPattern of the first attempt in this sequence.
-     * @param originalParentLogId The parentLogId of the first attempt in this sequence (if any).
-     * @param workflowNodeId The ID of the workflow node, if this task is part of a workflow.
+     * @param originalInitialPattern The initialTaskPattern of the first attempt
+     * in this sequence.
+     * @param originalInitialPattern The initialTaskPattern of the first attempt
+     * in this sequence.
+     * @param originalParentLogId The parentLogId of the first attempt in this
+     * sequence (if any).
+     * @param workflowNodeId The ID of the workflow node, if this task is part
+     * of a workflow.
      */
     public void handleTaskCompletion(TaskConfig taskConfig, String finalStatus, int completedAttemptNumber, Long executionLogId,
-                                     String originalInitialPattern, Long originalParentLogId, String workflowNodeId) {
+            String originalInitialPattern, Long originalParentLogId, String workflowNodeId) {
         MDC.put("task_id", String.valueOf(taskConfig.getTaskId()));
         MDC.put("task_name", taskConfig.getTaskName());
         MDC.put("execute_no", String.valueOf(executionLogId)); // Log ID of the completed/failed attempt
@@ -229,7 +238,9 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
 
         if ("FAILED".equals(finalStatus) || "TIMED_OUT".equals(finalStatus)) {
             Integer maxRetries = taskConfig.getMaxRetryAttempts();
-            if (maxRetries == null) maxRetries = 0;
+            if (maxRetries == null) {
+                maxRetries = 0;
+            }
 
             if (completedAttemptNumber <= maxRetries) { // If current attempt is less than or equal to allowed retries
                 int nextAttempt = completedAttemptNumber + 1;
@@ -245,78 +256,76 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 // The `nextAttempt` should not exceed `maxRetries + 1`.
                 // So, if `completedAttemptNumber` (which just failed) is less than `maxRetries + 1` (total allowed runs), schedule next.
                 // And `nextAttempt` (which is `completedAttemptNumber + 1`) is the one being scheduled.
-
-                if (completedAttemptNumber >= (maxRetries + 1) ) { //This means all attempts (original + retries) are done
-                     logger.info("Task ID {} failed on attempt {} and max retries ({}) reached. No more retries.",
+                if (completedAttemptNumber >= (maxRetries + 1)) { //This means all attempts (original + retries) are done
+                    logger.info("Task ID {} failed on attempt {} and max retries ({}) reached. No more retries.",
                             taskConfig.getTaskId(), completedAttemptNumber, maxRetries);
-                    taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed attempt " + completedAttemptNumber + ", max retries ("+maxRetries+") reached.");
+                    taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed attempt " + completedAttemptNumber + ", max retries (" + maxRetries + ") reached.");
                     MDC.clear();
                     return;
                 }
 
-
                 Integer intervalSeconds = taskConfig.getRetryIntervalSeconds();
-                if (intervalSeconds == null || intervalSeconds < 1) intervalSeconds = 30; // Default
-
+                if (intervalSeconds == null || intervalSeconds < 1) {
+                    intervalSeconds = 30; // Default
+                }
                 logger.info("Task ID {} failed on attempt {}. Scheduling retry attempt {} in {} seconds. (Max total attempts: {})",
-                            taskConfig.getTaskId(), completedAttemptNumber, nextAttempt, intervalSeconds, maxRetries + 1);
+                        taskConfig.getTaskId(), completedAttemptNumber, nextAttempt, intervalSeconds, maxRetries + 1);
 
                 taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed attempt " + completedAttemptNumber + ", scheduling retry " + nextAttempt + ".");
 
                 TaskExecutionJob retryJob = new TaskExecutionJob(
-                    taskConfig,
-                    this.applicationContext,
-                    this.taskExecuteLogDao,
-                    this.distributedLockService,
-                    this,
-                    this.notificationService,
-                    this.distributedLockService.getSchedulerInstanceId(),
-                    nextAttempt,
-                    originalInitialPattern,
-                    originalParentLogId,
-                    null,                   // effectiveBeanParametersJson for retries (use original task config)
-                    workflowNodeId          // Pass along the workflowNodeId for retries
+                        taskConfig,
+                        this.applicationContext,
+                        this.taskExecuteLogDao,
+                        this.distributedLockService,
+                        this,
+                        this.notificationService,
+                        this.distributedLockService.getSchedulerInstanceId(),
+                        nextAttempt,
+                        originalInitialPattern,
+                        originalParentLogId,
+                        null, // effectiveBeanParametersJson for retries (use original task config)
+                        workflowNodeId // Pass along the workflowNodeId for retries
                 );
 
-                Instant nextExecutionTime = Instant.now().plusSeconds(intervalSeconds);
+                Instant nextExecutionTime = Instant.now().plusSeconds(intervalSeconds * taskConfig.getRetryIntervalMultiplier().intValue() * nextAttempt); // Exponential backoff
                 try {
                     this.taskScheduler.schedule(retryJob, nextExecutionTime); // Use the class field taskScheduler
-                     logger.info("Task ID {} retry attempt {} scheduled for {}.", taskConfig.getTaskId(), nextAttempt, nextExecutionTime);
+                    logger.info("Task ID {} retry attempt {} scheduled for {}.", taskConfig.getTaskId(), nextAttempt, nextExecutionTime);
                 } catch (Exception e) {
                     logger.error("Error scheduling retry for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
                     taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed attempt " + completedAttemptNumber + ". Retry attempt " + nextAttempt + " could not be scheduled: " + e.getMessage());
                 }
             } else {
-                 logger.info("Task ID {} failed on final attempt {} (max configured retries: {}). No more retries.",
-                            taskConfig.getTaskId(), completedAttemptNumber, maxRetries);
-                 taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed on final attempt " + completedAttemptNumber + ". Max retries ("+maxRetries+") exhausted.");
+                logger.info("Task ID {} failed on final attempt {} (max configured retries: {}). No more retries.",
+                        taskConfig.getTaskId(), completedAttemptNumber, maxRetries);
+                taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Failed on final attempt " + completedAttemptNumber + ". Max retries (" + maxRetries + ") exhausted.");
             }
         } else {
             logger.info("Task ID {} completed with status {} on attempt {}.", taskConfig.getTaskId(), finalStatus, completedAttemptNumber);
             if (completedAttemptNumber > 1 && "SUCCESS".equals(finalStatus)) {
-                 taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Successfully completed on attempt " + completedAttemptNumber + ".");
+                taskExecuteLogDao.updateLogRtnMsg(executionLogId, "Successfully completed on attempt " + completedAttemptNumber + ".");
             }
         }
 
         // Notify WorkflowExecutionService if this was a workflow node and it's terminal
         if (originalParentLogId != null && workflowNodeId != null) {
             boolean isMaxRetriesReached = taskConfig.getMaxRetryAttempts() == null ? false : completedAttemptNumber > taskConfig.getMaxRetryAttempts();
-             // Simpler: if maxRetryAttempts is 0, completedAttemptNumber 1 is already > 0.
-             // Max total attempts = maxRetryAttempts + 1. If completedAttemptNumber >= maxRetryAttempts + 1, all attempts are done.
+            // Simpler: if maxRetryAttempts is 0, completedAttemptNumber 1 is already > 0.
+            // Max total attempts = maxRetryAttempts + 1. If completedAttemptNumber >= maxRetryAttempts + 1, all attempts are done.
             if (taskConfig.getMaxRetryAttempts() != null && completedAttemptNumber > taskConfig.getMaxRetryAttempts()) { // simplified this from before
-                 isMaxRetriesReached = true;
+                isMaxRetriesReached = true;
             } else if (taskConfig.getMaxRetryAttempts() == null && completedAttemptNumber > 0) { // No retries configured, first attempt is final if failed
-                 isMaxRetriesReached = true;
+                isMaxRetriesReached = true;
             }
 
-
-            boolean isTerminal = "SUCCESS".equals(finalStatus) ||
-                                 (("FAILED".equals(finalStatus) || "TIMED_OUT".equals(finalStatus)) && isMaxRetriesReached);
+            boolean isTerminal = "SUCCESS".equals(finalStatus)
+                    || (("FAILED".equals(finalStatus) || "TIMED_OUT".equals(finalStatus)) && isMaxRetriesReached);
 
             if (isTerminal) {
                 if (this.workflowExecutionService != null) {
                     logger.debug("Notifying WES of terminal node. ParentLogId: {}, NodeId: {}, Status: {}, LastLogId: {}",
-                                originalParentLogId, workflowNodeId, finalStatus, executionLogId);
+                            originalParentLogId, workflowNodeId, finalStatus, executionLogId);
                     this.workflowExecutionService.processNodeCompletion(originalParentLogId, workflowNodeId, finalStatus, executionLogId);
                 } else {
                     logger.warn("WorkflowExecutionService not available in CoreSchedulerService to notify node completion for workflowLogId: {}, nodeId: {}", originalParentLogId, workflowNodeId);
@@ -327,9 +336,10 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     // --- Helper methods for exclusion checks (checkDateExclusions, etc.) remain unchanged ---
-
     /**
-     * Checks if the task should be excluded based on its configured start and end dates.
+     * Checks if the task should be excluded based on its configured start and
+     * end dates.
+     *
      * @param taskConfig The task configuration.
      * @return A reason string if excluded, {@code null} otherwise.
      */
@@ -345,9 +355,10 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Checks if the task should be excluded based on a configured task calendar.
-     * If a {@code taskCalendarGroup} is specified, it checks if the current date
-     * is marked as a non-working day in that calendar.
+     * Checks if the task should be excluded based on a configured task
+     * calendar. If a {@code taskCalendarGroup} is specified, it checks if the
+     * current date is marked as a non-working day in that calendar.
+     *
      * @param taskConfig The task configuration.
      * @return A reason string if excluded, {@code null} otherwise.
      */
@@ -356,18 +367,20 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             return null;
         }
         return taskCalendarDao.findCalendarByName(taskConfig.getTaskCalendarGroup())
-            .flatMap(calendar -> {
-                java.sql.Date today = java.sql.Date.valueOf(java.time.LocalDate.now());
-                return taskCalendarDao.findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), today)
-                    .filter(calendarDay -> !calendarDay.isWorkingDay())
-                    .map(nonWorkingDay -> "Skipped: Current date " + today + " is a non-working day (" + nonWorkingDay.getDescription() + ") in calendar group '" + taskConfig.getTaskCalendarGroup() + "'.");
-            })
-            .orElse(null);
+                .flatMap(calendar -> {
+                    java.sql.Date today = java.sql.Date.valueOf(java.time.LocalDate.now());
+                    return taskCalendarDao.findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), today)
+                            .filter(calendarDay -> !calendarDay.isWorkingDay())
+                            .map(nonWorkingDay -> "Skipped: Current date " + today + " is a non-working day (" + nonWorkingDay.getDescription() + ") in calendar group '" + taskConfig.getTaskCalendarGroup() + "'.");
+                })
+                .orElse(null);
     }
 
     /**
-     * Checks if the task should be excluded based on configured time ranges for the current day.
-     * Time ranges are specified in {@code taskExcludeTimes} like "HH:mm-HH:mm,HH:mm-HH:mm".
+     * Checks if the task should be excluded based on configured time ranges for
+     * the current day. Time ranges are specified in {@code taskExcludeTimes}
+     * like "HH:mm-HH:mm,HH:mm-HH:mm".
+     *
      * @param taskConfig The task configuration.
      * @return A reason string if excluded, {@code null} otherwise.
      */
@@ -400,13 +413,14 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      * Cancels a scheduled task by its ID.
      *
      * @param taskId The ID of the task to cancel.
-     * @return {@code true} if the task was successfully cancelled, {@code false} otherwise (e.g., not found or already completed).
+     * @return {@code true} if the task was successfully cancelled,
+     * {@code false} otherwise (e.g., not found or already completed).
      */
     public boolean cancelTask(Integer taskId) {
         ScheduledFuture<?> future;
         synchronized (scheduledTasks) {
-             future = scheduledTasks.remove(taskId);
-             // cronTasks.remove(taskId); // Also remove from cronTasks map if it was being used for registrar based scheduling
+            future = scheduledTasks.remove(taskId);
+            // cronTasks.remove(taskId); // Also remove from cronTasks map if it was being used for registrar based scheduling
         }
 
         if (future != null) {
@@ -424,11 +438,13 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Reschedules a task. This typically involves cancelling the existing scheduled task
-     * (if any) and then scheduling it again with the (potentially updated) configuration.
+     * Reschedules a task. This typically involves cancelling the existing
+     * scheduled task (if any) and then scheduling it again with the
+     * (potentially updated) configuration.
      *
      * @param taskConfig The configuration of the task to reschedule.
-     * @return {@code true} if the task was successfully rescheduled, {@code false} otherwise.
+     * @return {@code true} if the task was successfully rescheduled,
+     * {@code false} otherwise.
      */
     public boolean rescheduleTask(TaskConfig taskConfig) {
         if (taskConfig == null) {
@@ -440,7 +456,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         // Always cancel first, even if it's to change cron expression or activity status
         boolean wasCancelled = cancelTask(taskConfig.getTaskId());
         if (wasCancelled) {
-             logger.info("Task {} was running or scheduled and has been cancelled for rescheduling.", taskConfig.getTaskId());
+            logger.info("Task {} was running or scheduled and has been cancelled for rescheduling.", taskConfig.getTaskId());
         } else {
             logger.info("Task {} was not actively scheduled (or couldn't be cancelled), attempting to schedule/reschedule.", taskConfig.getTaskId());
         }
@@ -458,8 +474,9 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Triggers a task for immediate manual execution, regardless of its cron schedule.
-     * The task's active status and other execution rules (locking, exclusions) are still respected.
+     * Triggers a task for immediate manual execution, regardless of its cron
+     * schedule. The task's active status and other execution rules (locking,
+     * exclusions) are still respected.
      *
      * @param taskId The ID of the task to trigger.
      * @throws IllegalArgumentException if the task is not found.
@@ -470,7 +487,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Triggers a task for immediate execution with a specified initial pattern and optional parent log ID.
+     * Triggers a task for immediate execution with a specified initial pattern
+     * and optional parent log ID.
      *
      * @param taskId The ID of the task to trigger.
      * @param initialPattern The task pattern for the first attempt.
@@ -481,14 +499,15 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         triggerTaskManually(taskId, initialPattern, parentLogId, null, null);
     }
 
-     /**
-     * Triggers a task for immediate execution with specified initial pattern, optional parent log ID,
-     * and optional override bean parameters.
+    /**
+     * Triggers a task for immediate execution with specified initial pattern,
+     * optional parent log ID, and optional override bean parameters.
      *
      * @param taskId The ID of the task to trigger.
      * @param initialPattern The task pattern for the first attempt.
      * @param parentLogId The parent log ID if this task is part of a workflow.
-     * @param effectiveBeanParametersJson JSON string of bean parameters to use for this specific run.
+     * @param effectiveBeanParametersJson JSON string of bean parameters to use
+     * for this specific run.
      * @throws IllegalArgumentException if the task is not found.
      */
     public void triggerTaskManually(Integer taskId, String initialPattern, Long parentLogId, String effectiveBeanParametersJson) {
@@ -496,14 +515,18 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     }
 
     /**
-     * Triggers a task for immediate execution with specified initial pattern, optional parent log ID,
-     * optional override bean parameters, and optional workflow node ID.
+     * Triggers a task for immediate execution with specified initial pattern,
+     * optional parent log ID, optional override bean parameters, and optional
+     * workflow node ID.
      *
      * @param taskId The ID of the task to trigger.
-     * @param initialPattern The task pattern for the first attempt (e.g., "WORKFLOW_STEP").
+     * @param initialPattern The task pattern for the first attempt (e.g.,
+     * "WORKFLOW_STEP").
      * @param parentLogId The parent log ID if this task is part of a workflow.
-     * @param effectiveBeanParametersJson JSON string of bean parameters to use for this specific run, overriding stored ones.
-     * @param workflowNodeId The ID of the node in the workflow, if this task is a workflow step.
+     * @param effectiveBeanParametersJson JSON string of bean parameters to use
+     * for this specific run, overriding stored ones.
+     * @param workflowNodeId The ID of the node in the workflow, if this task is
+     * a workflow step.
      * @throws IllegalArgumentException if the task is not found.
      */
     public void triggerTaskManually(Integer taskId, String initialPattern, Long parentLogId, String effectiveBeanParametersJson, String workflowNodeId) {
@@ -538,10 +561,9 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         logger.info("Manually triggered task ID: {}. Pattern: {}. ParentLogID: {}. Attempt 1. Execution outcome will be logged.", taskId, initialPattern, parentLogId);
     }
 
-
     /**
-     * Shuts down the scheduler service, cancelling all scheduled tasks.
-     * This is called when the application context is destroyed.
+     * Shuts down the scheduler service, cancelling all scheduled tasks. This is
+     * called when the application context is destroyed.
      */
     @PreDestroy
     public void shutdown() {
@@ -558,9 +580,9 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             ((org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler) this.taskScheduler).shutdown();
         }
         // Also, if taskRegistrar was used and has its own scheduler:
-        if (this.taskRegistrar != null && this.taskRegistrar.getScheduler() != null &&
-            this.taskRegistrar.getScheduler() instanceof org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler) {
-             logger.info("Attempting to shut down taskRegistrar's ThreadPoolTaskScheduler.");
+        if (this.taskRegistrar != null && this.taskRegistrar.getScheduler() != null
+                && this.taskRegistrar.getScheduler() instanceof org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler) {
+            logger.info("Attempting to shut down taskRegistrar's ThreadPoolTaskScheduler.");
             ((org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler) this.taskRegistrar.getScheduler()).shutdown();
         }
         logger.info("CoreSchedulerService shutdown complete.");
