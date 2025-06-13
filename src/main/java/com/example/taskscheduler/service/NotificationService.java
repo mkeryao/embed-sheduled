@@ -1,20 +1,21 @@
 package com.example.taskscheduler.service;
 
-import com.example.taskscheduler.dao.TaskUserDao;
-import com.example.taskscheduler.entity.TaskConfig;
-import com.example.taskscheduler.entity.TaskExecuteLog;
-import com.example.taskscheduler.entity.TaskUser;
-import com.example.taskscheduler.notification.NotificationChannel;
-import com.example.taskscheduler.notification.NotificationContext;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import com.example.taskscheduler.dao.TaskUserDao;
+import com.example.taskscheduler.entity.TaskConfig;
+import com.example.taskscheduler.entity.TaskExecuteLog;
+import com.example.taskscheduler.entity.TaskUser;
+import com.example.taskscheduler.notification.NotificationChannel;
+import com.example.taskscheduler.notification.NotificationContext;
 
 /**
  * Service responsible for orchestrating notifications based on task execution outcomes.
@@ -42,7 +43,6 @@ public class NotificationService {
      *
      * @param notificationChannels A list of discovered notification channel implementations.
      */
-    @Autowired
     public NotificationService(List<NotificationChannel> notificationChannels) {
         this.notificationChannels = notificationChannels;
         if (notificationChannels != null) {

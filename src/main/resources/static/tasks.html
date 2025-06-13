@@ -5,8 +5,7 @@
     <title data-i18n-key="tasksPage.title">Task Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    
-    <link rel="stylesheet" href="css/style.css">
-    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
     <script src="js/main.js"></script>
@@ -14,18 +13,94 @@
     <script src="js/i18n-init.js"></script>
     <script src="js/tasks-helper.js"></script>
     <script src="js/tasks-core.js"></script>
-    <script src="js/tasks-workflow.js"></script>
+    <script src="js/tasks-workflow-fixed.js"></script>
+    <script src="js/dropdown-fix.js"></script>
     <script src="js/tasks-ui.js"></script>
+    <style>
+        /* Add margin below navbar container to prevent content overlap */
+        #navbar-container {
+            margin-bottom: 70px;
+        }
+        
+        /* 工作流图形区域样式 */
+        #dagContainer {
+            min-height: 400px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            overflow: auto;
+            position: relative;
+        }
+        
+        .workflow-dag-svg {
+            background-color: white;
+            width: 100%;
+            height: auto;
+        }
+        
+        /* 节点样式 */
+        .workflow-node {
+            cursor: move;
+        }
+        
+        .workflow-node-label {
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+            fill: #212529;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+        
+        .workflow-edge {
+            stroke: #6c757d;
+            stroke-width: 2px;
+            fill: none;
+        }
+        
+        .workflow-edge-label {
+            font-size: 10px;
+            font-family: Arial, sans-serif;
+            fill: #495057;
+            text-anchor: middle;
+        }
+        
+        /* 避免节点拖动时选中文本 */
+        svg text {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        
+        /* 节点类型样式 */
+        .node-start circle {
+            fill: #28a745;
+        }
+        
+        .node-end circle {
+            fill: #dc3545;
+        }
+        
+        .node-process circle {
+            fill: #007bff;
+        }
+        
+        .node-decision circle {
+            fill: #ffc107;
+        }
+        
+        .node-parallel circle {
+            fill: #6f42c1;
+        }
+    </style>
 </head>
 <body>
     <div id="navbar-container"></div>
 
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center my-3">
+    <div class="container">        <div class="d-flex justify-content-between align-items-center my-3">
             <h2 data-i18n-key="tasksPage.header">Task Management</h2>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#taskFormModal" id="addTaskBtn" data-i18n-key="tasksPage.addTaskBtn">Add Task</button>
+            <button class="btn btn-primary" id="addTaskBtn" data-i18n-key="tasksPage.addTaskBtn">Add Task</button>
         </div>
-
         <div class="card mb-3">
             <div class="card-header" data-i18n-key="tasksPage.filters.header">Task Filters</div>
             <div class="card-body">
@@ -79,375 +154,510 @@
                 <!-- Task rows will be inserted here by jQuery -->
             </tbody>
         </table>
-    </div>    <!-- Task Form Modal -->
+    </div>
+
+    <!-- 任务表单模态窗口 -->
     <div class="modal fade" id="taskFormModal" tabindex="-1" role="dialog" aria-labelledby="taskFormModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="taskFormModalLabel">Add/Edit Task</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+      <div class="modal-dialog modal-xl" role="document" style="max-width: 90vw;">
+        <div class="modal-content">
+          <form id="task-form">
+            <div class="modal-header">
+              <h5 class="modal-title" id="taskFormModalLabel" data-i18n-key="tasksPage.modal.title">Add / Edit Task</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+              <input type="hidden" id="taskId" name="taskId" value="">
+              <div class="form-row">
+                <div class="form-group col-md-6">
+                  <label for="taskName" data-i18n-key="tasksPage.modal.taskName">Task Name</label>
+                  <input type="text" class="form-control" id="taskName" name="taskName" required>
                 </div>
-                <div class="modal-body">
-                    <form id="task-form">
-                        <input type="hidden" id="taskId">
+                <div class="form-group col-md-6">
+                  <label for="taskGroup" data-i18n-key="tasksPage.modal.taskGroup">Task Group</label>
+                  <input type="text" class="form-control" id="taskGroup" name="taskGroup">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group col-md-6">
+                  <label for="cronExpression" data-i18n-key="tasksPage.modal.cronExpression">CRON Expression</label>
+                  <input type="text" class="form-control" id="cronExpression" name="cronExpression" required>
+                </div>
+                <div class="form-group col-md-6">
+                  <label for="executionMode" data-i18n-key="tasksPage.modal.executionMode">Execution Mode</label>
+                  <select class="form-control" id="executionMode" name="executionMode">
+                    <option value="BROADCAST" data-i18n-key="tasksPage.modal.executionMode.broadcast">Broadcast</option>
+                    <option value="SINGLE" data-i18n-key="tasksPage.modal.executionMode.single">Single</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="description" data-i18n-key="tasksPage.modal.description">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="taskType" data-i18n-key="tasksPage.modal.taskType">Task Type</label>
+                <select class="form-control" id="taskType" name="taskType" required>
+                  <option value="0" data-i18n-key="tasksPage.modal.taskTypes.bean">Bean Task</option>
+                  <option value="2" data-i18n-key="tasksPage.modal.taskTypes.http">HTTP Task</option>
+                  <option value="4" data-i18n-key="tasksPage.modal.taskTypes.shell">Shell Script Task</option>
+                  <option value="10" data-i18n-key="tasksPage.modal.taskTypes.workflow">Workflow Task</option>
+                </select>
+              </div>
+
+              <!-- Bean Task Fields -->
+              <div id="beanTaskFields" class="type-specific-fields" style="display:none;">
+                <div class="form-group">
+                  <label for="beanName" data-i18n-key="tasksPage.modal.beanName">Bean Name</label>
+                  <input type="text" class="form-control" id="beanName" name="beanName">
+                </div>
+                <div class="form-group">
+                  <label for="methodName" data-i18n-key="tasksPage.modal.methodName">Method Name</label>
+                  <input type="text" class="form-control" id="methodName" name="methodName">
+                </div>
+                <div class="form-group">
+                  <label for="beanParameters" data-i18n-key="tasksPage.modal.beanParameters">Parameters (JSON)</label>
+                  <textarea class="form-control" id="beanParameters" name="beanParameters" rows="3"></textarea>
+                </div>
+              </div>
+
+              <!-- HTTP Task Fields -->
+              <div id="httpTaskFields" class="type-specific-fields" style="display:none;">
+                <div class="form-group">
+                  <label for="httpUrl" data-i18n-key="tasksPage.modal.httpUrl">URL</label>
+                  <input type="text" class="form-control" id="httpUrl" name="httpUrl">
+                </div>
+                <div class="form-group">
+                  <label for="httpMethod" data-i18n-key="tasksPage.modal.httpMethod">Method</label>
+                  <select class="form-control" id="httpMethod" name="httpMethod">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="httpHeaders" data-i18n-key="tasksPage.modal.httpHeaders">Headers (JSON)</label>
+                  <textarea class="form-control" id="httpHeaders" name="httpHeaders" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="httpBody" data-i18n-key="tasksPage.modal.httpBody">Body</label>
+                  <textarea class="form-control" id="httpBody" name="httpBody" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                  <div class="form-group col-md-4">
+                    <label for="httpConnectTimeout" data-i18n-key="tasksPage.modal.httpConnectTimeout">Connect Timeout (ms)</label>
+                    <input type="number" class="form-control" id="httpConnectTimeout" name="httpConnectTimeout" value="5000">
+                  </div>
+                  <div class="form-group col-md-4">
+                    <label for="httpReadTimeout" data-i18n-key="tasksPage.modal.httpReadTimeout">Read Timeout (ms)</label>
+                    <input type="number" class="form-control" id="httpReadTimeout" name="httpReadTimeout" value="30000">
+                  </div>
+                  <div class="form-group col-md-4">
+                    <label for="httpRetryCount" data-i18n-key="tasksPage.modal.httpRetryCount">Retry Count</label>
+                    <input type="number" class="form-control" id="httpRetryCount" name="httpRetryCount" value="0">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="httpSuccessCode" data-i18n-key="tasksPage.modal.httpSuccessCode">Success Code</label>
+                  <input type="text" class="form-control" id="httpSuccessCode" name="httpSuccessCode" value="200">
+                </div>
+              </div>
+
+              <!-- Shell Script Task Fields -->
+              <div id="shellTaskFields" class="type-specific-fields" style="display:none;">
+                <div class="form-group">
+                  <label for="shellScriptContent" data-i18n-key="tasksPage.modal.shellScriptContent">Script Content</label>
+                  <textarea class="form-control" id="shellScriptContent" name="shellScriptContent" rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="shellIsInlineScript" data-i18n-key="tasksPage.modal.shellIsInlineScript">Is Inline Script</label>
+                  <input type="checkbox" id="shellIsInlineScript" name="shellIsInlineScript">
+                </div>
+                <div class="form-group">
+                  <label for="shellArguments" data-i18n-key="tasksPage.modal.shellArguments">Arguments (one per line)</label>
+                  <textarea class="form-control" id="shellArguments" name="shellArguments" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="shellWorkingDirectory" data-i18n-key="tasksPage.modal.shellWorkingDirectory">Working Directory</label>
+                  <input type="text" class="form-control" id="shellWorkingDirectory" name="shellWorkingDirectory">
+                </div>
+              </div>
+
+              <!-- Workflow Task Fields -->              <div id="workflowTaskFields" class="type-specific-fields" style="display:none;">
+                <!-- 工作流编辑器模式切换 -->
+                <div class="btn-group mb-3" role="group" aria-label="Editor Mode">
+                    <button type="button" class="btn btn-secondary active" id="editorModeGraph" data-i18n-key="tasksPage.modal.workflowTaskFields.graphMode">Graph Mode</button>
+                    <button type="button" class="btn btn-secondary" id="editorModeForm" data-i18n-key="tasksPage.modal.workflowTaskFields.formMode">Form Mode</button>
+                </div>
+                
+                <!-- 图形模式控制和交互区域 -->
+                <div class="card mb-3" id="graphModeContainer">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span data-i18n-key="tasksPage.modal.workflowTaskFields.graphModeTitle">Workflow Graph</span>
+                        <div class="btn-group" role="group" aria-label="Graph Controls">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="zoomInBtn" title="Zoom In">
+                                <i class="bi bi-zoom-in"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="zoomOutBtn" title="Zoom Out">
+                                <i class="bi bi-zoom-out"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="resetZoomBtn" title="Reset Zoom">
+                                <i class="bi bi-arrows-fullscreen"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="addNodeBtn" title="Add Node">
+                                <i class="bi bi-plus-circle"></i> <span data-i18n-key="tasksPage.modal.workflowTaskFields.addNode">Add Node</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- DAG图容器 -->
+                        <div id="dagContainer" class="border rounded p-2" style="min-height: 400px; overflow: auto;">
+                            <!-- SVG将由JS动态生成 -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 节点助手面板 -->
+                <div class="card mb-3" id="nodeHelperCard">
+                    <div class="card-header d-flex justify-content-between">
+                        <span data-i18n-key="tasksPage.modal.workflowTaskFields.nodeHelper">Node Helper</span>
+                        <button class="btn btn-sm btn-link" id="toggleNodeHelper">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                    </div>
+                    <div class="card-body" id="nodeHelperContent">
                         <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label for="taskName" data-i18n-key="tasksPage.modal.taskNameLabel">Task Name</label>
-                                <input type="text" class="form-control" id="taskName" data-i18n-key-placeholder="tasksPage.modal.taskNamePlaceholder" placeholder="Enter task name" required>
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label for="taskGroup" data-i18n-key="tasksPage.modal.taskGroupLabel">Task Group</label>
-                                <input type="text" class="form-control" id="taskGroup" data-i18n-key-placeholder="tasksPage.modal.taskGroupPlaceholder" placeholder="Enter task group" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="cronExpression" data-i18n-key="tasksPage.modal.cronLabel">CRON Expression</label>
-                            <input type="text" class="form-control" id="cronExpression" required>
-                            <div class="mt-1">
-                                <button type="button" class="btn btn-sm btn-outline-secondary" id="validateCronBtn" data-i18n-key="tasksPage.modal.validateCronBtn">Validate & Show Next Runtimes</button>
-                            </div>
-                            <div id="cronValidationResult" class="mt-1" style="display: none;">
-                                <!-- Validation message and next times will be shown here -->
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="description" data-i18n-key="tasksPage.modal.descriptionLabel">Description</label>
-                            <textarea class="form-control" id="description" rows="2"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="executionMode" data-i18n-key="tasksPage.modal.executionModeLabel">Execution Mode</label>
-                            <select class="form-control" id="executionMode">
-                                <option value="BROADCAST" data-i18n-key="tasksPage.modal.executionModeBroadcast">Broadcast (All Instances)</option>
-                                <option value="CLUSTER" data-i18n-key="tasksPage.modal.executionModeCluster">Cluster (Single Instance via Lock)</option>                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="taskType" data-i18n-key="tasksPage.modal.taskTypeLabel">Task Type</label>
-                            <select class="form-control" id="taskType">
-                                <option value="0" data-i18n-key="tasksPage.modal.taskTypes.bean">Bean Task</option>
-                                <option value="2" data-i18n-key="tasksPage.modal.taskTypes.http">HTTP Task</option>
-                                <option value="4" data-i18n-key="tasksPage.modal.taskTypes.shell">Shell Script Task</option>
-                                <option value="10" data-i18n-key="tasksPage.modal.taskTypes.workflow">Workflow Task</option>
-                            </select>
-                        </div>
-
-                        <!-- Type Specific Fields Container -->
-                        <div id="typeSpecificFieldsContainer">
-                            <!-- Bean Task Specific Fields (type 0) -->
-                            <div id="beanTaskFields" class="type-specific-fields" style="display:none;">
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <label for="beanName" data-i18n-key="tasksPage.modal.beanTaskFields.beanNameLabel">Bean Name</label>
-                                        <input type="text" class="form-control" id="beanName" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanNamePlaceholder" placeholder="e.g., mySampleTask">
-                                    </div>
-                                    <div class="form-group col-md-6">
-                                        <label for="methodName" data-i18n-key="tasksPage.modal.beanTaskFields.methodNameLabel">Method Name</label>
-                                        <input type="text" class="form-control" id="methodName" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.methodNamePlaceholder" placeholder="e.g., executeSuccess">
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="beanParameters" data-i18n-key="tasksPage.modal.beanTaskFields.beanParamsLabel">Bean Parameters (JSON)</label>
-                                    <textarea class="form-control" id="beanParameters" rows="2" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanParamsPlaceholder" placeholder='{"key": "value"}'></textarea>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="beanParameters" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
-                                </div>
-                            </div>
-
-                            <!-- Shell Script Task Specific Fields (type 1) -->
-                            <div id="shellTaskFields" class="type-specific-fields" style="display:none;">
-                                <div class="form-group">
-                                    <label for="shellScriptContent" data-i18n-key="tasksPage.modal.shellTaskFields.scriptLabel">Script Content or Path</label>
-                                    <textarea class="form-control" id="shellScriptContent" rows="3" data-i18n-key-placeholder="tasksPage.modal.shellTaskFields.scriptPlaceholder" placeholder="e.g., echo 'Hello' or /path/to/script.sh"></textarea>
-                                </div>
-                                <div class="form-group form-check">
-                                    <input type="checkbox" class="form-check-input" id="shellIsInlineScript">
-                                    <label class="form-check-label" for="shellIsInlineScript" data-i18n-key="tasksPage.modal.shellTaskFields.inlineScriptLabel">Is Inline Script (vs. Path)</label>
-                                </div>
-                                <div class="form-group">
-                                    <label for="shellArguments" data-i18n-key="tasksPage.modal.shellTaskFields.argsLabel">Arguments (one per line)</label>
-                                    <textarea class="form-control" id="shellArguments" rows="2" data-i18n-key-placeholder="tasksPage.modal.shellTaskFields.argsPlaceholder" placeholder="arg1&#10;arg2 with spaces"></textarea>
-                                </div>
-                                <div class="form-group">
-                                    <label for="shellWorkingDirectory" data-i18n-key="tasksPage.modal.shellTaskFields.workDirLabel">Working Directory (Optional)</label>
-                                    <input type="text" class="form-control" id="shellWorkingDirectory" data-i18n-key-placeholder="tasksPage.modal.shellTaskFields.workDirPlaceholder" placeholder="e.g., /tmp">
-                                </div>
-                                <small class="form-text text-muted" data-i18n-key="tasksPage.modal.shellTaskFields.note">
-                                    Note: Shell script parameters (script, arguments, workingDirectory, isInlineScript) will be stored as a JSON object in the generic "Bean Parameters" field in the database.
-                                    The fields below (Bean Name, Method Name) are not used for Shell tasks.
-                                </small>
-                            </div>
-
-                            <!-- HTTP Task Specific Fields (type 2) -->
-                            <div id="httpTaskFields" class="type-specific-fields" style="display:none;">
-                                <div class="form-group">
-                                    <label for="httpUrl" data-i18n-key="tasksPage.modal.httpTaskFields.urlLabel">HTTP URL</label>
-                                    <input type="url" class="form-control" id="httpUrl" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.urlPlaceholder" placeholder="https://example.com/api/data" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="httpMethod" data-i18n-key="tasksPage.modal.httpTaskFields.methodLabel">HTTP Method</label>
-                                    <select class="form-control" id="httpMethod">
-                                        <option value="GET">GET</option>
-                                        <option value="POST">POST</option>
-                                        <option value="PUT">PUT</option>
-                                        <option value="DELETE">DELETE</option>
+                            <div class="col-md-6 mb-3">
+                                <label for="availableTasksForNodes" data-i18n-key="tasksPage.modal.workflowTaskFields.selectTask">Select Task:</label>
+                                <div class="input-group">
+                                    <select class="form-control" id="availableTasksForNodes">
+                                        <option value="" data-i18n-key="tasksPage.modal.workflowTaskFields.selectTaskPrompt">-- Select a task --</option>
                                     </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="httpHeaders" data-i18n-key="tasksPage.modal.httpTaskFields.headersLabel">HTTP Headers (JSON)</label>
-                                    <textarea class="form-control" id="httpHeaders" rows="2" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.headersPlaceholder" placeholder='{"Content-Type": "application/json", "X-API-KEY":"secret"}'></textarea>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="httpHeaders" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
-                                </div>
-                                <div class="form-group">
-                                    <label for="httpBody" data-i18n-key="tasksPage.modal.httpTaskFields.bodyLabel">HTTP Body (e.g., JSON for POST/PUT)</label>
-                                    <textarea class="form-control" id="httpBody" rows="3" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.bodyPlaceholder" placeholder='{"key": "value"}'></textarea>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="httpBody" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group col-md-6">
-                                        <label for="httpConnectTimeout" data-i18n-key="tasksPage.modal.httpTaskFields.connectTimeoutLabel">Connect Timeout (ms, Optional)</label>
-                                        <input type="number" class="form-control" id="httpConnectTimeout" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.connectTimeoutPlaceholder" placeholder="e.g., 5000">
-                                    </div>
-                                    <div class="form-group col-md-6">
-                                        <label for="httpReadTimeout" data-i18n-key="tasksPage.modal.httpTaskFields.readTimeoutLabel">Read Timeout (ms, Optional)</label>
-                                        <input type="number" class="form-control" id="httpReadTimeout" data-i18n-key-placeholder="tasksPage.modal.httpTaskFields.readTimeoutPlaceholder" placeholder="e.g., 10000">
-                                    </div>
-                                </div>
-                                 <small class="form-text text-muted" data-i18n-key="tasksPage.modal.httpTaskFields.note">
-                                    Note: HTTP task parameters will be stored as a JSON object in the generic "Bean Parameters" field in the database.
-                                    The fields below (Bean Name, Method Name) are not used for HTTP tasks.
-                                </small>
-                            </div>                            <!-- Workflow Task Specific Fields (type 3) -->
-                            <div id="workflowTaskFields" class="type-specific-fields" style="display:none;">
-                                <div class="card mt-3 mb-3" id="nodeHelperCard">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <span data-i18n-key="tasksPage.modal.workflowTaskFields.nodeHelperCardHeader">Workflow Node Helper</span>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleNodeHelper">
-                                            <i class="bi bi-chevron-up"></i>
+                                    <div class="input-group-append">
+                                        <button class="btn btn-outline-secondary" type="button" id="refreshAvailableTasks">
+                                            <i class="bi bi-arrow-clockwise"></i>
                                         </button>
                                     </div>
-                                    <div class="card-body" id="nodeHelperContent">
-                                        <div class="form-group">
-                                            <label for="availableTasksForNodes" data-i18n-key="tasksPage.modal.workflowTaskFields.selectTaskLabel">Select Task to Add as Node:</label>
-                                            <select id="availableTasksForNodes" class="form-control">
-                                                <!-- Options populated by JS, placeholder option text set in JS -->
-                                            </select>
-                                        </div>
-                                        <div class="form-row">
-                                            <div class="form-group col-md-6">
-                                                <label for="wfNodeId" data-i18n-key="tasksPage.modal.workflowTaskFields.nodeIdLabel">Node ID (Unique)</label>
-                                                <input type="text" id="wfNodeId" class="form-control" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodeIdPlaceholder" placeholder="e.g., step1">
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                <label for="wfNodeName" data-i18n-key="tasksPage.modal.workflowTaskFields.nodeNameLabel">Node Name (Display)</label>
-                                                <input type="text" id="wfNodeName" class="form-control" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodeNamePlaceholder" placeholder="e.g., Process Data">
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="wfNodeParams" data-i18n-key="tasksPage.modal.workflowTaskFields.nodeParamsLabel">Node-Specific Parameters (JSON, Optional)</label>
-                                            <textarea id="wfNodeParams" class="form-control" rows="2" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodeParamsPlaceholder" placeholder='{"input_file": "/path/to/data.csv"}'></textarea>
-                                        </div>
-                                        <button type="button" id="addNodeToJsonBtn" class="btn btn-info btn-sm" data-i18n-key="tasksPage.modal.workflowTaskFields.addNodeBtn">Add/Update Node in JSON Below</button>
-                                        <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.addNodeNote">This helper populates the 'Workflow Nodes (JSON)' field. Ensure Node IDs are unique within this workflow.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="displayNodeId" data-i18n-key="tasksPage.modal.workflowTaskFields.currentNodeId">Current Node:</label>
+                                <p id="displayNodeId" class="form-control-plaintext">No node selected</p>
+                                <input type="hidden" id="editingNodeArrayIndex" value="">
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col">
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button" id="quickAddNodeDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-i18n-key="tasksPage.modal.workflowTaskFields.quickAddBtn">
+                                        Quick Add Node
+                                    </button>
+                                    <div class="dropdown-menu" aria-labelledby="quickAddNodeDropdown">
+                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="start" data-i18n-key="tasksPage.modal.workflowTaskFields.startNode">开始节点</a>
+                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="end" data-i18n-key="tasksPage.modal.workflowTaskFields.endNode">结束节点</a>
+                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="process" data-i18n-key="tasksPage.modal.workflowTaskFields.processNode">处理节点</a>
+                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="decision" data-i18n-key="tasksPage.modal.workflowTaskFields.decisionNode">决策节点</a>
+                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="parallel" data-i18n-key="tasksPage.modal.workflowTaskFields.parallelNode">并行节点</a>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="globalParametersJson" data-i18n-key="tasksPage.modal.workflowTaskFields.globalParamsLabel">Global Parameters (JSON, Optional)</label>
-                                    <textarea class="form-control" id="globalParametersJson" rows="3" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.globalParamsPlaceholder" placeholder='{"key": "globalValue", "api_url": "https://example.com"}'></textarea>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="globalParametersJson" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
+                                <div class="btn-group ml-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="addEdgeBtn" data-i18n-key="tasksPage.modal.workflowTaskFields.addEdge">
+                                        <i class="bi bi-link"></i> Add Edge
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="deleteNodeBtn" data-i18n-key="tasksPage.modal.workflowTaskFields.deleteNode">
+                                        <i class="bi bi-trash"></i> Delete Node
+                                    </button>
                                 </div>
-                            <div class="form-group">
-                                <label for="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonLabel">Workflow Nodes (JSON)</label>
-                                <textarea class="form-control" id="workflowNodesJson" rows="5" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodesJsonPlaceholder" placeholder='[{"nodeId":"node1", "taskConfigId":1, "parameters": {"input": "${global_api_key}"} }]'></textarea>
-                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="workflowNodesJson" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
-                                <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonNote">Define tasks (nodes). Parameters can use templating like `${nodeA_status}` or `${global_param}`.</small>
-                            </div>                            <!-- 工作流编辑模式切换 -->
-                            <div class="form-group">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label data-i18n-key="tasksPage.modal.workflowTaskFields.visualizerHeader">工作流可视化</label>
-                                    <div class="btn-group btn-group-sm" role="group">
-                                        <button type="button" id="editorModeForm" class="btn btn-outline-secondary active" data-i18n-key="tasksPage.modal.workflowTaskFields.formMode">表单模式</button>
-                                        <button type="button" id="editorModeGraph" class="btn btn-outline-secondary" data-i18n-key="tasksPage.modal.workflowTaskFields.graphMode">图形模式</button>
-                                    </div>
-                                </div>
-                                
-                                <div id="workflowControlsContainer" class="mb-2">
-                                    <div id="formModeControls">
-                                        <button type="button" id="refreshDagViewBtn" class="btn btn-sm btn-outline-primary" data-i18n-key="tasksPage.modal.workflowTaskFields.refreshDagBtn">刷新视图</button>
-                                        <button type="button" id="autoLayoutBtn" class="btn btn-sm btn-outline-secondary ml-1" data-i18n-key="tasksPage.modal.workflowTaskFields.autoLayoutBtn">自动排版</button>
-                                    </div>                                <div id="graphModeControls" style="display:none;">
-                                        <div class="alert alert-info p-2 small" data-i18n-key="tasksPage.modal.workflowTaskFields.graphModeHelp">
-                                            图形模式：拖拽节点调整位置；点击节点后点击其他节点创建连接；双击节点或边缘编辑属性
-                                        </div>
-                                        <div class="btn-toolbar mb-2">
-                                            <div class="btn-group btn-group-sm mr-2">
-                                                <button type="button" id="addNodeBtn" class="btn btn-sm btn-success" data-i18n-key="tasksPage.modal.workflowTaskFields.addNodeBtn">添加节点</button>
-                                                <button type="button" id="applyChangesBtn" class="btn btn-sm btn-primary" data-i18n-key="tasksPage.modal.workflowTaskFields.applyChangesBtn">应用更改</button>
-                                                <div class="dropdown d-inline-block">
-                                                    <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button" id="quickAddNodeDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" data-i18n-key="tasksPage.modal.workflowTaskFields.quickAddBtn">
-                                                        快速添加
-                                                    </button>
-                                                    <div class="dropdown-menu" aria-labelledby="quickAddNodeDropdown">
-                                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="start" data-i18n-key="tasksPage.modal.workflowTaskFields.startNode">开始节点</a>
-                                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="end" data-i18n-key="tasksPage.modal.workflowTaskFields.endNode">结束节点</a>
-                                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="process" data-i18n-key="tasksPage.modal.workflowTaskFields.processNode">处理节点</a>
-                                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="decision" data-i18n-key="tasksPage.modal.workflowTaskFields.decisionNode">决策节点</a>
-                                                        <a class="dropdown-item quick-add-node" href="#" data-node-type="parallel" data-i18n-key="tasksPage.modal.workflowTaskFields.parallelNode">并行节点</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="btn-group btn-group-sm">
-                                                <button type="button" id="zoomInBtn" class="btn btn-outline-secondary" title="放大">+</button>
-                                                <button type="button" id="zoomOutBtn" class="btn btn-outline-secondary" title="缩小">-</button>
-                                                <button type="button" id="resetZoomBtn" class="btn btn-outline-secondary" title="重置缩放">1:1</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div id="dagContainer" style="width: 100%; min-height: 350px; background-color: #f8f9fa; border: 1px solid #dee2e6; position: relative; overflow: auto; padding: 10px;">
-                                    <!-- SVG content will be generated here -->
-                                </div>
-                                <small id="dagHelpText" class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.dagContainerPlaceholderInitial">节点基于上方"工作流节点(JSON)"，边缘基于下方"工作流边缘(JSON)"</small>
-                            </div>
-
-                            <!-- 工作流边缘定义 -->
-                            <div id="edgeDefinitionForm" class="form-group">
-                                <label for="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonLabel">工作流边缘 (JSON)</label>
-                                <textarea class="form-control" id="workflowEdgesJson" rows="4" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.edgesJsonPlaceholder" placeholder='[{"fromNodeId":"node1", "toNodeId":"node2", "expression": "${node1_status} == ''SUCCESS''"}]'></textarea>
-                                <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="workflowEdgesJson" data-i18n-key="tasksPage.modal.formatJsonBtn">格式化JSON</button>
-                                <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonNote">定义节点间的转换和条件</small>
                             </div>
                         </div>
-                        </div> <!-- End of typeSpecificFieldsContainer -->
-
-                        <hr>
-                        <h5 data-i18n-key="tasksPage.modal.advancedSettingsHeader">Advanced Settings</h5>
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label for="startDate" data-i18n-key="tasksPage.modal.startDateLabel">Start Date (Optional)</label>
-                                <input type="datetime-local" class="form-control" id="startDate">
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label for="endDate" data-i18n-key="tasksPage.modal.endDateLabel">End Date (Optional)</label>
-                                <input type="datetime-local" class="form-control" id="endDate">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                             <div class="form-group col-md-6">
-                                <label for="taskCalendarGroup" data-i18n-key="tasksPage.modal.calendarGroupLabel">Calendar Group for Exclusions (Optional)</label>
-                                <select class="form-control" id="taskCalendarGroup"><option value="" data-i18n-key="tasksPage.modal.calendarGroupDefaultOption">-- Select Calendar --</option></select>
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label for="taskExcludeTimes" data-i18n-key="tasksPage.modal.excludeTimesLabel">Exclude Times (Optional)</label>
-                                <input type="text" class="form-control" id="taskExcludeTimes" data-i18n-key-placeholder="tasksPage.modal.excludeTimesPlaceholder" placeholder="e.g., 00:00-08:00,22:00-23:59">
-                            </div>
-                        </div>
-                         <div class="form-group">
-                            <label for="executeTimeoutSeconds" data-i18n-key="tasksPage.modal.timeoutLabel">Execution Timeout (seconds, 0 for no timeout)</label>
-                            <input type="number" class="form-control" id="executeTimeoutSeconds" value="0">
-                        </div>
-
-                        <hr>
-                        <h5 data-i18n-key="tasksPage.modal.retrySettingsHeader">Failure Retry Settings</h5>
-                        <div class="form-row">
-                            <div class="form-group col-md-4">
-                                <label for="maxRetries" data-i18n-key="tasksPage.modal.maxRetriesLabel">Maximum Retries</label>
-                                <input type="number" class="form-control" id="maxRetries" min="0" value="0">
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label for="retryInterval" data-i18n-key="tasksPage.modal.retryIntervalLabel">Retry Interval (seconds)</label>
-                                <input type="number" class="form-control" id="retryInterval" min="1" value="30">
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label for="retryIntervalMultiplier" data-i18n-key="tasksPage.modal.retryIntervalMultiplierLabel">Interval Multiplier</label>
-                                <input type="number" class="form-control" id="retryIntervalMultiplier" min="1" step="0.5" value="1">
-                            </div>
-                        </div>
-
-                        <hr>
-                        <h5 data-i18n-key="tasksPage.modal.notificationSettingsHeader">Notification Settings</h5>
-                         <div class="form-group">
-                            <label for="notifySuccessUserIds" data-i18n-key="tasksPage.modal.notifySuccessLabel">Notify Success - User IDs</label>
-                            <select multiple class="form-control" id="notifySuccessUserIds"></select>
-                        </div>
-                        <div class="form-group">
-                            <label for="notifyFailedUserIds" data-i18n-key="tasksPage.modal.notifyFailedLabel">Notify Failure/Timeout - User IDs</label>
-                            <select multiple class="form-control" id="notifyFailedUserIds"></select>
-                        </div>
-
-                        <div class="form-group form-check mt-3">
-                            <input type="checkbox" class="form-check-input" id="isActive">
-                            <label class="form-check-label" for="isActive" data-i18n-key="tasksPage.modal.activeLabel">Active</label>
-                        </div>
-                        <button type="submit" class="btn btn-success" data-i18n-key="tasksPage.modal.saveBtn">Save Task</button>
-                    </form>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
+                
+                <!-- JSON编辑区域 -->
+                <div id="workflowJsonContainer">
+                    <div class="form-row" id="workflowJsonRefreshRow">
+                        <div class="col-md-12 mb-2">
+                            <button class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.formatNodesBtn">Format Nodes JSON</button>
+                            <button class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.formatEdgesBtn">Format Edges JSON</button>
+                            <button class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="globalParametersJson" data-i18n-key="tasksPage.modal.workflowTaskFields.formatGlobalParamsBtn">Format Global Params JSON</button>
+                            <button class="btn btn-sm btn-outline-primary ml-2" id="refreshWorkflowDiagram" data-i18n-key="tasksPage.modal.workflowTaskFields.refreshDiagramBtn">Refresh Diagram</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowNodesJson">Workflow Nodes (JSON)</label>
+                        <textarea class="form-control" id="workflowNodesJson" name="workflowNodesJson" rows="5"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowEdgesJson">Workflow Edges (JSON)</label>
+                        <textarea class="form-control" id="workflowEdgesJson" name="workflowEdgesJson" rows="5"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="globalParametersJson" data-i18n-key="tasksPage.modal.globalParametersJson">Global Parameters (JSON)</label>
+                        <textarea class="form-control" id="globalParametersJson" name="globalParametersJson" rows="3"></textarea>
+                    </div>
+                </div>
+              </div>
 
-    <!-- Edge Properties Modal -->    <div class="modal fade" id="edgePropertyModal" tabindex="-1" role="dialog" aria-labelledby="edgePropertyModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-scrollable" role="document">        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="edgePropertyModalLabel" data-i18n-key="tasksPage.edgeModal.title">Edge Properties</h5>
-            <button type="button" class="close" data-dismiss="modal" data-i18n-key-title="common.close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" id="edgeModalFromNode">
-            <input type="hidden" id="edgeModalToNode">
-            <input type="hidden" id="edgeModalIsEditing" value="false">
-            <input type="hidden" id="edgeModalArrayIndex" value="-1">
-            <div class="form-group">
-              <label for="edgeExpression" data-i18n-key="tasksPage.edgeModal.expressionLabel">Condition Expression (Optional)</label>
-              <input type="text" class="form-control" id="edgeExpression" data-i18n-key-placeholder="tasksPage.edgeModal.expressionPlaceholder" placeholder="${nodeId_status} == 'SUCCESS'">
+              <!-- Additional fields like retry settings, notifications, etc. can be added here -->
+
             </div>
-            <div class="form-group">
-              <label for="edgePriority" data-i18n-key="tasksPage.edgeModal.priorityLabel">Priority (Integer, Optional, default 0)</label>
-              <input type="number" class="form-control" id="edgePriority" data-i18n-key-placeholder="tasksPage.edgeModal.priorityPlaceholder" placeholder="0">
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary" data-i18n-key="tasksPage.modal.saveBtn">Save Task</button>
+              <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">Cancel</button>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-danger mr-auto" id="deleteEdgeBtn" style="display:none;" data-i18n-key="tasksPage.edgeModal.deleteBtn">Delete Edge</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
-            <button type="button" class="btn btn-primary" id="saveEdgeBtn" data-i18n-key="tasksPage.edgeModal.saveBtn">Save Edge</button>
-          </div>
+          </form>
         </div>
+      </div>
+    </div>    <script>
+      // Ensure clicking add button opens the modal and resets form
+      $(document).ready(function() {
+        // 添加任务按钮
+        $('#addTaskBtn').off('click').on('click', function() {
+          $('#task-form')[0].reset();
+          $('#taskId').val('');
+          $('#taskType').trigger('change');
+          $('#taskFormModal').modal('show');
+        });
+        
+        // 工作流模式切换
+        $('#editorModeGraph').off('click').on('click', function() {
+          if (!$(this).hasClass('active')) {
+            $(this).addClass('active');
+            $('#editorModeForm').removeClass('active');
+            $('#graphModeContainer').show();
+            $('#nodeHelperCard').show();
+            $('#workflowJsonContainer').hide();
+            // 激活图形模式
+            window.graphModeEnabled = true;
+            // 重绘DAG
+            if (typeof window.safeRedrawDAG === 'function') {
+              window.safeRedrawDAG(true);
+            }
+          }
+        });
+        
+        $('#editorModeForm').off('click').on('click', function() {
+          if (!$(this).hasClass('active')) {
+            $(this).addClass('active');
+            $('#editorModeGraph').removeClass('active');
+            $('#graphModeContainer').hide();
+            $('#nodeHelperCard').hide();
+            $('#workflowJsonContainer').show();
+            // 停用图形模式
+            window.graphModeEnabled = false;
+          }
+        });
+        
+        // 节点助手折叠/展开
+        $('#toggleNodeHelper').off('click').on('click', function() {
+          const $content = $('#nodeHelperContent');
+          const $icon = $(this).find('i');
+          
+          if ($content.is(':visible')) {
+            $content.hide();
+            $icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+            localStorage.setItem('nodeHelperHidden', 'true');
+          } else {
+            $content.show();
+            $icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+            localStorage.setItem('nodeHelperHidden', 'false');
+          }
+        });
+        
+        // 加载节点助手的可见性设置
+        const nodeHelperHidden = localStorage.getItem('nodeHelperHidden') === 'true';
+        if (nodeHelperHidden) {
+          $('#nodeHelperContent').hide();
+          $('#toggleNodeHelper i').removeClass('bi-chevron-up').addClass('bi-chevron-down');
+        }
+        
+        // 保存工作流节点
+        $('#saveNodeBtn').off('click').on('click', function() {
+          if (typeof window.saveWorkflowNode === 'function') {
+            window.saveWorkflowNode();
+          } else {
+            console.error('saveWorkflowNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+          }
+        });
+        
+        // 保存工作流边缘
+        $('#saveEdgeBtn').off('click').on('click', function() {
+          if (typeof window.saveWorkflowEdge === 'function') {
+            window.saveWorkflowEdge();
+          } else {
+            console.error('saveWorkflowEdge函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+          }
+        });
+        
+        // 删除工作流边缘
+        $('#deleteEdgeBtn').off('click').on('click', function() {
+          if (typeof window.deleteWorkflowEdge === 'function') {
+            window.deleteWorkflowEdge();
+          } else {
+            console.error('deleteWorkflowEdge函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+          }
+        });
+        
+        // 刷新工作流图
+        $('#refreshWorkflowDiagram').off('click').on('click', function() {
+          if (typeof window.safeRedrawDAG === 'function') {
+            window.safeRedrawDAG(true);
+          } else {
+            console.error('safeRedrawDAG函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+          }
+        });
+        
+        // 快速添加节点按钮
+        $('.quick-add-node').off('click').on('click', function(e) {
+          e.preventDefault();
+          const nodeType = $(this).data('node-type');
+          if (typeof window.addWorkflowNode === 'function') {
+            window.addWorkflowNode(nodeType);
+          } else {
+            console.error('addWorkflowNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+          }
+        });
+        
+        // 添加节点按钮
+        $('#addNodeBtn').off('click').on('click', function() {
+          // 默认添加处理节点
+          if (typeof window.addWorkflowNode === 'function') {
+            window.addWorkflowNode('process');
+          } else {
+            console.error('addWorkflowNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+          }
+        });
+        
+        // 添加边缘按钮
+        $('#addEdgeBtn').off('click').on('click', function() {
+          if (typeof window.openEdgeEditDialog === 'function') {
+            window.openEdgeEditDialog();
+          } else {
+            console.error('openEdgeEditDialog函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+          }
+        });
+        
+        // 删除节点按钮
+        $('#deleteNodeBtn').off('click').on('click', function() {
+          const nodeIndex = $('#editingNodeArrayIndex').val();
+          if (nodeIndex !== '' && typeof window.deleteWorkflowNode === 'function') {
+            window.deleteWorkflowNode(parseInt(nodeIndex));
+          } else {
+            console.error('未选择节点或deleteWorkflowNode函数未定义');
+            alert('请先选择一个节点');
+          }
+        });
+        
+        // JSON格式化按钮
+        $('.format-json-btn').off('click').on('click', function() {
+          const targetId = $(this).data('target-textarea');
+          const $textarea = $('#' + targetId);
+          
+          if ($textarea.length) {
+            try {
+              const json = $textarea.val().trim();
+              if (json) {
+                const formatted = JSON.stringify(JSON.parse(json), null, 2);
+                $textarea.val(formatted);
+              }
+            } catch (e) {
+              console.error('JSON格式化失败:', e);
+              alert('JSON格式无效: ' + e.message);
+            }
+          }
+        });
+      });
+    </script>
+</body>
+
+<!-- 工作流节点编辑模态框 -->
+<div class="modal fade" id="workflowNodeEditModal" tabindex="-1" role="dialog" aria-labelledby="workflowNodeEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="workflowNodeEditModalLabel" data-i18n-key="tasksPage.nodeEditModal.title">Edit Workflow Node</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>      <div class="modal-body">
+        <form id="node-edit-form">
+          <input type="hidden" id="editingNodeArrayIndex" value="">
+          <div class="form-group">
+            <label for="wfNodeId" data-i18n-key="tasksPage.nodeEditModal.nodeId">Node ID:</label>
+            <input type="text" class="form-control" id="wfNodeId" required>
+          </div>
+          <div class="form-group">
+            <label for="wfNodeName" data-i18n-key="tasksPage.nodeEditModal.nodeName">Node Name:</label>
+            <input type="text" class="form-control" id="wfNodeName" required>
+          </div>
+          <div class="form-group">
+            <label for="availableTasksForNodes" data-i18n-key="tasksPage.nodeEditModal.taskConfig">Task Configuration:</label>
+            <select class="form-control" id="availableTasksForNodes">
+              <option value="" data-i18n-key="tasksPage.nodeEditModal.selectTask">-- Select a task --</option>
+              <!-- Options will be populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wfNodeParams" data-i18n-key="tasksPage.nodeEditModal.nodeParams">Node Parameters (JSON):</label>
+            <textarea class="form-control" id="wfNodeParams" rows="5"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="saveNodeBtn" data-i18n-key="tasksPage.nodeEditModal.saveBtn">Save Changes</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">Cancel</button>
       </div>
     </div>
-    <!-- End of Edge Properties Modal -->    <!-- Workflow Node Edit Modal -->
-    <div class="modal fade" id="workflowNodeEditModal" tabindex="-1" role="dialog" aria-labelledby="workflowNodeEditModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-scrollable" role="document">        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="workflowNodeEditModalLabel" data-i18n-key="tasksPage.nodeEditModal.title">Edit Workflow Node</h5>
-            <button type="button" class="close" data-dismiss="modal" data-i18n-key-title="common.close" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <input type="hidden" id="editingNodeArrayIndex">
-            <div class="form-group">
-              <label data-i18n-key="tasksPage.nodeEditModal.nodeIdLabel">Node ID:</label>
-              <p id="displayNodeId" class="form-control-static"></p>
-            </div>            <div class="form-group">
-              <label for="editTaskConfigId" data-i18n-key="tasksPage.nodeEditModal.taskConfigIdLabel">Task Config ID (Original Task):</label>
-              <select class="form-control" id="editTaskConfigId">
-                <!-- Options will be populated via JS -->
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="editNodeName" data-i18n-key="tasksPage.nodeEditModal.nodeNameLabel">Node Name (Display Name)</label>
-              <input type="text" class="form-control" id="editNodeName">
-            </div>
-            <div class="form-group">
-              <label for="editNodeParams" data-i18n-key="tasksPage.nodeEditModal.nodeParamsLabel">Node-Specific Parameters (JSON)</label>
-              <textarea class="form-control" id="editNodeParams" rows="4" data-i18n-key-placeholder="tasksPage.modal.beanTaskFields.beanParamsPlaceholder" placeholder='{"key":"value"}'></textarea> <!-- Reused placeholder key -->
-              <button type="button" class="btn btn-sm btn-outline-secondary mt-1 format-json-btn" data-target-textarea="editNodeParams" data-i18n-key="tasksPage.modal.formatJsonBtn">Format JSON</button>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
-            <button type="button" class="btn btn-primary" id="saveNodeChangesBtn" data-i18n-key="tasksPage.nodeEditModal.saveBtn">Save Changes</button>
-          </div>
-        </div>
+  </div>
+</div>
+
+<!-- 工作流边缘编辑模态框 -->
+<div class="modal fade" id="workflowEdgeEditModal" tabindex="-1" role="dialog" aria-labelledby="workflowEdgeEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="workflowEdgeEditModalLabel" data-i18n-key="tasksPage.edgeModal.title">Edit Workflow Edge</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
-    </div>    <!-- End of Workflow Node Edit Modal -->
-</body>
+      <div class="modal-body">
+        <form id="edge-edit-form">
+          <input type="hidden" id="editingEdgeArrayIndex" value="">
+          <div class="form-group">
+            <label for="wfEdgeFrom" data-i18n-key="tasksPage.edgeModal.fromNode">From Node:</label>
+            <select class="form-control" id="wfEdgeFrom" required>
+              <!-- Options will be populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wfEdgeTo" data-i18n-key="tasksPage.edgeModal.toNode">To Node:</label>
+            <select class="form-control" id="wfEdgeTo" required>
+              <!-- Options will be populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wfEdgeExpression" data-i18n-key="tasksPage.edgeModal.condition">Condition Expression:</label>
+            <input type="text" class="form-control" id="wfEdgeExpression" placeholder="${nodeA_status} == 'SUCCESS'">
+            <small class="form-text text-muted" data-i18n-key="tasksPage.edgeModal.conditionHelp">Use ${varName} to reference node outputs or global parameters. Leave empty for unconditional execution.</small>
+          </div>
+          <div class="form-group">
+            <label for="wfEdgePriority" data-i18n-key="tasksPage.edgeModal.priority">Priority:</label>
+            <input type="number" class="form-control" id="wfEdgePriority" min="1" value="1">
+            <small class="form-text text-muted" data-i18n-key="tasksPage.edgeModal.priorityHelp">Lower values have higher priority. Edges are evaluated in priority order.</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer d-flex">
+        <button type="button" class="btn btn-danger mr-auto" id="deleteEdgeBtn" data-i18n-key="tasksPage.edgeModal.deleteBtn">Delete Edge</button>
+        <button type="button" class="btn btn-primary" id="saveEdgeBtn" data-i18n-key="tasksPage.edgeModal.saveBtn">Save Changes</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </html>

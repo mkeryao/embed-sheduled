@@ -1,4 +1,3 @@
-// API Base URL
 const API_BASE_URL = '/api'; // Adjust if your context path is different
 
 /**

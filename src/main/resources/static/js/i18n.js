@@ -1,4 +1,3 @@
-// js/i18n.js
 const i18n = {
     defaultLang: 'zh',
     currentLang: 'zh',

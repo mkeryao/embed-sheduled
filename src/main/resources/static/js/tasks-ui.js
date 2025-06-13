@@ -8,8 +8,105 @@ if (typeof window.tasksUiInitialized === 'undefined') {
     console.log('初始化tasks UI脚本...');
     window.tasksUiInitialized = true;
 
+    /**
+     * 填充任务类型过滤器下拉菜单
+     */
+    function populateTaskTypeFilter() {
+        const taskTypes = {
+            '0': 'Bean 任务',
+            '2': 'HTTP 任务',
+            '4': 'Shell 任务',
+            '10': '工作流任务'
+        };
+        const select = $('#filterTaskType');
+        if (!select.length) return;
+
+        select.empty();
+        select.append($('<option>').val('').text(i18n.translate('tasksPage.filters.allTypes', 'All Types')));
+        for (const key in taskTypes) {
+            // 构造一个i18n键，例如 'tasksPage.taskTypes.0'
+            const i18nKey = `tasksPage.taskTypes.${key}`;
+            // 提供一个默认的回退文本
+            const fallbackText = taskTypes[key];
+            const translatedName = i18n.translate(i18nKey, fallbackText);
+            select.append($('<option>').val(key).text(translatedName));
+        }
+    }
+    window.populateTaskTypeFilter = populateTaskTypeFilter;
+
+
+    // 预加载任务配置列表并缓存，用于下拉菜单
+    window.cachedTasks = [];
+    $(document).ready(function() {
+        console.log('预加载任务配置列表...');
+        makeApiCall('GET', '/tasks', null,
+            function(response) {
+                console.log('成功获取任务配置，缓存 ' + response.length + ' 条记录');
+                if (Array.isArray(response)) {
+                    window.cachedTasks = response;
+                }
+            },
+            function(jqXHR, textStatus, errorThrown) {
+                window.handleApiError(jqXHR, textStatus, errorThrown, '预加载任务配置');
+            }
+        );
+    });
+
+    /**
+     * 确保任务表单模态窗口处于打开状态
+     * 如果任务表单窗口不可见，则重新显示它
+     */
+    window.ensureTaskFormModalOpen = function() {
+        if (!$('#taskFormModal').hasClass('show')) {
+            console.log('确保任务表单窗口显示中');
+            $('#taskFormModal').modal('show');
+            return true;
+        }
+        return false;
+    };
+
+    /**
+     * 确保节点助手可见性函数的应急方案
+     * 如果tasks-workflow.js中的原始函数未定义，使用这个替代版本
+     */
+    if (typeof window.ensureNodeHelperVisible !== 'function') {
+        window.ensureNodeHelperVisible = function(forceShow) {
+            console.log('使用应急方案的ensureNodeHelperVisible函数', forceShow);
+            // 显示工作流任务字段
+            $('#workflowTaskFields').show();
+            
+            // 处理节点助手卡片
+            const nodeHelper = $('#nodeHelperCard');
+            if (nodeHelper.length) {
+                nodeHelper.show();
+                
+                // 处理内容区域
+                const nodeHelperContent = $('#nodeHelperContent');
+                if (nodeHelperContent.length) {
+                    if (forceShow || localStorage.getItem('nodeHelperHidden') !== 'true') {
+                        nodeHelperContent.show();
+                    } else {
+                        nodeHelperContent.hide();
+                    }
+                }
+            }
+        };
+    }
+
     // 当页面DOM完全加载后执行
     $(document).ready(function() {
+        // 确保缩放比例已初始化
+        if (typeof window.currentScale !== 'number') {
+            window.currentScale = 1.0;
+        }
+        
+        // 初始化缩放显示
+        if (typeof window.updateZoomFeedback === 'function') {
+            window.updateZoomFeedback();
+        } else {
+            $('#resetZoomBtn').text('100%');
+        }
+        
         // 加载导航栏
         $("#navbar-container").load("_navbar.html", function() {
             const currentUsername = localStorage.getItem('username');
@@ -27,6 +124,11 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             // 重置模态窗口滚动条位置到顶部
             $(this).find('.modal-body').scrollTop(0);
             
+            // 强制应用国际化翻译
+            if (typeof i18n !== 'undefined' && typeof i18n.applyTranslations === 'function') {
+                i18n.applyTranslations();
+            }
+
             // 确保高级设置部分可以通过滚动到达
             setTimeout(function() {
                 // 延迟处理，确保模态窗口已完全渲染
@@ -163,7 +265,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 beanName: $('#beanName').val(),
                 methodName: $('#methodName').val(),
                 startDate: $('#startDate').val() ? ($('#startDate').val() + ":00") : null, // Append seconds for backend parsing
-                endDate: $('#endDate').val() ? ($('#endDate').val() + ":00") : null,         // Append seconds for backend parsing
+                endDate: $('#endDate').val() ? ($('#endDate').val() + ":00") : null,
                 taskCalendarGroup: $('#taskCalendarGroup').val() || null,
                 taskExcludeTimes: $('#taskExcludeTimes').val() || null,
                 executeTimeoutSeconds: parseInt($('#executeTimeoutSeconds').val()) || 0,
@@ -347,12 +449,11 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
             } else if (type === '2') {
                 $('#httpTaskFields').show();
-                $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
-            } else if (type === '10') {
+                $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();            } else if (type === '10') {
                 $('#workflowTaskFields').show();
                 $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
                 loadAvailableTasksForNodes();
-                redrawDAG();
+                // safeRedrawDAG();
             }
             
             // 确保国际化应用到新显示的字段
@@ -361,11 +462,6 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 console.log("已在任务类型切换后重新应用国际化");
             }, 100);
         }).trigger('change');
-
-        // 刷新DAG视图
-        $('#refreshDagViewBtn').on('click', function () {
-            redrawDAG();
-        });
 
         // 编辑按钮点击事件
         $('#tasks-table-body').on('click', '.edit-btn', function () {
@@ -436,10 +532,8 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                         if (task.beanParameters) {
                             try {
                                 const workflowParams = typeof task.beanParameters === 'string' ? 
-                                    JSON.parse(task.beanParameters) : task.beanParameters;
-                                $('#workflowNodesJson').val(JSON.stringify(workflowParams.nodes || [], null, 2));
+                                    JSON.parse(task.beanParameters) : task.beanParameters;                                $('#workflowNodesJson').val(JSON.stringify(workflowParams.nodes || [], null, 2));
                                 $('#workflowEdgesJson').val(JSON.stringify(workflowParams.edges || [], null, 2));
-                                redrawDAG();
                             } catch (e) {
                                 console.warn('Failed to parse Workflow task parameters JSON:', e);
                             }
@@ -502,7 +596,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         $('#tasks-table-body').on('click', '.enable-btn, .disable-btn', function () {
             const taskId = $(this).data('id');
             const isEnable = $(this).hasClass('enable-btn');
-            const endpoint = `/api/tasks/${taskId}/${isEnable ? 'enable' : 'disable'}`;
+            const endpoint = `/tasks/${taskId}/${isEnable ? 'enable' : 'disable'}`;
             
             makeApiCall('POST', endpoint, null,
                 function () {
@@ -581,7 +675,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
 
             $('#workflowEdgesJson').val(JSON.stringify(potentialEdgesArray, null, 2));
             $('#edgePropertyModal').modal('hide');
-            redrawDAG();
+            safeRedrawDAG();
         });
 
         // 删除边缘按钮点击事件
@@ -601,10 +695,9 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 edgesArray.splice(arrayIndex, 1);
                 $('#workflowEdgesJson').val(JSON.stringify(edgesArray, null, 2));
             } else {
-                showFeedback(i18n.translate('tasksPage.feedback.edgeDeleteError'), true);
-            }
+                showFeedback(i18n.translate('tasksPage.feedback.edgeDeleteError'), true);            }
             $('#edgePropertyModal').modal('hide');
-            redrawDAG();
+            safeRedrawDAG();
         });
 
         // 边属性模态框显示事件
@@ -634,37 +727,24 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 .html(priorityHelpText)
                 .insertAfter('#edgePriority');
                 
-            // 为表达式字段添加自动完成功能
+            // The autocomplete functionality that depended on jQuery UI has been removed.
+            // The datalist implementation remains as a suitable native HTML5 alternative.
             const fromNodeId = $('#edgeModalFromNode').val();
-            
-            // 常见变量的自动完成提示
             const autoCompleteTerms = [
                 `\${${fromNodeId}_status}`,
                 `\${${fromNodeId}_result}`,
                 `\${${fromNodeId}_execution_time}`,
-                '\'SUCCESS\'', 
+                '\'SUCCESS\'',
                 '\'FAILED\'',
                 '\'COMPLETED\'',
-                '==', 
-                '!=', 
-                '>', 
-                '<', 
-                '>=', 
-                '<='
+                '==', '!=', '>', '<', '>=', '<='
             ];
-            
-            // 假设我们这里使用简单的自动填充功能，后续可以考虑集成更复杂的库
             $('#edgeExpression').attr('list', 'expressionSuggestions');
-            
-            // 移除之前的数据列表，避免重复添加
             $('#expressionSuggestions').remove();
-            
-            // 添加数据列表
             const datalist = $('<datalist id="expressionSuggestions"></datalist>');
             autoCompleteTerms.forEach(term => {
                 datalist.append($('<option></option>').val(term));
             });
-            
             $('#edgeExpression').after(datalist);
         });
         
@@ -792,19 +872,46 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     showFeedback(i18n.translate('tasksPage.feedback.nodeNotFound', '找不到要编辑的节点'), true);
                     return;
                 }
-            }
+            }            // 临时禁用背景点击关闭功能，确保关闭时不会影响其他模态窗口
+            try {
+                var modalInstance = $('#workflowNodeEditModal').data('bs.modal');
+                if (modalInstance && modalInstance._config) {
+                    var originalBackdrop = modalInstance._config.backdrop;
+                    modalInstance._config.backdrop = 'static';
+                    $('#workflowNodeEditModal').modal('hide');
+                    // 恢复原始设置
+                    setTimeout(function() {
+                        modalInstance._config.backdrop = originalBackdrop;
+                    }, 200);
+                } else {
+                    $('#workflowNodeEditModal').modal('hide');
+                }            } catch (e) {
+                console.error('关闭节点编辑窗口时出错:', e);
+                // 如果出错，使用默认方式关闭
+                $('#workflowNodeEditModal').modal('hide');            }
+              // 安全调用redrawDAG函数
+            safeRedrawDAG();
             
-            $('#workflowNodeEditModal').modal('hide');
-            redrawDAG();
+            // 确保任务表单模态窗口可见
+            setTimeout(function() {
+                if (!$('#taskFormModal').hasClass('show')) {
+                    $('#taskFormModal').modal('show');
+                }
+            }, 300);
         });
-
-        // 工作流节点编辑模态框隐藏事件
+          // 工作流节点编辑模态框隐藏事件
         $('#workflowNodeEditModal').on('hidden.bs.modal', function () {
             $('#editNodeName').val('');
             $('#editNodeParams').val('{}');
             $('#displayNodeId').text('');
             $('#editTaskConfigId').empty(); // 清空任务选择下拉框
             $('#editingNodeArrayIndex').val('');
+              // 确保任务表单模态窗口保持打开状态
+            setTimeout(function() {
+                if (!$('#taskFormModal').hasClass('show')) {
+                    $('#taskFormModal').modal('show');
+                }
+            }, 100); // 小延迟，确保在所有关闭操作完成后执行
             
             // 恢复节点样式，避免 selectedSourceElement 为 null 时引起的错误
             if (window.selectedSourceElement) {
@@ -828,15 +935,16 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             if (typeof window.checkWorkflowSafetyState === 'function') {
                 window.checkWorkflowSafetyState();
             }
-        });
-
-        // 添加工作流DAG上下文菜单功能
+        });        // 添加工作流DAG上下文菜单功能
         $('#dagContainer').on('contextmenu', function(e) {
             // 移除之前的任何上下文菜单
             $('.dag-context-menu').remove();
             
             // 防止默认的右键菜单
             e.preventDefault();
+            e.stopImmediatePropagation(); // 阻止其他处理器干扰
+            
+            console.log('显示DAG上下文菜单', e.pageX, e.pageY);
             
             // 获取鼠标位置
             const mouseX = e.pageX;
@@ -856,14 +964,13 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     padding: '5px 0',
                     zIndex: 1000
                 });
-            
-            // 添加菜单项
-            const menuItems = [
+              // 基础菜单项
+            const baseMenuItems = [
                 {
                     text: i18n.translate('tasksPage.dagContextMenu.refreshView', '刷新视图'),
                     icon: 'bi-arrow-repeat',
                     action: function() {
-                        redrawDAG();
+                        safeRedrawDAG();
                     }
                 },
                 {
@@ -905,6 +1012,79 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 }
             ];
             
+            // 图形模式特有菜单项
+            const graphModeItems = [];
+            if (window.graphModeEnabled) {
+                graphModeItems.push({
+                    text: i18n.translate('tasksPage.dagContextMenu.addNode', '添加新节点'),
+                    icon: 'bi-plus-circle',
+                    action: function() {
+                        // 调用添加节点对话框
+                        if (typeof window.openAddNodeDialog === 'function') {
+                            console.log('找到openAddNodeDialog函数，调用中...');
+                            window.openAddNodeDialog();
+                        } else {
+                            // 如果函数不存在，尝试即时定义它
+                            window.openAddNodeDialog = function() {
+                                try {
+                                    console.log('使用动态创建的openAddNodeDialog');
+                                    
+                                    // 设置模态窗口标题
+                                    $('#workflowNodeEditModalLabel').text('添加工作流节点');
+                                    
+                                    // 设置为新节点模式
+                                    $('#editingNodeArrayIndex').val('-1'); // -1 表示新建节点
+                                    
+                                    // 显示节点ID输入框（仅在添加新节点时需要）
+                                    $('.node-id-input-group').show();
+                                    
+                                    // 生成一个默认节点ID
+                                    const timestamp = new Date().getTime();
+                                    const defaultNodeId = 'node_' + timestamp.toString().substring(timestamp.toString().length - 6);
+                                    $('#editNodeId').val(defaultNodeId);
+                                    
+                                    // 清空名称和参数
+                                    $('#editNodeName').val('');
+                                    $('#editNodeParams').val('{}');
+                                    
+                                    // 设置显示节点ID
+                                    $('#displayNodeId').text('新节点');
+                                    
+                                    // 隐藏删除节点按钮
+                                    $('#deleteNodeBtn').hide();
+                                    
+                                    // 打开模态窗口
+                                    $('#workflowNodeEditModal').modal('show');
+                                } catch (e) {
+                                    console.error('打开添加节点对话框时出错:', e);
+                                    showFeedback('打开添加节点对话框时出错: ' + e.message, true);
+                                }
+                            };
+                            
+                            // 立即调用
+                            window.openAddNodeDialog();
+                        }
+                    }
+                });
+                
+                graphModeItems.push({
+                    text: i18n.translate('tasksPage.dagContextMenu.arrangeNodes', '自动排列节点'),
+                    icon: 'bi-grid',
+                    action: function() {
+                        // 如果有节点自动布局函数，调用它
+                        if (typeof window.arrangeNodesInGrid === 'function') {
+                            window.arrangeNodesInGrid();
+                        } else {
+                            showFeedback('自动排列功能尚未实现', true);
+                        }
+                    }
+                });
+            }
+            
+            // 合并菜单项
+            const menuItems = [...graphModeItems, ...baseMenuItems];
+            
+            
             // 为每个菜单项创建DOM元素
             menuItems.forEach(function(item) {
                 const menuItem = $('<div>')
@@ -934,14 +1114,16 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             
             // 将菜单添加到DOM
             $('body').append(contextMenu);
-            
-            // 点击其他地方关闭菜单
+              // 点击其他地方关闭菜单
             $(document).on('click', function closeMenu(e) {
                 if (!$(e.target).closest('.dag-context-menu').length) {
                     $('.dag-context-menu').remove();
                     $(document).off('click', closeMenu);
                 }
             });
+            
+            // 确保菜单可见并置于前方
+            contextMenu.css('z-index', 9999);
         });
 
         // 添加任务按钮点击事件
@@ -1064,13 +1246,12 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             $('#workflowNodesJson').val(JSON.stringify(existingNodes, null, 2));
 
             // 清除表单
-            $('#wfNodeId').val('');
-            $('#wfNodeName').val('');
+            $('#wfNodeId').val('');            $('#wfNodeName').val('');
             $('#wfNodeParams').val('{}');
             $('#availableTasksForNodes').val('');
             
             // 刷新DAG视图
-            redrawDAG();
+            safeRedrawDAG();
         });
 
         // 快速添加节点
@@ -1216,7 +1397,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             $('#workflowNodesJson').val(JSON.stringify(nodesArray, null, 2));
             
             // 重绘DAG
-            redrawDAG();
+            safeRedrawDAG();
             
             showFeedback(i18n.translate('tasksPage.feedback.quickNodeAdded', '已添加 ') + nodeName, false);
         });
@@ -1315,13 +1496,29 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 $('.workflow-json-editor').show();
                 $('#nodeHelperCard').show(); // 显示节点助手卡片
                 $('#workflowNodesJson, #workflowEdgesJson').closest('.form-group').show();
-                $('#globalParametersJson').closest('.form-group').show();
-                
-                // 表单模式下，强制显示节点助手内容
-                window.ensureNodeHelperVisible(true);
-                
-                // 刷新DAG视图
-                redrawDAG(); 
+                $('#globalParametersJson').closest('.form-group').show();                // 表单模式下，强制显示节点助手内容
+                if (typeof window.ensureNodeHelperVisible === 'function') {
+                    window.ensureNodeHelperVisible(true);
+                } else {
+                    // 如果函数不可用，直接显示相关元素
+                    $('#workflowTaskFields').show();
+                    $('#nodeHelperCard').show();
+                    $('#nodeHelperContent').show();
+                }
+                  // 刷新DAG视图 - 始终使用安全的调用方式
+                if (typeof window.safeRedrawDAG === 'function') {
+                    window.safeRedrawDAG();
+                } else if (typeof safeRedrawDAG === 'function') {
+                    safeRedrawDAG();
+                } else if (typeof window.redrawDAG === 'function') {
+                    try {
+                        window.redrawDAG();
+                    } catch (e) {
+                        console.error('redrawDAG调用失败:', e);
+                    }
+                } else {
+                    console.error('redrawDAG函数未定义，请检查tasks-workflow.js是否正确加载');
+                }
                 
                 // 更改帮助文本
                 $('#dagHelpText').text(i18n.translate('tasksPage.modal.workflowTaskFields.formModeHelp', 
@@ -1332,15 +1529,32 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 $('#edgeDefinitionForm').hide();
                 // 图形模式下，隐藏节点和边缘的JSON编辑区，根据用户设置显示/隐藏节点助手
                 $('#workflowNodesJson, #workflowEdgesJson').closest('.form-group').hide();
+                  // 使用全局辅助函数处理节点助手可见性(根据用户选择)
+                if (typeof window.ensureNodeHelperVisible === 'function') {
+                    window.ensureNodeHelperVisible(false);
+                } else {
+                    // 如果函数不可用，根据用户偏好显示节点助手
+                    $('#workflowTaskFields').show();
+                    $('#nodeHelperCard').show();
+                    if (localStorage.getItem('nodeHelperHidden') === 'true') {
+                        $('#nodeHelperContent').hide();
+                    } else {
+                        $('#nodeHelperContent').show();
+                    }
+                }
                 
-                // 使用全局辅助函数处理节点助手可见性(根据用户选择)
-                window.ensureNodeHelperVisible(false);
-                console.log("Graph mode: Setting node helper visibility based on user preference");
-                
-                $('#globalParametersJson').closest('.form-group').hide();
-                
-                // 切换到交互式图形编辑模式
-                initGraphMode();
+                $('#globalParametersJson').closest('.form-group').hide();                  // 切换到交互式图形编辑模式
+                if (typeof window.safeInitGraphMode === 'function') {
+                    window.safeInitGraphMode();
+                } else if (typeof window.initGraphMode === 'function') {
+                    window.initGraphMode();
+                } else {
+                    console.error('图形模式初始化函数未定义，请确保tasks-workflow.js已正确加载');
+                    // 提供基本的图形模式回退功能
+                    $('#graphModeControls').show();
+                    $('#workflowNodesJson, #workflowEdgesJson, #workflowJsonRefreshRow').hide();
+                    window.graphModeEnabled = true;
+                }
                 
                 // 确保任务列表选择功能在图形模式下可用
                 setTimeout(function() {
@@ -1381,29 +1595,344 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             resetZoom(); // 重置到100%
         });
         
-        // 应用图形模式更改
-        $('#applyChangesBtn').on('click', function() {
-            applyGraphModeChanges();
-        });
-        
-        // 添加新节点按钮（图形模式）
-        $('#addNodeBtn').on('click', function() {
-            showAddNodeModal();
-        });
-
-        // DAG容器点击事件
-        $('#dagContainer').on('click', function (event) {
-            const target = $(event.target);
-            if (window.selectedSourceElement && (
-                target.is('#dagContainer') || target.is('svg') || 
-                target.is('svg > defs') || target.is('svg > marker') || 
-                target.is('svg > path') || target.is('svg > rect') || 
-                target.is('svg > text')
-            )) {
-                // 处理点击事件
-            }
-        });
-
-        console.log('tasks UI脚本初始化完成');
+        // 初始化缩放显示
+        updateZoomFeedback();
     });
 }
+
+/**
+ * 确保任务表单模态窗口处于打开状态
+ * 如果任务表单窗口不可见，则重新显示它
+ */
+window.ensureTaskFormModalOpen = function() {
+    if (!$('#taskFormModal').hasClass('show')) {
+        console.log('确保任务表单窗口显示中');
+        $('#taskFormModal').modal('show');
+        return true;
+    }
+    return false;
+};
+/**
+     * 安全调用initGraphMode函数的辅助方法
+     * 避免直接引用window.initGraphMode可能导致的未定义错误
+     * 增强版本：更完整的备用实现和更好的错误处理
+     */
+    function safeInitGraphMode() {
+        console.log('安全初始化图形模式');
+        
+        // 防止同时有多个初始化请求
+        if (window.isInitializingGraphMode) {
+            console.warn('图形模式初始化已在进行中，忽略重复调用');
+            return;
+        }
+        
+        try {
+            window.isInitializingGraphMode = true;
+            
+            // 清理可能存在的旧状态
+            $('#dagContainer').off('mousemove.graphMode');
+            $('#dagContainer').off('mouseup.graphMode');
+            
+            // 首先尝试使用原始函数
+            if (typeof window.initGraphMode === 'function') {
+                // 使用原始函数
+                try {
+                    window.initGraphMode();
+                    console.log('成功使用原始initGraphMode函数');
+                } catch (e) {
+                    console.error('原始initGraphMode函数执行失败，切换到备用实现:', e);
+                    applyFallbackInitGraphMode();
+                }
+            } else {
+               
+                console.warn('initGraphMode函数未定义，使用备用实现');
+                applyFallbackInitGraphMode();
+            }
+        } catch (e) {
+            console.error('初始化图形模式时出错:', e);
+            
+            // 最后的备用实现 - 至少显示基本UI
+            $('#graphModeControls').show();
+            $('#workflowNodesJson, #workflowEdgesJson').closest('.form-group').hide();
+            window.graphModeEnabled = true;
+        } finally {
+            // 确保状态标志被重置
+            setTimeout(function() {
+                window.isInitializingGraphMode = false;
+            }, 500);
+        }
+    }
+    
+    // 备用的图形模式初始化实现
+    function applyFallbackInitGraphMode() {
+        // 设置基本状态
+        window.graphModeEnabled = true;
+        window.nodePositionChanged = false;
+        
+        // 显示图形模式控件
+        $('#graphModeControls').show();
+        
+        // 隐藏JSON编辑区
+        $('#workflowNodesJson, #workflowEdgesJson, #workflowJsonRefreshRow').hide();
+        
+        // 重绘DAG以启用拖拽功能
+        safeRedrawDAG(true);
+        
+        // 确保节点助手卡片可见
+        if (typeof window.ensureNodeHelperVisible === 'function') {
+            window.ensureNodeHelperVisible();
+        } else {
+            // 如果函数不可用，直接显示相关元素
+            $('#workflowTaskFields').show();
+            $('#nodeHelperCard').show();
+            if (localStorage.getItem('nodeHelperHidden') !== 'true') {
+                $('#nodeHelperContent').show();
+            }
+        }
+        
+        console.log("已应用备用的图形模式初始化");
+        
+        // 为拖拽功能添加最小实现
+        if (typeof handleMouseMove !== 'function') {
+            window.handleMouseMove = function(event) {
+                // 简单的鼠标移动处理
+                if (window.nodeDragging && window.currentDragNode) {
+                    console.log('节点拖动中...');
+                }
+            };
+        }
+        
+        if (typeof handleMouseUp !== 'function') {
+            window.handleMouseUp = function(event) {
+                // 简单的鼠标释放处理
+                window.nodeDragging = false;
+                window.currentDragNode = null;
+            };
+        }
+    }
+    
+    // 将安全版本暴露为全局函数
+    window.safeInitGraphMode = safeInitGraphMode;
+
+/**
+ * 提供默认的任务类型选项，作为API调用失败时的后备方案
+ * @param {jQuery|string} selectElement - jQuery选择器对象或选择器字符串
+ * @param {boolean} hideNotice - 是否隐藏通知信息
+ */
+function fillDefaultTaskOptions(selectElement, hideNotice) {
+    console.log('使用默认任务选项填充下拉框');
+    
+    // 处理输入参数
+    if (typeof selectElement === 'string') {
+        selectElement = $(selectElement);
+    } else if (!selectElement || !selectElement.length) {
+        selectElement = $('#editTaskConfigId');
+    }
+    
+    // 添加一些常见任务类型作为备用
+    const defaultOptions = [
+        { id: 'shell_1', name: 'Shell脚本任务', type: '脚本' },
+        { id: 'http_1', name: 'HTTP请求任务', type: 'HTTP' },
+        { id: 'db_1', name: 'SQL数据库任务', type: '数据库' },
+        { id: 'file_1', name: '文件处理任务', type: '文件' },
+        { id: 'api_1', name: 'REST API任务', type: 'API' },
+        { id: 'mail_1', name: '邮件发送任务', type: '通知' }
+    ];
+    
+    // 添加这些选项到下拉框
+    defaultOptions.forEach(function(task) {
+        selectElement.append(
+            $('<option></option>')
+                .attr('value', task.id)
+                .text(`${task.name} (${task.type} - 默认选项)`)
+        );
+    });
+    
+    // 除非指定隐藏，否则添加提示用户这些是备用选项
+    if (!hideNotice) {
+        selectElement.append(
+            $('<option></option>')
+                .attr('value', '')
+                .attr('disabled', 'disabled')
+                .text('* 这些是备用选项，API加载失败时显示 *')
+        );
+    }
+}
+
+/**
+ * 加载任务配置选项，优先使用缓存
+ * 包含增强的错误处理和备用选项机制
+ * @param {string} selectElementId - 选择框元素的ID，默认为'editTaskConfigId'
+ */
+function loadTaskConfigOptions(selectElementId) {
+    try {
+        // 确定选择框元素ID
+        selectElementId = selectElementId || 'editTaskConfigId';
+        console.log(`开始加载任务配置选项到 ${selectElementId}...`);
+        
+        // 清空现有选项
+        const selectElement = $('#' + selectElementId);
+        if (!selectElement.length) {
+            console.error(`找不到选择器元素 #${selectElementId}`);
+            return;
+        }
+        
+        selectElement.empty();
+        
+        // 添加空选项
+        selectElement.append(
+            $('<option></option>')
+                .attr('value', '')
+                .text(i18n.translate('tasksPage.nodeModal.selectTaskConfig', '- 选择任务配置 -'))
+        );
+        
+        // 添加加载中选项
+        const loadingOption = $('<option></option>')
+            .attr('value', '')
+            .attr('disabled', 'disabled')
+            .text('加载中...');
+        selectElement.append(loadingOption);
+        
+        // 定义成功加载和失败加载后的处理函数
+        const onTasksLoaded = function(tasks) {
+            // 移除加载中选项
+            loadingOption.remove();
+            
+            if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+                console.warn('没有可用的任务配置或返回格式不正确');
+                fillDefaultTaskOptions(selectElement);
+                return;
+            }
+            
+            console.log(`成功加载任务配置，共 ${tasks.length} 个任务`);
+            
+            // 添加每个任务配置选项
+            let nonWorkflowTasksCount = 0;
+            tasks.forEach(function(task) {
+                // 排除工作流类型任务
+                if (task.taskType !== 10) { // 10 是工作流类型
+                    const taskId = task.id || task.taskId;
+                    const taskName = task.name || task.taskName;
+                    
+                    if (taskId && taskName) {
+                        selectElement.append(
+                            $('<option></option>')
+                                .attr('value', taskId)
+                                .text(`${taskName} (ID: ${taskId})`)
+                        );
+                        nonWorkflowTasksCount++;
+                    }
+                }
+            });
+            
+            // 如果没有非工作流任务，添加一些默认选项
+            if (nonWorkflowTasksCount === 0) {
+                console.log('未找到非工作流任务，使用默认选项');
+                fillDefaultTaskOptions(selectElement);
+            }
+        };
+        
+        const onLoadError = function(jqXHR, textStatus, errorThrown) {
+            const errorMsg = window.handleApiError ? 
+                window.handleApiError(jqXHR, textStatus, errorThrown, '加载任务配置列表') :
+                `${jqXHR.status}: ${errorThrown || textStatus}`;
+            
+            console.error('无法从API加载任务配置: ' + errorMsg);
+            loadingOption.remove(); // 移除加载中选项
+            
+            // 添加错误状态选项
+            selectElement.append(
+                $('<option></option>')
+                    .attr('value', '')
+                    .attr('disabled', 'disabled')
+                    .text('加载失败: ' + errorMsg)
+            );
+            
+            // 使用默认任务选项作为备用
+            fillDefaultTaskOptions(selectElement);
+        };
+        
+        // 直接从缓存获取任务配置，避免额外的API调用
+        if (window.cachedTasks && Array.isArray(window.cachedTasks) && window.cachedTasks.length > 0) {
+            console.log('从缓存加载任务配置，共 ' + window.cachedTasks.length + ' 个任务');
+            onTasksLoaded(window.cachedTasks);
+            return;
+        }
+        
+        // 如果没有缓存，从服务器获取任务配置列表
+        console.log('从服务器加载任务配置...');
+        makeApiCall('GET', '/tasks', null, 
+            function(response) {
+                // 缓存任务列表，以便将来使用
+                if (Array.isArray(response)) {
+                    window.cachedTasks = response;
+                }
+                onTasksLoaded(response);
+            },
+            onLoadError
+        );
+    } catch (e) {
+        console.error('加载任务配置选项时发生错误:', e);
+        // 清除加载中选项
+        $('#' + (selectElementId || 'editTaskConfigId')).find('option[text="加载中..."]').remove();
+        
+        // 使用默认选项作为异常处理的后备
+        fillDefaultTaskOptions($('#' + (selectElementId || 'editTaskConfigId')));
+    }
+}
+
+// 使用上方定义的加载任务配置选项函数
+
+/**
+ * 打开添加工作流节点对话框
+ * 处理图形模式下添加新节点的功能
+ */
+window.openAddNodeDialog = function() {
+    try {
+        console.log('执行openAddNodeDialog函数');
+        
+        // 设置模态窗口标题
+        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeModal.addNodeTitle', '添加工作流节点'));
+        
+        // 设置为新节点模式
+        $('#editingNodeArrayIndex').val('-1'); // -1 表示新建节点
+          // 显示节点ID输入框（仅在添加新节点时需要）
+        $('.node-id-input-group').show();
+        $('.existing-node-id-group').hide(); // 隐藏现有节点ID显示组
+        
+        // 生成一个默认节点ID
+        const timestamp = new Date().getTime();
+        const defaultNodeId = 'node_' + timestamp.toString().substring(timestamp.toString().length - 6);
+        $('#editNodeId').val(defaultNodeId);
+        
+        // 清空名称和参数
+        $('#editNodeName').val('');
+        $('#editNodeParams').val('{}');
+        
+        // 设置显示节点ID
+        $('#displayNodeId').text(i18n.translate('tasksPage.nodeModal.newNode', '新节点'));
+        
+        // 隐藏删除节点按钮
+        $('#deleteNodeBtn').hide();
+        
+        // 先清空任务配置选择框，再添加一个初始选项
+        const selectElement = $('#editTaskConfigId');
+        selectElement.empty();
+        selectElement.append(
+            $('<option></option>')
+                .attr('value', '')
+                .text(i18n.translate('tasksPage.nodeModal.selectTaskConfig', '- 选择任务配置 -'))
+        );
+        
+        // 加载可用的任务配置选项
+        loadTaskConfigOptions();
+        
+        // 打开模态窗口
+        $('#workflowNodeEditModal').modal('show');
+        
+        console.log('已打开添加节点对话框');
+    } catch (e) {
+        console.error('打开添加节点对话框时出错:', e);
+        showFeedback(i18n.translate('tasksPage.feedback.errorOpeningNodeDialog', '打开添加节点对话框时出错: ') + e.message, true);
+    }
+};

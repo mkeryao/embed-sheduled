@@ -48,6 +48,24 @@ A lightweight, standalone task scheduling system built with Java and Spring Boot
     *   HTML5
     *   CSS3 (Bootstrap 4, custom styles)
     *   JavaScript (ES6, jQuery)
+    *   Optimized workflow graph implementation (tasks-workflow-fixed.js)
+
+## Recent Updates
+
+### Frontend Optimization - June 2025
+* **Code Cleanup**: Removed redundant JavaScript files and consolidated frontend code.
+* **Workflow Graph**: Improved the workflow graph implementation with enhanced stability and error handling.
+* **Key Files**:
+  * `tasks-workflow-fixed.js` - Main implementation of the workflow graph functionality
+  * `tasks-workflow.min.js` - Minified version of the workflow implementation
+  * `dropdown-fix.js` - Support script for dropdown menu functionality
+* **File Structure**: Simplified the JavaScript directory by removing temporary fix scripts and maintaining only essential files.
+
+### Project Status
+* All core functionality is working properly after code cleanup
+* Frontend code has been optimized for better performance and maintainability
+* Workflow graph implementation has been stabilized with improved error handling
+
 *   **Database**:
     *   Designed for MySQL.
     *   H2 Database for embedded testing/development (default).

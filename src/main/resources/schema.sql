@@ -1,3 +1,4 @@
+-- Active: 1746602068773@@10.118.23.42@18521@yyhd
 -- Main table for task configuration
 CREATE TABLE task_config (
     task_id INT AUTO_INCREMENT PRIMARY KEY,

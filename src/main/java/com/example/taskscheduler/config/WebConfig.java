@@ -22,4 +22,5 @@ public class WebConfig {
         registrationBean.setOrder(1); // Example order
         return registrationBean;
     }
+
 }

@@ -1,3 +1,5 @@
 {
-    "maven.view": "flat"
+    "maven.view": "flat",
+    "commentTranslate.targetLanguage": "zh-CN",
+    "java.debug.settings.onBuildFailureProceed": true
 }

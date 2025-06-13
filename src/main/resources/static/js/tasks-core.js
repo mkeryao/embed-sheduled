@@ -165,9 +165,7 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
         console.log("loadAvailableTasksForNodes: Function called.");
         const select = $('#availableTasksForNodes');
         const placeholderText = i18n.translate('tasksPage.modal.workflowTaskFields.selectTaskPlaceholder', '-- Select a Task --');
-        select.empty().append(`<option value="">${placeholderText}</option>`);
-
-        console.log("loadAvailableTasksForNodes: Making API call to /tasks");
+        select.empty().append(`<option value="">${placeholderText}</option>`);        console.log("loadAvailableTasksForNodes: Making API call to /api/tasks");
         makeApiCall('GET', '/tasks', null,
             function (tasks) {
                 console.log("loadAvailableTasksForNodes: API call successful. Received tasks:", tasks);
