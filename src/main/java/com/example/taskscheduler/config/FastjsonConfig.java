@@ -81,7 +81,7 @@ public class FastjsonConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**")
-                .addResourceLocations("file:E:/WorkspaceVscode/embed-sheduled/src/main/resources/static/");
+                .addResourceLocations("file:E:/Workspace3/embed-sheduled/src/main/resources/static/");
     }
 
 }

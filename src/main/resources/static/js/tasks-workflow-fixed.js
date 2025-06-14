@@ -62,17 +62,22 @@
         container.empty().append(svg);
         
         return svg;
-    }
-
-    /**
+    }    /**
      * 重绘DAG图的核心函数
      * @private
      */
     function performRedrawDAG(enableDragging) {
         let safetyTimeout;
         try {
+            // 防止正在进行的绘制过程
+            if (window.isRedrawingDAG) {
+                console.warn('DAG重绘已在进行中，跳过本次重绘请求');
+                return;
+            }
+            
             window.isRedrawingDAG = true;
             
+            // 设置安全超时，防止卡死
             safetyTimeout = setTimeout(function() {
                 console.warn('重绘DAG超时，重置状态');
                 window.isRedrawingDAG = false;
@@ -80,20 +85,34 @@
             }, 10000);
             
             const dagContainer = $('#dagContainer');
+            // 确保dagContainer存在
+            if (dagContainer.length === 0) {
+                console.error('找不到DAG容器元素');
+                clearTimeout(safetyTimeout);
+                window.isRedrawingDAG = false;
+                return;
+            }
+            
             const nodesJson = $('#workflowNodesJson').val();
             
             if (!nodesJson || nodesJson.trim() === '') {
                 dagContainer.html('<div class="text-muted">没有节点数据可显示。点击"添加节点"开始创建工作流。</div>');
+                clearTimeout(safetyTimeout);
+                window.isRedrawingDAG = false;
                 return;
             }
             
             let nodes;
             try {
                 nodes = JSON.parse(nodesJson);
-                console.log(`解析出${nodes.length}个节点`);
+                if (window.debugMode) {
+                    console.log(`解析出${nodes.length}个节点`);
+                }
             } catch (e) {
                 console.error('解析节点JSON失败:', e);
                 dagContainer.html(`<div class="alert alert-danger">解析工作流节点数据失败: ${e.message}</div>`);
+                clearTimeout(safetyTimeout);
+                window.isRedrawingDAG = false;
                 return;
             }
             
@@ -576,25 +595,52 @@
 
     /**
      * 节点管理函数
-     */
-    window.addWorkflowNode = function(nodeData) {
+     */    window.addWorkflowNode = function(nodeData) {
         try {
+            if (!nodeData || !nodeData.id) {
+                throw new Error('节点数据不完整，必须包含ID');
+            }
+            
             let nodes = [];
             const nodesJson = $('#workflowNodesJson').val();
             if (nodesJson && nodesJson.trim() !== '') {
-                nodes = JSON.parse(nodesJson);
+                try {
+                    nodes = JSON.parse(nodesJson);
+                    if (!Array.isArray(nodes)) {
+                        nodes = [];
+                    }
+                } catch (parseErr) {
+                    console.error('解析现有节点失败，将重置节点列表:', parseErr);
+                    nodes = [];
+                }
             }
             
+            // 检查节点ID是否已存在
             if (nodes.some(node => node.id === nodeData.id)) {
-                throw new Error('节点ID已存在');
+                throw new Error(`节点ID '${nodeData.id}' 已存在`);
             }
             
+            // 添加新节点
             nodes.push(nodeData);
+            
+            // 更新JSON并重绘
             $('#workflowNodesJson').val(JSON.stringify(nodes, null, 2));
-            window.safeRedrawDAG(true);
+            
+            // 使用防抖动的DAG重绘
+            if (window.safeRedrawDAG) {
+                window.safeRedrawDAG(true);
+            } else {
+                console.warn('safeRedrawDAG未定义，使用备用方法');
+                if (typeof window.redrawDAG === 'function') {
+                    window.redrawDAG(true);
+                }
+            }
             return true;
         } catch (e) {
             console.error('添加工作流节点失败:', e);
+            if (typeof showFeedback === 'function') {
+                showFeedback('添加节点失败: ' + e.message, true);
+            }
             return false;
         }
     };
@@ -890,16 +936,15 @@
      */
     window.openEditNodeDialog = function(nodeIndex) {
         try {
-            if (!nodeIndex && nodeIndex !== 0) {
-                console.error('未指定节点索引');
-                return;
-            }
+            console.log(`打开节点编辑对话框，索引: ${nodeIndex}`);
             
-            // 获取节点数组
+            // 获取节点数据
             let nodesArray = [];
             try {
                 const nodesJson = $('#workflowNodesJson').val();
-                nodesArray = nodesJson && nodesJson.trim() !== '' ? JSON.parse(nodesJson) : [];
+                if (nodesJson) {
+                    nodesArray = JSON.parse(nodesJson);
+                }
             } catch (e) {
                 console.error('解析节点JSON时出错:', e);
                 showFeedback(i18n.translate('tasksPage.feedback.errorParsingNodes', '解析节点JSON时出错'), true);
@@ -933,11 +978,33 @@
                 $('#wfNodeParams').val('{}');
             }
             
-            // 设置任务ID（如果有）
-            if (node.taskConfigId) {
-                $('#availableTasksForNodes').val(node.taskConfigId).trigger('change');
+            // 在展示模态框前确保先加载任务列表
+            if (typeof window.loadAvailableTasksForNodes === 'function') {
+                console.log('预加载任务选择列表');
+                window.loadAvailableTasksForNodes();
+                
+                // 延迟一点时间设置任务ID，确保任务列表已加载
+                setTimeout(function() {
+                    // 设置任务ID（如果有）
+                    if (node.taskConfigId) {
+                        $('#availableTasksForNodes').val(node.taskConfigId).trigger('change');
+                        
+                        // 确保在所有可能的任务选择框上同步选择
+                        const taskSelects = $('.modal select[id*="task"], .modal select[id*="Task"], .modal select.task-select');
+                        if (taskSelects.length > 0) {
+                            taskSelects.val(node.taskConfigId).trigger('change');
+                        }
+                    } else {
+                        $('#availableTasksForNodes').val('').trigger('change');
+                    }
+                }, 200);
             } else {
-                $('#availableTasksForNodes').val('').trigger('change');
+                // 直接设置任务ID
+                if (node.taskConfigId) {
+                    $('#availableTasksForNodes').val(node.taskConfigId).trigger('change');
+                } else {
+                    $('#availableTasksForNodes').val('').trigger('change');
+                }
             }
             
             // 打开模态窗口
@@ -964,7 +1031,39 @@
             // 获取表单数据
             const nodeId = $('#wfNodeId').val().trim();
             const nodeName = $('#wfNodeName').val().trim();
-            const taskConfigId = $('#availableTasksForNodes').val();
+            
+            // 获取任务ID - 增强逻辑以从多个可能的选择器中获取
+            let taskConfigId = '';
+            // 尝试从主选择器获取
+            taskConfigId = $('#availableTasksForNodes').val();
+            
+            // 如果主选择器没有值，尝试从其他可能的选择器获取
+            if (!taskConfigId) {
+                const possibleSelectors = [
+                    '#taskConfig', 
+                    '#nodeTaskConfig', 
+                    '#selectTask',
+                    '#wfTaskSelect',
+                    'select[id*="task"]',
+                    'select[id*="Task"]',
+                    'select.task-select',
+                    '.modal:visible select' // 所有可见模态框中的选择框
+                ];
+                
+                for (let selector of possibleSelectors) {
+                    const $select = $(selector);
+                    if ($select.length > 0) {
+                        const value = $select.val();
+                        if (value) {
+                            taskConfigId = value;
+                            console.log(`从选择器 ${selector} 获取到任务ID: ${value}`);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            console.log('最终获取的任务ID:', taskConfigId || '未选择任务');
             
             if (!nodeId) {
                 showFeedback(i18n.translate('tasksPage.feedback.nodeIdRequired', '节点ID不能为空'), true);

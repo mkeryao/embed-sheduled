@@ -34,6 +34,7 @@ A lightweight, standalone task scheduling system built with Java and Spring Boot
 *   **Localized Frontend Assets**: All frontend JavaScript and CSS libraries (Bootstrap, jQuery, Popper.js) are served locally.
 *   **MDC Logging**: Enhanced logging with `execute_no` (task execution log ID) in MDC for better traceability, configured via `logback-spring.xml`.
 *   **Performance**: Guava caching implemented for frequently accessed User and Task Calendar data to reduce database load.
+* **Debug Utilities**: Built-in debugging panel accessible via Ctrl+Shift+D for troubleshooting in development and production environments.
 
 ## Technologies Used
 
@@ -49,22 +50,33 @@ A lightweight, standalone task scheduling system built with Java and Spring Boot
     *   CSS3 (Bootstrap 4, custom styles)
     *   JavaScript (ES6, jQuery)
     *   Optimized workflow graph implementation (tasks-workflow-fixed.js)
+    *   Lazy-loading of form components to improve page load performance
 
 ## Recent Updates
 
-### Frontend Optimization - June 2025
+### Frontend Optimization & Performance Improvements - June 2025
+
 * **Code Cleanup**: Removed redundant JavaScript files and consolidated frontend code.
 * **Workflow Graph**: Improved the workflow graph implementation with enhanced stability and error handling.
+* **Performance Enhancements**:
+  * Added smart cache expiration for API data
+  * Optimized DOM operations in workflow rendering
+  * Implemented lazy-loading for form components
+* **Debugging Tools**:
+  * Added debug mode toggle (localStorage based)
+  * Implemented in-browser debugging panel (Ctrl+Shift+D)
+  * Enhanced error handling with specific error messages
 * **Key Files**:
   * `tasks-workflow-fixed.js` - Main implementation of the workflow graph functionality
-  * `tasks-workflow.min.js` - Minified version of the workflow implementation
-  * `dropdown-fix.js` - Support script for dropdown menu functionality
-* **File Structure**: Simplified the JavaScript directory by removing temporary fix scripts and maintaining only essential files.
+  * `lazy-loader.js` - Optimized loading of UI components
+  * `debug-utils.js` - Debugging utilities for development and production
+  * `collapsible-sections.js` - Improved UI for form sections
 
 ### Project Status
 * All core functionality is working properly after code cleanup
 * Frontend code has been optimized for better performance and maintainability
 * Workflow graph implementation has been stabilized with improved error handling
+* Memory usage optimized with smarter caching strategies
 
 *   **Database**:
     *   Designed for MySQL.

@@ -59,7 +59,11 @@ const i18n = {
         return typeof result === 'string' ? result : (fallback || key);
     },
 
-    applyTranslations() {
+    applyTranslations(container) {
+        // 如果参数是DOM元素，则只处理该元素及其子元素
+        // 否则处理整个文档
+        const rootElement = container || document;
+        
         if (!this.translations[this.currentLang] || Object.keys(this.translations[this.currentLang]).length === 0) {
             console.error(`Translations for '${this.currentLang}' are not loaded or empty. UI elements will show keys or fallback text.`);
             // Do not attempt to reload here; init should handle initial load failures.
@@ -67,7 +71,11 @@ const i18n = {
         }
         console.log(`Applying translations for ${this.currentLang}. Translation data available:`, !!(this.translations[this.currentLang] && Object.keys(this.translations[this.currentLang]).length > 0));
 
-        document.querySelectorAll('[data-i18n-key], [data-i18n-key-placeholder], [data-i18n-key-title]').forEach(element => {
+        // 处理带有data-i18n-key属性的元素
+        const elements = rootElement.querySelectorAll ? rootElement.querySelectorAll('[data-i18n-key], [data-i18n-key-placeholder], [data-i18n-key-title]') 
+                                                       : document.querySelectorAll('[data-i18n-key], [data-i18n-key-placeholder], [data-i18n-key-title]');
+                                                       
+        elements.forEach(element => {
             const mainKey = element.getAttribute('data-i18n-key');
             const placeholderKey = element.getAttribute('data-i18n-key-placeholder');
             const titleKey = element.getAttribute('data-i18n-key-title');
@@ -85,6 +93,13 @@ const i18n = {
                          // If it's not a button and not a placeholder, set textContent if it's not an input that shows content another way
                          // This case might be rare for inputs with data-i18n-key directly for textContent
                     }
+                } else if (element.tagName === 'SELECT') {
+                    // 对于SELECT元素，我们通常只想翻译它的label，而不是它的整个内容
+                    // 所以这里不需要特殊处理
+                    element.textContent = translation;
+                } else if (element.tagName === 'OPTION') {
+                    // 对于OPTION元素，我们需要翻译它的显示文本
+                    element.textContent = translation;
                 } else {
                     element.textContent = translation;
                 }
@@ -98,6 +113,47 @@ const i18n = {
                 element.title = this.translate(titleKey, titleKey); // Fallback to key
             }
         });
+        
+        // 特殊处理：查找并处理SELECT元素内的OPTION元素
+        const selects = rootElement.querySelectorAll ? rootElement.querySelectorAll('select') : document.querySelectorAll('select');
+        selects.forEach(select => {
+            const options = select.querySelectorAll('option[data-i18n-key]');
+            options.forEach(option => {
+                const key = option.getAttribute('data-i18n-key');
+                if (key) {
+                    option.textContent = this.translate(key, key);
+                }
+            });
+        });
+        
+        // 特殊处理：处理全部模态框中的元素
+        const modals = rootElement.querySelectorAll ? rootElement.querySelectorAll('.modal') : document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            // 找出所有带有data-i18n-key的元素
+            const modalElements = modal.querySelectorAll('[data-i18n-key]');
+            modalElements.forEach(element => {
+                const key = element.getAttribute('data-i18n-key');
+                if (key) {
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        if (element.type === 'submit' || element.type === 'button') {
+                            element.value = this.translate(key, key);
+                        }
+                    } else {
+                        element.textContent = this.translate(key, key);
+                    }
+                }
+            });
+            
+            // 处理模态框中的所有选项
+            const modalOptions = modal.querySelectorAll('option[data-i18n-key]');
+            modalOptions.forEach(option => {
+                const key = option.getAttribute('data-i18n-key');
+                if (key) {
+                    option.textContent = this.translate(key, key);
+                }
+            });
+        });
+        
         console.log("Translations applied for language:", this.currentLang);
     },
 

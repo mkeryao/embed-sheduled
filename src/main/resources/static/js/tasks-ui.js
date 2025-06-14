@@ -33,13 +33,11 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         }
     }
     window.populateTaskTypeFilter = populateTaskTypeFilter;
-
-
     // 预加载任务配置列表并缓存，用于下拉菜单
     window.cachedTasks = [];
     $(document).ready(function() {
         console.log('预加载任务配置列表...');
-        makeApiCall('GET', '/tasks', null,
+        makeApiCall('GET', '/api/tasks', null,
             function(response) {
                 console.log('成功获取任务配置，缓存 ' + response.length + ' 条记录');
                 if (Array.isArray(response)) {
@@ -117,17 +115,27 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 e.preventDefault();
                 logout();
             });
-        });
-        
-        // 确保模态窗口可以正确滚动
+        });        // 确保模态窗口可以正确滚动和应用国际化
         $('#taskFormModal').on('shown.bs.modal', function() {
             // 重置模态窗口滚动条位置到顶部
             $(this).find('.modal-body').scrollTop(0);
             
-            // 强制应用国际化翻译
-            if (typeof i18n !== 'undefined' && typeof i18n.applyTranslations === 'function') {
-                i18n.applyTranslations();
+            // 加载日历和用户数据
+            if (typeof window.loadCalendarsForTaskForm === 'function') {
+                window.loadCalendarsForTaskForm();
             }
+            
+            if (typeof window.loadUsersForNotifications === 'function') {
+                window.loadUsersForNotifications();
+            }
+            
+            // 延迟执行以确保所有DOM元素都已完全加载，然后强制应用国际化翻译
+            setTimeout(function() {
+                if (typeof i18n !== 'undefined' && typeof i18n.applyTranslations === 'function') {
+                    console.log('应用国际化到任务表单模态框');
+                    i18n.applyTranslations();
+                }
+            }, 200);
 
             // 确保高级设置部分可以通过滚动到达
             setTimeout(function() {
@@ -253,31 +261,30 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         // 添加任务表单提交处理
         $('#task-form').submit(function (event) {
             event.preventDefault();
-            const taskId = $('#taskId').val();
-            const taskData = {
+            const taskId = $('#taskId').val();            const taskData = {
                 taskName: $('#taskName').val(),
                 taskGroup: $('#taskGroup').val(),
                 cronExpression: $('#cronExpression').val(),
                 description: $('#description').val(),
                 executionMode: $('#executionMode').val(),
                 taskType: parseInt($('#taskType').val()),
-                isActive: $('#isActive').is(':checked'),
+                isActive: $('#active').is(':checked'), // 修正ID为active
                 beanName: $('#beanName').val(),
                 methodName: $('#methodName').val(),
                 startDate: $('#startDate').val() ? ($('#startDate').val() + ":00") : null, // Append seconds for backend parsing
                 endDate: $('#endDate').val() ? ($('#endDate').val() + ":00") : null,
-                taskCalendarGroup: $('#taskCalendarGroup').val() || null,
-                taskExcludeTimes: $('#taskExcludeTimes').val() || null,
-                executeTimeoutSeconds: parseInt($('#executeTimeoutSeconds').val()) || 0,
-                notifySuccessUserIds: $('#notifySuccessUserIds').val() ? $('#notifySuccessUserIds').val().join(',') : null,
-                notifyFailedUserIds: $('#notifyFailedUserIds').val() ? $('#notifyFailedUserIds').val().join(',') : null,
+                taskCalendarGroup: $('#calendarGroup').val() || null, // 修正ID为calendarGroup
+                taskExcludeTimes: $('#excludeTimes').val() || null, // 修正ID为excludeTimes
+                executeTimeoutSeconds: parseInt($('#taskTimeout').val()) || 0, // 修正ID为taskTimeout
+                notifySuccessUserIds: $('#notifySuccess').val() ? $('#notifySuccess').val().join(',') : null, // 修正ID为notifySuccess
+                notifyFailedUserIds: $('#notifyFailed').val() ? $('#notifyFailed').val().join(',') : null, // 修正ID为notifyFailed
                 workflowNodes: null,
                 workflowEdges: null,
                 globalParameters: null,
                 // 添加重试设置字段
                 maxRetryAttempts: parseInt($('#maxRetries').val()) || 0,
                 retryIntervalSeconds: parseInt($('#retryInterval').val()) || 30,
-                retryIntervalMultiplier: parseFloat($('#retryIntervalMultiplier').val()) || 1.0
+                retryIntervalMultiplier: parseFloat($('#retryMultiplier').val()) || 1.0 // 修正ID为retryMultiplier
             };
 
             if (taskData.taskType === 0) {
@@ -364,7 +371,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             }
 
             const method = taskId ? 'PUT' : 'POST';
-            const endpoint = taskId ? `/tasks/${taskId}` : '/tasks';
+            const endpoint = taskId ? `/api/tasks/${taskId}` : '/api/tasks';
 
             makeApiCall(method, endpoint, taskData,
                 function (response) {
@@ -478,9 +485,26 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     $('#taskGroup').val(task.taskGroup);
                     $('#taskType').val(task.taskType.toString()).trigger('change');
                     $('#cronExpression').val(task.cronExpression);
-                    $('#description').val(task.description);
-                    $('#executionMode').val(task.executionMode || 'BROADCAST');
-                    $('#isActive').prop('checked', task.isActive);
+                    $('#description').val(task.description);                    $('#executionMode').val(task.executionMode || 'BROADCAST');
+                    $('#active').prop('checked', task.isActive === undefined ? task.active : task.isActive);
+
+                    // 填充高级设置
+                    $('#startDate').val(task.startDate || '');
+                    $('#endDate').val(task.endDate || '');
+                    $('#calendarGroup').val(task.taskCalendarGroup || '');
+                    $('#excludeTimes').val(task.taskExcludeTimes || '');
+                    $('#taskTimeout').val(task.executeTimeoutSeconds || '');
+                    
+                    // 填充重试设置
+                    $('#maxRetries').val(task.maxRetryAttempts || 0);
+                    $('#retryInterval').val(task.retryIntervalSeconds || 30);
+                    $('#retryMultiplier').val(task.retryIntervalMultiplier || 1.0);
+                    
+                    // 填充通知设置
+                    const successUserIds = task.notifySuccessUserIds ? task.notifySuccessUserIds.split(',') : [];
+                    $('#notifySuccess').val(successUserIds);
+                    const failedUserIds = task.notifyFailedUserIds ? task.notifyFailedUserIds.split(',') : [];
+                    $('#notifyFailed').val(failedUserIds);
 
                     // 处理特定类型任务的额外字段
                     if (task.taskType === 0) { // Bean Task
@@ -538,22 +562,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                                 console.warn('Failed to parse Workflow task parameters JSON:', e);
                             }
                         }
-                    }
-
-                    // 日期时间处理
-                    $('#taskExcludeTimes').val(task.taskExcludeTimes);
-                    $('#executeTimeoutSeconds').val(task.executeTimeoutSeconds != null ? task.executeTimeoutSeconds : 0);
-
-                    // 加载重试配置
-                    $('#maxRetries').val(task.maxRetryAttempts != null ? task.maxRetryAttempts : 0);
-                    $('#retryInterval').val(task.retryIntervalSeconds != null ? task.retryIntervalSeconds : 30);
-                    $('#retryIntervalMultiplier').val(task.retryIntervalMultiplier != null ? task.retryIntervalMultiplier : 1.0);
-
-                    $('#taskCalendarGroup').val(task.taskCalendarGroup || '');
-                    const successUserIds = task.notifySuccessUserIds ? task.notifySuccessUserIds.split(',') : [];
-                    $('#notifySuccessUserIds').val(successUserIds);
-                    const failedUserIds = task.notifyFailedUserIds ? task.notifyFailedUserIds.split(',') : [];
-                    $('#notifyFailedUserIds').val(failedUserIds);
+                    }                    // 这些字段已在上面处理，删除重复代码
 
                     $('#taskFormModal').modal('show');
                 },
@@ -885,10 +894,12 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     }, 200);
                 } else {
                     $('#workflowNodeEditModal').modal('hide');
-                }            } catch (e) {
+                }
+            } catch (e) {
                 console.error('关闭节点编辑窗口时出错:', e);
                 // 如果出错，使用默认方式关闭
-                $('#workflowNodeEditModal').modal('hide');            }
+                $('#workflowNodeEditModal').modal('hide');
+            }
               // 安全调用redrawDAG函数
             safeRedrawDAG();
             
@@ -1858,10 +1869,9 @@ function loadTaskConfigOptions(selectElementId) {
             onTasksLoaded(window.cachedTasks);
             return;
         }
-        
-        // 如果没有缓存，从服务器获取任务配置列表
+          // 如果没有缓存，从服务器获取任务配置列表
         console.log('从服务器加载任务配置...');
-        makeApiCall('GET', '/tasks', null, 
+        makeApiCall('GET', '/api/tasks', null, 
             function(response) {
                 // 缓存任务列表，以便将来使用
                 if (Array.isArray(response)) {
@@ -1887,12 +1897,11 @@ function loadTaskConfigOptions(selectElementId) {
  * 打开添加工作流节点对话框
  * 处理图形模式下添加新节点的功能
  */
-window.openAddNodeDialog = function() {
-    try {
+window.openAddNodeDialog = function() {    try {
         console.log('执行openAddNodeDialog函数');
         
         // 设置模态窗口标题
-        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeModal.addNodeTitle', '添加工作流节点'));
+        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeEditModal.title', '添加工作流节点'));
         
         // 设置为新节点模式
         $('#editingNodeArrayIndex').val('-1'); // -1 表示新建节点
@@ -1908,9 +1917,8 @@ window.openAddNodeDialog = function() {
         // 清空名称和参数
         $('#editNodeName').val('');
         $('#editNodeParams').val('{}');
-        
-        // 设置显示节点ID
-        $('#displayNodeId').text(i18n.translate('tasksPage.nodeModal.newNode', '新节点'));
+          // 设置显示节点ID
+        $('#displayNodeId').text(i18n.translate('tasksPage.nodeEditModal.nodeId', '节点ID:'));
         
         // 隐藏删除节点按钮
         $('#deleteNodeBtn').hide();
@@ -1935,4 +1943,215 @@ window.openAddNodeDialog = function() {
         console.error('打开添加节点对话框时出错:', e);
         showFeedback(i18n.translate('tasksPage.feedback.errorOpeningNodeDialog', '打开添加节点对话框时出错: ') + e.message, true);
     }
+};
+
+// 加载日历数据用于任务表单
+window.loadCalendarsForTaskForm = function() {
+    console.log('加载日历数据...');
+    makeApiCall('GET', '/calendars', null,
+        function(response) {
+            const calendarSelect = $('#calendarGroup');
+            if (calendarSelect.length === 0) {
+                console.warn('未找到日历选择器元素');
+                return;
+            }
+            
+            // 清除除了第一个选项之外的所有选项
+            calendarSelect.find('option:not(:first)').remove();
+              // 添加日历选项
+            if (Array.isArray(response)) {
+                response.forEach(calendar => {
+                    calendarSelect.append(
+                        $('<option>')
+                            .val(calendar.calendarName) // 使用日历名称作为值
+                            .text(calendar.calendarName) // 简化显示，只使用日历名称
+                    );
+                });
+            }
+            
+            console.log(`加载了 ${response ? response.length : 0} 个日历选项`);
+        },
+        function(jqXHR) {
+            console.error('加载日历数据失败:', jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText);
+        }
+    );
+};
+
+// 加载用户数据用于通知设置
+window.loadUsersForNotifications = function() {
+    console.log('加载用户数据用于通知设置...');
+    
+    const notifySuccessSelect = $('#notifySuccess');
+    const notifyFailedSelect = $('#notifyFailed');
+    
+    if (notifySuccessSelect.length === 0 || notifyFailedSelect.length === 0) {
+        console.warn('未找到通知选择器元素');
+        return;
+    }
+    
+    // 启用多选插件（如果有）
+    if ($.fn.select2) {
+        try {
+            notifySuccessSelect.select2({
+                placeholder: "选择通知用户",
+                allowClear: true
+            });
+            notifyFailedSelect.select2({
+                placeholder: "选择通知用户",
+                allowClear: true
+            });
+            console.log("应用Select2插件到用户选择框");
+        } catch (e) {
+            console.warn("Select2初始化失败:", e);
+        }
+    }    // 清除除了第一个选项之外的所有选项
+    notifySuccessSelect.find('option:not(:first)').remove();
+    notifyFailedSelect.find('option:not(:first)').remove();
+      makeApiCall('GET', '/api/users', null,
+        function(response) {
+            window.debugLog('获取到用户数据:', response);
+            
+            try {
+                // 缓存用户数据，避免重复加载
+                window.cachedUserList = response;
+                
+                // 先检查数据格式
+                if (!Array.isArray(response)) {
+                    console.warn('用户数据不是数组格式，尝试转换...');
+                    // 尝试将对象转为数组
+                    if (typeof response === 'object' && response !== null) {
+                        if (response.users && Array.isArray(response.users)) {
+                            response = response.users;
+                        } else if (response.data && Array.isArray(response.data)) {
+                            response = response.data;
+                        } else if (response.content && Array.isArray(response.content)) {
+                            response = response.content;
+                        } else {
+                            // 最后尝试将对象值转为数组
+                            const values = Object.values(response);
+                            if (values.length > 0 && typeof values[0] === 'object') {
+                                response = values;
+                            } else {
+                                console.error('用户数据格式无法处理');
+                                return;
+                            }
+                        }
+                    } else {
+                        console.error('用户数据格式无法处理');
+                        return;
+                    }
+                }
+                
+                if (response.length === 0) {
+                    console.warn('用户列表为空');
+                    return;
+                }
+                
+                // 获取用户ID字段名（可能是id或userId）
+                const firstUser = response[0];
+                const idField = firstUser.hasOwnProperty('id') ? 'id' : 
+                                firstUser.hasOwnProperty('userId') ? 'userId' : 'id';
+                
+                window.debugLog(`使用 ${idField} 作为用户ID字段`);
+                
+                // 构建所有用户选项但一次性添加，提高性能
+                const successOptions = [];
+                const failedOptions = [];
+                
+                response.forEach(user => {
+                    const userId = user[idField];
+                    // 使用多种可能的名称字段组合
+                    const displayName = user.fullName || user.username || user.name || 
+                                        (user.firstName && user.lastName ? (user.firstName + ' ' + user.lastName) : null) || 
+                                        (user.firstName || user.lastName || userId);
+                    
+                    successOptions.push(`<option value="${userId}">${displayName}</option>`);
+                    failedOptions.push(`<option value="${userId}">${displayName}</option>`);
+                });
+                
+                // 一次性添加所有选项
+                notifySuccessSelect.append(successOptions.join(''));
+                notifyFailedSelect.append(failedOptions.join(''));
+                
+                window.debugLog(`加载了 ${response.length} 个用户选项`);
+                
+                // 添加后刷新select2（如果使用）
+                if ($.fn.select2) {
+                    try {
+                        notifySuccessSelect.select2('destroy').select2({
+                            placeholder: "选择通知用户",
+                            allowClear: true,
+                            width: '100%'
+                        });
+                        notifyFailedSelect.select2('destroy').select2({
+                            placeholder: "选择通知用户",
+                            allowClear: true,
+                            width: '100%'
+                        });
+                    } catch (e) {
+                        console.warn("Select2刷新失败:", e);
+                    }
+                }
+            } catch (err) {
+                console.error('处理用户数据时出错:', err);
+            }
+        },
+        function(jqXHR) {
+            console.error('加载用户数据失败:', jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText);
+        }
+    );
+};
+
+// 注意：表单提交处理已在前面的submit事件处理函数中完成
+    
+// 重写加载任务详情的函数，支持新字段
+const originalLoadTaskDetails = window.loadTaskDetails;
+window.loadTaskDetails = function(taskId) {
+    console.log('加载任务详情, ID:', taskId);
+    
+    makeApiCall('GET', `/tasks/${taskId}`, null,
+        function(task) {
+            console.log('任务详情获取成功:', task);
+            
+            // 填充基础字段
+            $('#taskId').val(task.taskId);
+            $('#taskName').val(task.taskName);
+            $('#taskGroup').val(task.taskGroup);
+            $('#cronExpression').val(task.cronExpression);
+            $('#executionMode').val(task.executionMode);
+            $('#description').val(task.description);
+            $('#taskType').val(task.taskType).trigger('change');
+              // 填充高级设置
+            $('#startDate').val(task.startDate || '');
+            $('#endDate').val(task.endDate || '');
+            $('#calendarGroup').val(task.taskCalendarGroup || ''); // 修正字段名为taskCalendarGroup
+            $('#excludeTimes').val(task.taskExcludeTimes || ''); // 修正字段名为taskExcludeTimes
+            $('#taskTimeout').val(task.executeTimeoutSeconds || ''); // 修正字段名为executeTimeoutSeconds
+              // 填充重试设置
+            $('#maxRetries').val(task.maxRetryAttempts || 0);
+            $('#retryInterval').val(task.retryIntervalSeconds || 30);
+            $('#retryMultiplier').val(task.retryIntervalMultiplier || 1.0);
+            
+            // 填充通知设置
+            if (task.notifySuccessUserIds) {
+                const successUserIds = task.notifySuccessUserIds.split(',');
+                $('#notifySuccess').val(successUserIds);
+            }
+            if (task.notifyFailedUserIds) {
+                const failedUserIds = task.notifyFailedUserIds.split(',');
+                $('#notifyFailed').val(failedUserIds);
+            }
+              // 设置激活状态
+            $('#active').prop('checked', task.isActive === undefined ? task.active : task.isActive);
+            
+            // 根据任务类型填充特定字段
+            fillTypeSpecificFields(task);
+            
+            // 显示模态框
+            $('#taskFormModal').modal('show');
+        },
+        function(jqXHR) {
+            showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTaskDetails', 'Error loading task details: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
+        }
+    );
 };

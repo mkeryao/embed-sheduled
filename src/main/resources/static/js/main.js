@@ -1,5 +1,23 @@
 const API_BASE_URL = '/api'; // Adjust if your context path is different
 
+// 全局调试模式开关
+window.debugMode = localStorage.getItem('debugMode') === 'true';
+
+// 提供调试模式切换函数
+window.toggleDebugMode = function() {
+    window.debugMode = !window.debugMode;
+    localStorage.setItem('debugMode', window.debugMode);
+    console.log('调试模式: ' + (window.debugMode ? '已启用' : '已禁用'));
+    return window.debugMode;
+};
+
+// 根据调试模式控制日志输出
+window.debugLog = function(...args) {
+    if (window.debugMode) {
+        console.log(...args);
+    }
+};
+
 /**
  * Makes an authenticated API call.
  * @param {string} method - HTTP method (GET, POST, PUT, DELETE)
