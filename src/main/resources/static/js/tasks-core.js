@@ -17,7 +17,7 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
         Object.keys(filters).forEach(key => (filters[key] === null || filters[key] === '' || (typeof filters[key] === 'string' && filters[key].trim() === '')) && delete filters[key]);
 
         const queryString = $.param(filters);
-        const apiUrl = queryString ? `/api/tasks?${queryString}` : '/api/tasks';
+        const apiUrl = queryString ? `/tasks?${queryString}` : '/tasks';
 
         makeApiCall('GET', apiUrl, null,
             function (tasks) {
@@ -25,7 +25,7 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                 tableBody.empty();
 
                 if (!window.initialGroupPopulationDone && Object.keys(filters).length === 0) { // 只在首次全量加载时填充分组
-                    // 如果还没有填充过分组并且没有应用过滤器，获取所有任务以填充分组                    makeApiCall('GET', '/api/tasks', null, function (allTasks) {
+                    makeApiCall('GET', '/tasks', null, function (allTasks) {
                         populateGroupFilter(allTasks);
                     }, function (jqXHR) {
                         console.error("Error fetching all tasks for group population:", jqXHR);
@@ -101,19 +101,27 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
         }
     };    // 加载用户选择框
     window.loadUsersForSelects = function() {
-        console.log("loadUsersForSelects: Function called.");
-        const successSelect = $('#notifySuccessUserIds');
-        const failSelect = $('#notifyFailedUserIds');
+        console.log("loadUsersForSelects: 开始加载用户列表...");
+        const successSelect = $('#notifySuccess');
+        const failSelect = $('#notifyFailed');
 
-        console.log("loadUsersForSelects: Making API call to /api/users");
-        makeApiCall('GET', '/api/users', null,
+        if (successSelect.length === 0 || failSelect.length === 0) {
+            console.error("loadUsersForSelects: 未找到通知设置选择器", {
+                successSelect: successSelect.length,
+                failSelect: failSelect.length
+            });
+            return;
+        }
+
+        console.log("loadUsersForSelects: 找到选择器，正在调用API...");
+        makeApiCall('GET', '/users', null,
             function (users) {
-                console.log("loadUsersForSelects: API call successful. Received users:", users);
+                console.log("loadUsersForSelects: API调用成功，收到用户数据:", users);
                 successSelect.empty(); // 清除之前的选项
                 failSelect.empty();   // 清除之前的选项
 
                 if (users && Array.isArray(users)) {
-                    console.log("loadUsersForSelects: Number of users received:", users.length);
+                    console.log("loadUsersForSelects: 收到用户数量:", users.length);
                     let optionsAdded = 0;
                     users.forEach(function (user) {
                         const option = `<option value='${user.userId}'>${user.username}</option>`;
@@ -121,33 +129,50 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                         failSelect.append(option);
                         optionsAdded++;
                     });
-                    console.log("loadUsersForSelects: Options added to dropdowns:", optionsAdded);
+                    console.log("loadUsersForSelects: 成功添加", optionsAdded, "个用户选项");
+                    
                     if (optionsAdded === 0 && users.length > 0) {
-                        console.warn("loadUsersForSelects: Users received, but no options added (unexpected).");
+                        console.warn("loadUsersForSelects: 收到用户数据但未添加选项（异常情况）");
                     } else if (users.length === 0) {
-                        console.warn("loadUsersForSelects: API returned an empty list of users.");
+                        console.warn("loadUsersForSelects: API返回空用户列表");
                     }
                 } else {
-                    console.warn("loadUsersForSelects: API response was not an array or was null/undefined for users.");
+                    console.warn("loadUsersForSelects: API返回的数据不是数组或为空");
                 }
             },
             function (jqXHR) {
-                console.error("loadUsersForSelects: API call to /users failed.", jqXHR);
+                console.error("loadUsersForSelects: API调用失败", jqXHR);
                 showFeedback(i18n.translate('tasksPage.feedback.errorLoadingUsers', 'Error loading users: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
             }
         );
-    };    // 加载日历选择框
+    };
     window.loadCalendarsForSelect = function() {
-        makeApiCall('GET', '/api/calendars', null,
+        console.log("loadCalendarsForSelect: 开始加载日历组...");
+        const calendarSelect = $('#calendarGroup');
+        
+        if (calendarSelect.length === 0) {
+            console.error("loadCalendarsForSelect: 未找到日历组选择器 #calendarGroup");
+            return;
+        }
+        
+        console.log("loadCalendarsForSelect: 找到选择器，正在调用API...");
+        makeApiCall('GET', '/calendars', null,
             function (calendars) {
-                const calendarSelect = $('#taskCalendarGroup');
+                console.log("loadCalendarsForSelect: API调用成功，收到日历组数据:", calendars);
                 calendarSelect.find('option:gt(0)').remove(); // 保留第一个"-- Select Calendar --"选项
-                calendars.forEach(function (calendar) {
-                    const option = `<option value='${calendar.calendarName}'>${calendar.calendarName}</option>`;
-                    calendarSelect.append(option);
-                });
+                
+                if (calendars && Array.isArray(calendars)) {
+                    calendars.forEach(function (calendar) {
+                        const option = `<option value='${calendar.calendarName}'>${calendar.calendarName}</option>`;
+                        calendarSelect.append(option);
+                    });
+                    console.log("loadCalendarsForSelect: 成功添加", calendars.length, "个日历组选项");
+                } else {
+                    console.warn("loadCalendarsForSelect: 收到的数据不是数组或为空");
+                }
             },
             function (jqXHR) {
+                console.error("loadCalendarsForSelect: API调用失败", jqXHR);
                 showFeedback(i18n.translate('tasksPage.feedback.errorLoadingCalendars', 'Error loading calendars: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
             }
         );
@@ -155,58 +180,35 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
 
     // 加载可用任务到节点选择下拉框
     window.loadAvailableTasksForNodes = function() {
-        console.log("loadAvailableTasksForNodes: Function called.");
-        // 检查选择器是否存在
-        let select = $('#availableTasksForNodes');
+        console.log("loadAvailableTasksForNodes: 开始加载任务列表...");
         
+        // 首先尝试获取当前可见模态框中的选择器
+        let select = $('.modal:visible #availableTasksForNodes');
+        
+        // 如果在可见模态框中没有找到，则尝试获取主表单中的选择器
+        if (select.length === 0) {
+            select = $('#availableTasksForNodes').first();
+            console.log("loadAvailableTasksForNodes: 在主表单中查找选择器");
+        }
+        
+        // 如果仍然没有找到，尝试其他可能的选择器
         if (select.length === 0) {
             console.log("loadAvailableTasksForNodes: 主选择器未找到，尝试查找其他选择器");
             
-            // 查找可能的备选ID（增加图形模式下使用的选择器）
-            const possibleSelectIds = [
-                '#taskConfig', 
-                '#nodeTaskConfig', 
-                '#selectTask',
-                '#wfTaskSelect',
-                '#availableTasks',
-                '#nodeTaskSelect',
-                '#workflowNodeTaskSelect'
+            const possibleSelectors = [
+                '.modal:visible select[id*="task"][id*="select"]',
+                '.modal:visible select.task-select',
+                '#workflowNodeEditModal select',
+                'select[id*="task"][id*="select"]',
+                'select.task-select'
             ];
             
-            // 尝试直接通过ID查找
-            for (let id of possibleSelectIds) {
-                if ($(id).length > 0) {
-                    console.log(`loadAvailableTasksForNodes: 找到备选选择器: ${id}`);
-                    select = $(id);
+            for (let selector of possibleSelectors) {
+                const found = $(selector);
+                if (found.length > 0) {
+                    select = found.first();
+                    console.log(`loadAvailableTasksForNodes: 找到备选选择器: ${selector}`);
                     break;
-                }
-            }
-            
-            // 如果仍未找到，尝试使用通配选择器
-            if (select.length === 0) {
-                const wildcardSelectors = [
-                    'select[id*="task"][id*="select"]', 
-                    'select[id*="Task"]', 
-                    'select.task-select',
-                    'select.node-task-select',
-                    'select[data-role="task-select"]'
-                ];
-                
-                for (let selector of wildcardSelectors) {
-                    if ($(selector).length > 0) {
-                        console.log(`loadAvailableTasksForNodes: 找到通配选择器匹配: ${selector}`);
-                        select = $(selector).first();
-                        break;
-                    }
-                }
-                
-                // 最后，尝试查找模态框中的任何选择器
-                if (select.length === 0) {
-                    const modalSelects = $('.modal:visible select');
-                    if (modalSelects.length > 0) {
-                        console.log(`loadAvailableTasksForNodes: 在可见模态框中找到选择器`);
-                        select = modalSelects.first();
-                    }
                 }
             }
         }
@@ -227,8 +229,8 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
             console.log("使用备选翻译键: tasksPage.modal.workflowTaskFields.selectTaskPlaceholder");
         } else {
             console.log("使用主要翻译键: tasksPage.nodeEditModal.selectTaskPlaceholder");
-        }        select.empty().append(`<option value="">${placeholderText}</option>`);        console.log("loadAvailableTasksForNodes: Making API call to /api/tasks");
-        makeApiCall('GET', '/api/tasks', null,
+        }        select.empty().append(`<option value="">${placeholderText}</option>`);        console.log("loadAvailableTasksForNodes: Making API call to /tasks");
+        makeApiCall('GET', '/tasks', null,
             function (tasks) {
                 console.log("loadAvailableTasksForNodes: API call successful. Received tasks:", tasks);
                 if (tasks && Array.isArray(tasks)) {
@@ -322,13 +324,14 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
         }
     };
 
-    // 加载节点编辑模态框的任务选择列表    window.loadAvailableTasksForEditNode = function() {
+    // 加载节点编辑模态框的任务选择列表
+    window.loadAvailableTasksForEditNode = function() {
         console.log("loadAvailableTasksForEditNode: 正在加载编辑节点的任务选择列表");
         const select = $('#editTaskConfigId');
         const placeholderText = i18n.translate('tasksPage.nodeEditModal.selectTaskPlaceholder', '-- 选择任务 --');
         select.empty().append(`<option value="">${placeholderText}</option>`);
 
-        makeApiCall('GET', '/api/tasks', null,
+        makeApiCall('GET', '/tasks', null,
             function (tasks) {
                 console.log("loadAvailableTasksForEditNode: API调用成功，获取任务:", tasks);
                 if (tasks && Array.isArray(tasks)) {

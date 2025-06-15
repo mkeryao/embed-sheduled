@@ -7,6 +7,7 @@
 if (typeof window.tasksUiInitialized === 'undefined') {
     console.log('初始化tasks UI脚本...');
     window.tasksUiInitialized = true;
+    window.workflowGraphHasUnsavedChanges = false; // Flag to track unsaved workflow changes
 
     /**
      * 填充任务类型过滤器下拉菜单
@@ -37,7 +38,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
     window.cachedTasks = [];
     $(document).ready(function() {
         console.log('预加载任务配置列表...');
-        makeApiCall('GET', '/api/tasks', null,
+        makeApiCall('GET', '/tasks', null,
             function(response) {
                 console.log('成功获取任务配置，缓存 ' + response.length + ' 条记录');
                 if (Array.isArray(response)) {
@@ -324,13 +325,22 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 // 确保所有工作流位置变更都被应用到JSON
                 if (typeof window.ensureWorkflowChangesSaved === 'function') {
                     console.log("执行工作流保存前检查");
+                    // Add visual feedback for this step
+                    const originalButtonText = $('#task-form button[type="submit"]').text();
+                    $('#task-form button[type="submit"]').text(i18n.translate('tasksPage.feedback.syncingWorkflow', 'Syncing workflow...')).prop('disabled', true);
+                    
                     const saveResult = window.ensureWorkflowChangesSaved();
+                    
+                    // Restore button
+                    $('#task-form button[type="submit"]').text(originalButtonText).prop('disabled', false);
+
                     if (saveResult === false) {
                         // ensureWorkflowChangesSaved 返回 false 表示有错误发生
                         console.error("工作流保存预处理失败，停止提交");
                         showFeedback(i18n.translate('tasksPage.feedback.workflowPreSaveFailed', '工作流保存前检查失败，请修正错误后再尝试保存'), true);
                         return; // 停止保存操作
                     }
+                    console.log("工作流保存前检查成功");
                 }
                 
                 try {
@@ -371,7 +381,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             }
 
             const method = taskId ? 'PUT' : 'POST';
-            const endpoint = taskId ? `/api/tasks/${taskId}` : '/api/tasks';
+            const endpoint = taskId ? `/tasks/${taskId}` : '/tasks';
 
             makeApiCall(method, endpoint, taskData,
                 function (response) {
@@ -388,6 +398,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                         
                         // 清除状态，防止再次编辑时出现问题
                         window.nodePositionChanged = false;
+                        window.workflowGraphHasUnsavedChanges = false; // Reset unsaved changes flag
                         
                         // 提供更详细的成功反馈
                         successMsg += ` (${workflowDetails})`;
@@ -485,7 +496,9 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     $('#taskGroup').val(task.taskGroup);
                     $('#taskType').val(task.taskType.toString()).trigger('change');
                     $('#cronExpression').val(task.cronExpression);
-                    $('#description').val(task.description);                    $('#executionMode').val(task.executionMode || 'BROADCAST');
+                    $('#description').val(task.description);
+                    window.workflowGraphHasUnsavedChanges = false; // Reset on loading a task
+                    $('#executionMode').val(task.executionMode || 'BROADCAST');
                     $('#active').prop('checked', task.isActive === undefined ? task.active : task.isActive);
 
                     // 填充高级设置
@@ -946,7 +959,21 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             if (typeof window.checkWorkflowSafetyState === 'function') {
                 window.checkWorkflowSafetyState();
             }
-        });        // 添加工作流DAG上下文菜单功能
+        });
+
+        // Handle task form modal close event to check for unsaved workflow changes
+        $('#taskFormModal').on('hide.bs.modal', function (e) {
+            const taskType = parseInt($('#taskType').val());
+            if (taskType === 10 && window.workflowGraphHasUnsavedChanges) {
+                if (!confirm(i18n.translate('tasksPage.feedback.confirmCloseWithUnsavedChanges', 'You have unsaved workflow changes. Are you sure you want to close?'))) {
+                    e.preventDefault(); // Prevent modal from closing
+                } else {
+                    window.workflowGraphHasUnsavedChanges = false; // User confirmed, reset flag
+                }
+            }
+        });
+
+        // 添加工作流DAG上下文菜单功能
         $('#dagContainer').on('contextmenu', function(e) {
             // 移除之前的任何上下文菜单
             $('.dag-context-menu').remove();
@@ -988,12 +1015,8 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     text: i18n.translate('tasksPage.dagContextMenu.toggleGuide', '显示/隐藏操作指南'),
                     icon: 'bi-info-circle',
                     action: function() {
-                        const guide = $('#dagContainer').find('.dag-operation-guide');
-                        if (guide.length) {
-                            guide.toggle();
-                        } else {
-                            $('#dagContainer').append(window.showDagOperationGuide());
-                        }
+                        // Call the new local function to create/show/hide the guide
+                        displayDagOperationGuide();
                     }
                 },
                 {
@@ -1489,6 +1512,46 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 }
             }
         });
+
+        // Helper function to display the DAG operation guide
+        function displayDagOperationGuide() {
+            // Check if guide already exists and is visible
+            const existingGuide = $('#dagContainer').find('.dag-operation-guide');
+            if (existingGuide.length > 0 && existingGuide.is(':visible')) {
+                existingGuide.hide(); // If visible, hide it (toggle behavior)
+                return;
+            } else if (existingGuide.length > 0 && !existingGuide.is(':visible')) {
+                existingGuide.show(); // If exists but hidden, show it
+                return;
+            }
+
+            // If guide doesn't exist, create it
+            const guideTitle = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.title', '工作流操作指南') : 'Workflow Guide';
+            const editNodeText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.editNode', '双击节点进行编辑。') : 'Double-click node to edit.';
+            const moveNodeText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.moveNode', '拖拽节点进行移动。') : 'Drag node to move.';
+            const connectNodesText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.connectNodes', '右键点击源节点，然后左键点击目标节点以创建连线。') : 'Right-click source node, then left-click target node to create a connection.';
+            const closeText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.close', '关闭') : 'Close';
+
+            const guideHtml = `
+                <div class="dag-operation-guide" style="position: absolute; top: 10px; right: 10px; width: 280px; background-color: #f8f9fa; border: 1px solid #ced4da; border-radius: .25rem; padding: 15px; z-index: 1050; box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);">
+                    <h5 style="margin-top: 0; margin-bottom: .75rem;">${guideTitle}</h5>
+                    <ul style="padding-left: 20px; margin-bottom: 1rem; font-size: 0.875rem;">
+                        <li>${editNodeText}</li>
+                        <li>${moveNodeText}</li>
+                        <li>${connectNodesText}</li>
+                    </ul>
+                    <button type="button" class="btn btn-sm btn-secondary dag-guide-close-btn" style="float: right;">${closeText}</button>
+                    <div style="clear: both;"></div>
+                </div>
+            `;
+            $('#dagContainer').append(guideHtml);
+
+            // Add event listener for the close button within the guide
+            // Ensure event is delegated and not bound multiple times if guide is recreated
+            $('#dagContainer').off('click.dagGuideClose').on('click.dagGuideClose', '.dag-guide-close-btn', function() {
+                $(this).closest('.dag-operation-guide').hide();
+            });
+        }
         
         // 工作流编辑模式切换处理
         $('#editorModeForm, #editorModeGraph').on('click', function() {
@@ -1871,7 +1934,7 @@ function loadTaskConfigOptions(selectElementId) {
         }
           // 如果没有缓存，从服务器获取任务配置列表
         console.log('从服务器加载任务配置...');
-        makeApiCall('GET', '/api/tasks', null, 
+        makeApiCall('GET', '/tasks', null, 
             function(response) {
                 // 缓存任务列表，以便将来使用
                 if (Array.isArray(response)) {
@@ -1975,7 +2038,10 @@ window.loadCalendarsForTaskForm = function() {
             console.error('加载日历数据失败:', jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText);
         }
     );
+    // 触发select元素的change事件，确保UI刷新
+    $('#calendarGroup').trigger('change');
 };
+
 
 // 加载用户数据用于通知设置
 window.loadUsersForNotifications = function() {
@@ -1989,25 +2055,30 @@ window.loadUsersForNotifications = function() {
         return;
     }
     
+    // 清除除了第一个选项之外的所有选项
+    notifySuccessSelect.find('option:not(:first)').remove();
+    notifyFailedSelect.find('option:not(:first)').remove();
+
     // 启用多选插件（如果有）
     if ($.fn.select2) {
         try {
             notifySuccessSelect.select2({
                 placeholder: "选择通知用户",
-                allowClear: true
+                allowClear: true,
+                width: '100%'
             });
             notifyFailedSelect.select2({
                 placeholder: "选择通知用户",
-                allowClear: true
+                allowClear: true,
+                width: '100%'
             });
             console.log("应用Select2插件到用户选择框");
         } catch (e) {
             console.warn("Select2初始化失败:", e);
         }
-    }    // 清除除了第一个选项之外的所有选项
-    notifySuccessSelect.find('option:not(:first)').remove();
-    notifyFailedSelect.find('option:not(:first)').remove();
-      makeApiCall('GET', '/api/users', null,
+    }
+
+        makeApiCall('GET', '/users', null,
         function(response) {
             window.debugLog('获取到用户数据:', response);
             
@@ -2101,6 +2172,7 @@ window.loadUsersForNotifications = function() {
         }
     );
 };
+
 
 // 注意：表单提交处理已在前面的submit事件处理函数中完成
     

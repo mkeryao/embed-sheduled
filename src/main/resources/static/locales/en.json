@@ -73,6 +73,33 @@
     },
     "tasksPage": {
         "title": "Tasks - Task Scheduler",
+        "validation": {
+            "noNodes": "No nodes in workflow",
+            "noStartNode": "Workflow must contain a start node",
+            "multipleStartNodes": "Workflow can only contain one start node",
+            "noEndNode": "Workflow must contain at least one end node",
+            "invalidFromNode": "Invalid source node in edge connection",
+            "invalidToNode": "Invalid target node in edge connection",
+            "isolatedNodes": "Workflow contains unconnected isolated nodes"
+        },
+        "feedback": {
+            "deleteFunctionError": "Node deletion function is abnormal. Please contact an administrator.",
+            "noNodeSelectedForDeletion": "Please select a node by double-clicking it before attempting to delete.",
+            "generalSaveSuccess": "Saved successfully.",
+            "generalSaveFailed": "Save failed. Please check the console for errors.",
+            "nodeValidationFailed": "Node validation failed: ",
+            "edgeValidationFailed": "Edge validation failed: ",
+            "nodeNotFound": "Node not found for operation.",
+            "edgeNotFound": "Edge not found for operation.",
+            "cannotDeleteStartEndNode": "Start/End nodes cannot be deleted directly.",
+            "nodeIdExists": "Node ID already exists. Please use a unique ID.",
+            "taskNotSelectedForNode": "Please select a task for the node.",
+            "invalidNodeIdFormat": "Node ID can only contain letters, numbers, and underscores.",
+            "circularDependencyDetected": "Circular dependency detected in workflow.",
+            "nodeNameRequired": "Node name cannot be empty.",
+            "nodeNameConflict": "Node name conflicts, please use a unique name.",
+            "taskConfigRequiredForNode": "A task must be selected for this node type."
+        },
         "header": "Task Management",
         "addTaskBtn": "Add Task",
         "table": {
@@ -151,7 +178,6 @@
             "descriptionLabel": "Description",
             "description": "Description",
             "executionModeLabel": "Execution Mode",
-            "executionMode": "Execution Mode",
             "executionMode": {
                 "broadcast": "Broadcast (All Instances)",
                 "single": "Single Instance",
@@ -255,6 +281,7 @@
                 "addEdge": "Add Edge",
                 "deleteNode": "Delete Node",
                 "selectTaskPrompt": "-- Select Task --",
+                "selectTaskLabel": "Select Task:",
                 "currentNodeId": "Current Node:",
                 "nodesLabel": "Workflow Nodes",
                 "addNodeBtn": "Add Node",
@@ -268,6 +295,18 @@
                     "join": "Join Node"
                 }
             }
+        },
+        "edgeModal": {
+            "title": "Edit Workflow Edge",
+            "fromNode": "From Node:",
+            "toNode": "To Node:",
+            "condition": "Condition Expression:",
+            "conditionHelp": "Use ${varName} to reference node outputs or global parameters. Leave empty for unconditional execution.",
+            "priority": "Priority:",
+            "priorityHelp": "Lower values have higher priority. Edges are evaluated in priority order.",
+            "expressionHelp": "Use expressions to determine if this edge should activate. Examples:<br>- <code>${nodeA_status} == 'SUCCESS'</code> (when node A succeeds)<br>- <code>${nodeB_result} > 100</code> (when node B's result is > 100)<br>Leave empty for unconditional activation.",
+            "saveBtn": "Save Changes",
+            "deleteBtn": "Delete Edge"
         }
     }
 }

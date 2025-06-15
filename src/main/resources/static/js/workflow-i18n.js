@@ -100,7 +100,7 @@
                         const node = mutation.addedNodes[i];
                         if (node.nodeType === 1 && (
                             node.id && (node.id.indexOf('workflow') !== -1 || node.id.indexOf('node') !== -1 || node.id.indexOf('edge') !== -1) ||
-                            node.className && (node.className.indexOf('workflow') !== -1 || node.className.indexOf('node') !== -1 || node.className.indexOf('edge') !== -1)
+                            node.className && (typeof node.className === 'string' && (node.className.indexOf('workflow') !== -1 || node.className.indexOf('node') !== -1 || node.className.indexOf('edge') !== -1))
                         )) {
                             console.log('检测到动态添加的工作流相关元素:', node);
                             // 立即应用翻译

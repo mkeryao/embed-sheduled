@@ -5,97 +5,28 @@
     <title data-i18n-key="tasksPage.title">Task Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    
-    <link rel="stylesheet" href="css/style.css">    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Removed workflow.css link to fix loading issue -->
+    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
-    <script src="libs/bootstrap/js/bootstrap.min.js"></script>    <script src="js/main.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>    
+    <script src="js/main.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
     <script src="js/tasks-helper.js"></script>
     <script src="js/tasks-core.js"></script>
-    <script src="js/tasks-workflow-fixed.js"></script>
     <script src="js/dropdown-fix.js"></script>
-    <script src="js/collapsible-sections.js"></script>    <script src="js/lazy-loader.js"></script>
+    <script src="js/collapsible-sections.js"></script>    
+    <script src="js/lazy-loader.js"></script>
     <script src="js/tasks-ui.js"></script>
     <script src="js/workflow-i18n.js"></script>
     <script src="js/workflow-task-selector.js"></script>
-    <style>
-        /* Add margin below navbar container to prevent content overlap */
-        #navbar-container {
-            margin-bottom: 70px;
-        }
-        
-        /* 工作流图形区域样式 */
-        #dagContainer {
-            min-height: 400px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            overflow: auto;
-            position: relative;
-        }
-        
-        .workflow-dag-svg {
-            background-color: white;
-            width: 100%;
-            height: auto;
-        }
-        
-        /* 节点样式 */
-        .workflow-node {
-            cursor: move;
-        }
-        
-        .workflow-node-label {
-            font-size: 12px;
-            font-family: Arial, sans-serif;
-            fill: #212529;
-            text-anchor: middle;
-            pointer-events: none;
-        }
-        
-        .workflow-edge {
-            stroke: #6c757d;
-            stroke-width: 2px;
-            fill: none;
-        }
-        
-        .workflow-edge-label {
-            font-size: 10px;
-            font-family: Arial, sans-serif;
-            fill: #495057;
-            text-anchor: middle;
-        }
-        
-        /* 避免节点拖动时选中文本 */
-        svg text {
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-        }
-        
-        /* 节点类型样式 */
-        .node-start circle {
-            fill: #28a745;
-        }
-        
-        .node-end circle {
-            fill: #dc3545;
-        }
-        
-        .node-process circle {
-            fill: #007bff;
-        }
-        
-        .node-decision circle {
-            fill: #ffc107;
-        }
-        
-        .node-parallel circle {
-            fill: #6f42c1;
-        }
-    </style>
+    <script src="js/workflow-svg-manager.js"></script>
+    <script src="js/workflow-node-manager.js"></script>
+    <script src="js/workflow-ui-handlers.js"></script>
 </head>
+
+
 <body>
     <div id="navbar-container"></div>
 
@@ -328,7 +259,7 @@
                     <div class="card-body" id="nodeHelperContent">
                         <div class="form-row">
                             <div class="col-md-6 mb-3">
-                                <label for="availableTasksForNodes" data-i18n-key="tasksPage.modal.workflowTaskFields.selectTask">Select Task:</label>
+                                <label for="availableTasksForNodes" data-i18n-key="tasksPage.modal.workflowTaskFields.selectTaskLabel">Select Task:</label>
                                 <div class="input-group">
                                     <select class="form-control" id="availableTasksForNodes">
                                         <option value="" data-i18n-key="tasksPage.modal.workflowTaskFields.selectTaskPrompt">-- Select a task --</option>
@@ -376,24 +307,30 @@
                 
                 <!-- JSON编辑区域 -->
                 <div id="workflowJsonContainer">
-                    <div class="form-row" id="workflowJsonRefreshRow">                        <div class="col-md-12 mb-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.formatJsonBtn">Format Nodes JSON</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.formatJsonBtn">Format Edges JSON</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="globalParametersJson" data-i18n-key="tasksPage.modal.workflowTaskFields.formatJsonBtn">Format Global Params JSON</button>
-                            <button type="button" class="btn btn-sm btn-outline-primary ml-2" id="refreshWorkflowDiagram" data-i18n-key="tasksPage.modal.workflowTaskFields.refreshDagBtn">Refresh Diagram</button>
+                    <div class="form-row" id="workflowJsonRefreshRow">                        <div class="col-md-12 mb-2 text-right">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="refreshWorkflowDiagram" data-i18n-key="tasksPage.modal.workflowTaskFields.refreshDagBtn">Refresh Diagram</button>
                         </div>
                     </div>                    <div class="form-group">
-                        <label for="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonLabel">Workflow Nodes (JSON)</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="workflowNodesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonLabel">Workflow Nodes (JSON)</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="workflowNodesJson">Format Nodes JSON</button>
+                        </div>
                         <textarea class="form-control" id="workflowNodesJson" name="workflowNodesJson" rows="5" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.nodesJsonPlaceholder"></textarea>
                         <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.nodesJsonNote">Define tasks (nodes). Parameters can use templates like `${nodeA_status}` or `${global_param}`.</small>
                     </div>
                     <div class="form-group">
-                        <label for="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonLabel">Workflow Edges (JSON)</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="workflowEdgesJson" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonLabel">Workflow Edges (JSON)</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="workflowEdgesJson">Format Edges JSON</button>
+                        </div>
                         <textarea class="form-control" id="workflowEdgesJson" name="workflowEdgesJson" rows="5" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.edgesJsonPlaceholder"></textarea>
                         <small class="form-text text-muted" data-i18n-key="tasksPage.modal.workflowTaskFields.edgesJsonNote">Define transitions and conditions between nodes.</small>
                     </div>
                     <div class="form-group">
-                        <label for="globalParametersJson" data-i18n-key="tasksPage.modal.workflowTaskFields.globalParamsLabel">Global Parameters (JSON)</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label for="globalParametersJson" data-i18n-key="tasksPage.modal.workflowTaskFields.globalParamsLabel">Global Parameters (JSON)</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary format-json-btn" data-target-textarea="globalParametersJson">Format Global Params JSON</button>
+                        </div>
                         <textarea class="form-control" id="globalParametersJson" name="globalParametersJson" rows="3" data-i18n-key-placeholder="tasksPage.modal.workflowTaskFields.globalParamsPlaceholder"></textarea>
                     </div>
                 </div>
@@ -616,20 +553,20 @@
         $('.quick-add-node').off('click').on('click', function(e) {
           e.preventDefault();
           const nodeType = $(this).data('node-type');
-          if (typeof window.addWorkflowNode === 'function') {
-            window.addWorkflowNode(nodeType);
+          if (typeof NodeManager !== 'undefined' && typeof NodeManager.addWorkflowNode === 'function') {
+            NodeManager.addWorkflowNode(nodeType);
           } else {
-            console.error('addWorkflowNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+            console.error('NodeManager.addWorkflowNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载或NodeManager是否正确暴露');
           }
         });
         
         // 添加节点按钮
         $('#addNodeBtn').off('click').on('click', function() {
           // 默认添加处理节点
-          if (typeof window.addWorkflowNode === 'function') {
-            window.addWorkflowNode('process');
+          if (typeof NodeManager !== 'undefined' && typeof NodeManager.addWorkflowNode === 'function') {
+            NodeManager.addWorkflowNode('process');
           } else {
-            console.error('addWorkflowNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+            console.error('NodeManager.addWorkflowNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载或NodeManager是否正确暴露');
           }
         });
         
@@ -645,11 +582,20 @@
         // 删除节点按钮
         $('#deleteNodeBtn').off('click').on('click', function() {
           const nodeIndex = $('#editingNodeArrayIndex').val();
-          if (nodeIndex !== '' && typeof window.deleteWorkflowNode === 'function') {
-            window.deleteWorkflowNode(parseInt(nodeIndex));
+          if (nodeIndex !== '') { // 检查 nodeIndex 是否有值
+            if (typeof NodeManager !== 'undefined' && typeof NodeManager.deleteNode === 'function') {
+              NodeManager.deleteNode(nodeIndex); // Removed parseInt()
+              // 删除后，如果节点编辑模态框是打开的，可以考虑关闭它，或者清空助手区的当前节点显示
+              // $('#workflowNodeEditModal').modal('hide'); // 如果适用
+              // $('#displayNodeId').text(i18n.translate('tasksPage.modal.workflowTaskFields.noNodeSelected', 'No node selected'));
+              // $('#editingNodeArrayIndex').val(''); // 清空索引
+            } else {
+              console.error('NodeManager.deleteNode函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
+              alert(i18n.translate('tasksPage.feedback.deleteFunctionError', '删除节点功能异常，请联系管理员。'));
+            }
           } else {
-            console.error('未选择节点或deleteWorkflowNode函数未定义');
-            alert('请先选择一个节点');
+            console.warn('未选择节点进行删除。编辑节点索引为空。');
+            alert(i18n.translate('tasksPage.feedback.noNodeSelectedForDeletion', '请先通过双击选择一个节点进行操作。'));
           }
         });
         
@@ -694,9 +640,9 @@
           <div class="form-group">
             <label for="wfNodeName" data-i18n-key="tasksPage.nodeEditModal.nodeName">Node Name:</label>
             <input type="text" class="form-control" id="wfNodeName" required>
-          </div>          <div class="form-group">
-            <label for="availableTasksForNodes" data-i18n-key="tasksPage.nodeEditModal.taskConfig">Task Configuration:</label>
-            <select class="form-control" id="availableTasksForNodes">
+          <div class="form-group">
+            <label for="wfNodeTaskConfigSelect" data-i18n-key="tasksPage.nodeEditModal.taskConfig">Task Configuration:</label>
+            <select class="form-control" id="wfNodeTaskConfigSelect">
               <option value="" data-i18n-key="tasksPage.nodeEditModal.selectTaskPlaceholder">-- Select a task --</option>
               <!-- Options will be populated dynamically -->
             </select>

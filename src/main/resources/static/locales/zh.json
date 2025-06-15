@@ -73,6 +73,33 @@
     },
     "tasksPage": {
         "title": "任务管理 - 任务调度器",
+        "validation": {
+            "noNodes": "工作流中没有节点",
+            "noStartNode": "工作流必须包含一个开始节点",
+            "multipleStartNodes": "工作流只能包含一个开始节点",
+            "noEndNode": "工作流必须包含至少一个结束节点",
+            "invalidFromNode": "边缘的源节点无效",
+            "invalidToNode": "边缘的目标节点无效",
+            "isolatedNodes": "工作流中存在未连接的孤立节点"
+        },
+        "feedback": {
+            "deleteFunctionError": "删除节点功能异常，请联系管理员。",
+            "noNodeSelectedForDeletion": "请先通过双击选择一个节点进行操作。",
+            "generalSaveSuccess": "保存成功。",
+            "generalSaveFailed": "保存失败，请检查控制台错误。",
+            "nodeValidationFailed": "节点验证失败: ",
+            "edgeValidationFailed": "连线验证失败: ",
+            "nodeNotFound": "未找到要操作的节点。",
+            "edgeNotFound": "未找到要操作的连线。",
+            "cannotDeleteStartEndNode": "不能直接删除开始/结束节点。",
+            "nodeIdExists": "节点ID已存在，请使用唯一的ID。",
+            "taskNotSelectedForNode": "请为节点选择一个任务。",
+            "invalidNodeIdFormat": "节点ID只能包含字母、数字和下划线。",
+            "circularDependencyDetected": "工作流中检测到循环依赖。",
+            "nodeNameRequired": "节点名称不能为空。",
+            "nodeNameConflict": "节点名称冲突，请使用唯一的名称。",
+            "taskConfigRequiredForNode": "此节点类型必须选择一个任务。"
+        },
         "header": "任务管理",
         "addTaskBtn": "添加任务",
         "table": {
@@ -270,7 +297,7 @@
                 "nodeIdPlaceholder": "例如：step1",
                 "nodeNamePlaceholder": "例如：处理数据",
                 "nodeHelperCardHeader": "工作流节点助手",
-                "selectTaskLabel": "选择要添加为节点的任务：",
+                "selectTaskLabel": "选择节点任务:",
                 "selectTaskPlaceholder": "-- 选择任务 --",
                 "nodeParamsLabel": "节点特定参数（JSON，可选）",
                 "nodeParamsPlaceholder": "{\"input_file\": \"/path/to/data.csv\"}",
@@ -310,21 +337,19 @@
                 "edgesJsonLabel": "工作流边缘（JSON）",
                 "edgesJsonPlaceholder": "[{\"fromNodeId\":\"node1\", \"toNodeId\":\"node2\", \"expression\": \"${node1_status} == 'SUCCESS'\"}]",
                 "edgesJsonNote": "定义节点之间的转换和条件。"
-            },
-            "edgeModal": {
-                "titleNew": "新边缘: {{from}} → {{to}}",
-                "titleEdit": "编辑边缘: {{from}} → {{to}}",
-                "fromNodeLabel": "从节点",
-                "toNodeLabel": "到节点",
-                "expressionLabel": "条件表达式",
-                "expressionPlaceholder": "${from_status} == 'SUCCESS'",
-                "expressionHelp": "可以使用来源节点输出变量。留空表示无条件转换。",
-                "priorityLabel": "优先级",
-                "priorityHelp": "当多个边缘条件都满足时，使用优先级确定执行顺序。",
-                "saveBtn": "保存边缘",
-                "cancelBtn": "取消",
-                "deleteBtn": "删除边缘"
             }
+        },
+        "edgeModal": {
+            "title": "边缘属性",
+            "fromNode": "源节点:",
+            "toNode": "目标节点:",
+            "condition": "条件表达式:",
+            "conditionHelp": "使用 ${变量名} 引用节点输出或全局参数。留空则无条件执行。",
+            "priority": "优先级:",
+            "priorityHelp": "数值越小优先级越高。边缘按优先级顺序评估。",
+            "expressionHelp": "使用表达式决定边缘是否激活。例如：<br>- <code>${nodeA_status} == 'SUCCESS'</code> 当节点A成功时<br>- <code>${nodeB_result} > 100</code> 当节点B结果大于100时<br>留空则表示无条件激活。",
+            "saveBtn": "保存边缘",
+            "deleteBtn": "删除边缘"
         },
         "nodeEditModal": {
             "title": "编辑工作流节点",
@@ -338,19 +363,6 @@
             "nodeNameLabel": "节点名称 (显示名)",
             "nodeIdLabel": "节点ID:",
             "nodeParamsLabel": "节点特定参数 (JSON)"
-        },
-        "edgeModal": {
-            "title": "边缘属性",
-            "titleNew": "新边缘: {{from}} → {{to}}",
-            "titleEdit": "编辑边缘: {{from}} → {{to}}",
-            "expressionLabel": "条件表达式 (可选)",
-            "expressionPlaceholder": "${nodeId_status} == 'SUCCESS'",
-            "expressionHelp": "可以使用表达式决定边缘是否激活。例如：<br>- <code>${nodeA_status} == 'SUCCESS'</code> 当节点A成功时<br>- <code>${nodeB_result} > 100</code> 当节点B结果大于100时<br>留空则表示无条件激活。",
-            "priorityLabel": "优先级 (整数, 可选, 默认0)",
-            "priorityPlaceholder": "0",
-            "priorityHelp": "当多条边缘激活时，优先级越高（数值越大）的边缘越先被执行。<br>默认值为0，相同优先级则按添加顺序执行。",
-            "saveBtn": "保存边缘",
-            "deleteBtn": "删除边缘"
         },
         "workflowGuide": {
             "title": "图表操作指南",

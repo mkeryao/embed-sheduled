@@ -1,8 +1,8 @@
 package com.example.taskscheduler.dto.workflow;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 /**
  * Represents an edge or transition between two {@link WorkflowNode}s in a workflow definition.
@@ -13,6 +13,8 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class WorkflowEdge {
+
+    private String id;
     /**
      * The ID of the source {@link WorkflowNode} from which this edge originates.
      */

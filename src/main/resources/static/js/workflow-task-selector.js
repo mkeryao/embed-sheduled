@@ -27,53 +27,47 @@
             return;
         }
         
-        // 查找模态框中的所有可能的选择器
-        const $selectElements = $nodeEditModal.find('select');
-        if ($selectElements.length === 0) {
-            console.log('节点编辑模态框中未找到选择器');
-            return;
-        }
-        
-        // 查找最可能是任务选择器的元素
-        let $taskSelector = null;
-        
-        // 按优先级查找
-        const selectorIds = [
-            '#availableTasksForNodes',
-            '#taskConfig',
-            '#nodeTaskConfig',
-            '#selectTask',
-            '#wfTaskSelect',
-            '#taskSelector'
-        ];
-        
-        // 首先通过ID查找
-        for (const id of selectorIds) {
-            const $select = $nodeEditModal.find(id);
-            if ($select.length > 0) {
-                $taskSelector = $select;
-                console.log('通过ID找到任务选择器:', id);
-                break;
+        // 直接定位唯一的任务选择器ID，避免多个选择器冲突
+        let $taskSelector = $nodeEditModal.find('#wfNodeTaskConfigSelect');
+        if (!$taskSelector || $taskSelector.length === 0) {
+            // 按优先级查找
+            const selectorIds = [
+                '#availableTasksForNodes',
+                '#taskConfig',
+                '#nodeTaskConfig',
+                '#selectTask',
+                '#wfTaskSelect',
+                '#taskSelector'
+            ];
+            
+            // 首先通过ID查找
+            for (const id of selectorIds) {
+                const $select = $nodeEditModal.find(id);
+                if ($select.length > 0) {
+                    $taskSelector = $select;
+                    console.log('通过ID找到任务选择器:', id);
+                    break;
+                }
             }
-        }
-        
-        // 如果通过ID未找到，尝试通过类或属性查找
-        if (!$taskSelector) {
-            const $candidates = $nodeEditModal.find('select[id*="task"], select[id*="Task"], select.task-select, select[data-role="task-select"]');
-            if ($candidates.length > 0) {
-                $taskSelector = $candidates.first();
-                console.log('通过类或属性找到任务选择器:', $taskSelector.attr('id') || '无ID');
+            
+            // 如果通过ID未找到，尝试通过类或属性查找
+            if (!$taskSelector || $taskSelector.length === 0) {
+                const $candidates = $nodeEditModal.find('select[id*="task"], select[id*="Task"], select.task-select, select[data-role="task-select"]');
+                if ($candidates.length > 0) {
+                    $taskSelector = $candidates.first();
+                    console.log('通过类或属性找到任务选择器:', $taskSelector.attr('id') || '无ID');
+                }
             }
-        }
-        
-        // 如果仍未找到，使用第一个选择器作为备选
-        if (!$taskSelector && $selectElements.length > 0) {
-            $taskSelector = $selectElements.first();
-            console.log('使用第一个选择器作为备选:', $taskSelector.attr('id') || '无ID');
+            
+            // 如果仍未找到，使用第一个选择器作为备选
+            if ((!$taskSelector || $taskSelector.length === 0) && $nodeEditModal.find('select').length > 0) {
+                $taskSelector = $nodeEditModal.find('select').first();
+                console.log('使用第一个选择器作为备选:', $taskSelector.attr('id') || '无ID');
+            }
         }
         
         // 如果找到了选择器，加载任务列表
-        if ($taskSelector) {
+        if ($taskSelector && $taskSelector.length > 0) {
             // 保留当前选中的选项
             const currentValue = $taskSelector.val();
             const valueToSelect = selectedTaskId || currentValue || '';
@@ -92,13 +86,14 @@
                         if (valueToSelect) {
                             $taskSelector.val(valueToSelect).trigger('change');
                             
-                            // 同步到其他可能的选择器
-                            $nodeEditModal.find('select').not($taskSelector).each(function() {
-                                const $this = $(this);
-                                if ($this.find(`option[value="${valueToSelect}"]`).length > 0) {
-                                    $this.val(valueToSelect).trigger('change');
-                                }
-                            });
+            // 取消同步到其他选择器，避免多个节点任务选择器互相影响
+            // $nodeEditModal.find('select').not($taskSelector).each(function() {
+            //     const $this = $(this);
+            //     if ($this.find(`option[value="${valueToSelect}"]`).length > 0) {
+            //         $this.val(valueToSelect).trigger('change');
+            //     }
+            // });
+
                         }
                         
                         // 应用国际化
