@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>    
+    <meta charset="UTF-8">
+    <title data-i18n-key="tasksPage.title">Task Management - Task Scheduler</title>
+    <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    
+    <link rel="stylesheet" href="css/style.css">
+    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    <script src="libs/popperjs/popper.min.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>    
+    <script src="js/main.js"></script>
+    <script src="js/i18n.js"></script>
+    <script src="js/i18n-init.js"></script>
+    <script src="js/tasks-helper.js"></script>
+    <script src="js/tasks-core.js"></script>
+    <script src="js/dropdown-fix.js"></script>
+    <script src="js/collapsible-sections.js"></script>    
+    <script src="js/lazy-loader.js"></script>
+    <script src="js/tasks-ui.js"></script>
+    <script src="js/workflow-i18n.js"></script>
+    <script src="js/workflow-task-selector.js"></script>
+    <script src="js/workflow-svg-manager.js"></script>
+    <script src="js/workflow-node-manager.js"></script>
+    <script src="js/workflow-ui-handlers.js"></script>
+</head>
+
+<body>
+    <!-- Main content here -->
+    <div id="navbar-container"></div>
+    <!-- Rest of the content -->
+</body>
+
+<!-- 工作流节点编辑模态框 -->
+<div class="modal fade" id="workflowNodeEditModal" tabindex="-1" role="dialog" aria-labelledby="workflowNodeEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="workflowNodeEditModalLabel" data-i18n-key="tasksPage.nodeEditModal.title">Edit Workflow Node</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>      
+      <div class="modal-body">
+        <form id="node-edit-form">
+          <input type="hidden" id="editingNodeArrayIndex" value="">
+          <div class="form-group">
+            <label for="wfNodeId" data-i18n-key="tasksPage.nodeEditModal.nodeId">Node ID:</label>
+            <input type="text" class="form-control" id="wfNodeId" required>
+          </div>
+          <div class="form-group">
+            <label for="wfNodeName" data-i18n-key="tasksPage.nodeEditModal.nodeName">Node Name:</label>
+            <input type="text" class="form-control" id="wfNodeName" required>
+          </div>
+          <div class="form-group">
+            <label for="wfNodeTaskConfigSelect" data-i18n-key="tasksPage.nodeEditModal.taskConfig">Task Configuration:</label>
+            <select class="form-control" id="wfNodeTaskConfigSelect">
+              <option value="" data-i18n-key="tasksPage.nodeEditModal.selectTaskPlaceholder">-- Select a task --</option>
+              <!-- Options will be populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wfNodeParams" data-i18n-key="tasksPage.nodeEditModal.nodeParams">Node Parameters (JSON):</label>
+            <textarea class="form-control" id="wfNodeParams" rows="5"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="saveNodeBtn" data-i18n-key="tasksPage.nodeEditModal.saveBtn">Save Changes</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 工作流边缘编辑模态框 -->
+<div class="modal fade" id="workflowEdgeEditModal" tabindex="-1" role="dialog" aria-labelledby="workflowEdgeEditModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="workflowEdgeEditModalLabel" data-i18n-key="tasksPage.edgeModal.title">Edit Workflow Edge</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="edge-edit-form">
+          <input type="hidden" id="editingEdgeArrayIndex" value="">
+          <div class="form-group">
+            <label for="wfEdgeFrom" data-i18n-key="tasksPage.edgeModal.fromNode">From Node:</label>
+            <select class="form-control" id="wfEdgeFrom" required>
+              <!-- Options will be populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wfEdgeTo" data-i18n-key="tasksPage.edgeModal.toNode">To Node:</label>
+            <select class="form-control" id="wfEdgeTo" required>
+              <!-- Options will be populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="wfEdgeExpression" data-i18n-key="tasksPage.edgeModal.condition">Condition Expression:</label>
+            <input type="text" class="form-control" id="wfEdgeExpression" placeholder="${nodeA_status} == 'SUCCESS'">
+            <small class="form-text text-muted" data-i18n-key="tasksPage.edgeModal.conditionHelp">Use ${varName} to reference node outputs or global parameters. Leave empty for unconditional execution.</small>
+          </div>
+          <div class="form-group">
+            <label for="wfEdgePriority" data-i18n-key="tasksPage.edgeModal.priority">Priority:</label>
+            <input type="number" class="form-control" id="wfEdgePriority" min="1" value="1">
+            <small class="form-text text-muted" data-i18n-key="tasksPage.edgeModal.priorityHelp">Lower values have higher priority. Edges are evaluated in priority order.</small>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer d-flex">
+        <button type="button" class="btn btn-danger mr-auto" id="deleteEdgeBtn" onclick="window.deleteWorkflowEdge()" data-i18n-key="tasksPage.edgeModal.deleteBtn">Delete Edge</button>
+        <button type="button" class="btn btn-primary" id="saveEdgeBtn" onclick="window.saveWorkflowEdge()" data-i18n-key="tasksPage.edgeModal.saveBtn">Save Changes</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</html>

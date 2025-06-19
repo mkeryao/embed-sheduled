@@ -522,23 +522,6 @@
           }
         });
         
-        // 保存工作流边缘
-        $('#saveEdgeBtn').off('click').on('click', function() {
-          if (typeof window.saveWorkflowEdge === 'function') {
-            window.saveWorkflowEdge();
-          } else {
-            console.error('saveWorkflowEdge函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
-          }
-        });
-        
-        // 删除工作流边缘
-        $('#deleteEdgeBtn').off('click').on('click', function() {
-          if (typeof window.deleteWorkflowEdge === 'function') {
-            window.deleteWorkflowEdge();
-          } else {
-            console.error('deleteWorkflowEdge函数未定义，请检查tasks-workflow-fixed.js是否正确加载');
-          }
-        });
         
         // 刷新工作流图
         $('#refreshWorkflowDiagram').off('click').on('click', function() {
@@ -630,7 +613,8 @@
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
-      </div>      <div class="modal-body">
+      </div>      
+      <div class="modal-body">
         <form id="node-edit-form">
           <input type="hidden" id="editingNodeArrayIndex" value="">
           <div class="form-group">
@@ -640,6 +624,7 @@
           <div class="form-group">
             <label for="wfNodeName" data-i18n-key="tasksPage.nodeEditModal.nodeName">Node Name:</label>
             <input type="text" class="form-control" id="wfNodeName" required>
+          </div>
           <div class="form-group">
             <label for="wfNodeTaskConfigSelect" data-i18n-key="tasksPage.nodeEditModal.taskConfig">Task Configuration:</label>
             <select class="form-control" id="wfNodeTaskConfigSelect">
@@ -699,8 +684,8 @@
         </form>
       </div>
       <div class="modal-footer d-flex">
-        <button type="button" class="btn btn-danger mr-auto" id="deleteEdgeBtn" data-i18n-key="tasksPage.edgeModal.deleteBtn">Delete Edge</button>
-        <button type="button" class="btn btn-primary" id="saveEdgeBtn" data-i18n-key="tasksPage.edgeModal.saveBtn">Save Changes</button>
+        <button type="button" class="btn btn-danger mr-auto" id="deleteEdgeBtn" onclick="window.deleteWorkflowEdge()" data-i18n-key="tasksPage.edgeModal.deleteBtn">Delete Edge</button>
+        <button type="button" class="btn btn-primary" id="saveEdgeBtn" onclick="window.saveWorkflowEdge()" data-i18n-key="tasksPage.edgeModal.saveBtn">Save Changes</button>
         <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">Cancel</button>
       </div>
     </div>

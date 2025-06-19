@@ -54,7 +54,104 @@
             
             console.log('SVG initialized in', containerElementId);
             return svg;
-        } // End of initializeSvg
-    }; // End of SVGManager (incomplete, will be extended)
+        },
 
-    // END_OF_CHUNK_1_SVGMANAGER_INITSVG_COMPLETE
+        // Implement openEdgeEditDialog to open the modal and populate fields
+        openEdgeEditDialog: function(edgeId) {
+            if (!window.NodeManager) {
+                console.error('NodeManager is not defined.');
+                return;
+            }
+            const edge = window.NodeManager.getEdgeById(edgeId);
+            if (!edge) {
+                console.error('Edge not found with id:', edgeId);
+                return;
+            }
+            // Set hidden input for editing edge index or id
+            $('#editingEdgeArrayIndex').val(edgeId);
+
+            // Populate modal fields
+            $('#wfEdgeFrom').val(edge.fromNodeId);
+            $('#wfEdgeTo').val(edge.toNodeId);
+            $('#wfEdgeExpression').val(edge.expression || '');
+            $('#wfEdgePriority').val(edge.priority || 1);
+
+            // Show the modal
+            $('#workflowEdgeEditModal').modal('show');
+        },
+
+        // Save edge changes from modal
+        saveWorkflowEdge: function() {
+            if (!window.NodeManager) {
+                console.error('NodeManager is not defined.');
+                return;
+            }
+            const edgeId = $('#editingEdgeArrayIndex').val();
+            if (!edgeId) {
+                alert('No edge selected for saving.');
+                return;
+            }
+            const fromNodeId = $('#wfEdgeFrom').val();
+            const toNodeId = $('#wfEdgeTo').val();
+            const expression = $('#wfEdgeExpression').val();
+            const priority = parseInt($('#wfEdgePriority').val(), 10) || 1;
+
+            // Validate from and to nodes
+            if (!fromNodeId || !toNodeId) {
+                alert('From Node and To Node must be selected.');
+                return;
+            }
+
+            // Update edge in NodeManager
+            const success = window.NodeManager.updateEdge(edgeId, {
+                fromNodeId: fromNodeId,
+                toNodeId: toNodeId,
+                expression: expression,
+                priority: priority
+            });
+
+            if (success) {
+                $('#workflowEdgeEditModal').modal('hide');
+                window.safeRedrawDAG(true);
+            } else {
+                alert('Failed to update edge.');
+            }
+        },
+
+        // Delete edge from modal
+        deleteWorkflowEdge: function() {
+            if (!window.NodeManager) {
+                console.error('NodeManager is not defined.');
+                return;
+            }
+            const edgeId = $('#editingEdgeArrayIndex').val();
+            if (!edgeId) {
+                alert('No edge selected for deletion.');
+                return;
+            }
+            if (confirm('Are you sure you want to delete this edge?')) {
+                const success = window.NodeManager.deleteEdge(edgeId);
+                if (success) {
+                    $('#workflowEdgeEditModal').modal('hide');
+                    window.safeRedrawDAG(true);
+                } else {
+                    alert('Failed to delete edge.');
+                }
+            }
+        }
+    };
+
+    // Expose functions globally for modal buttons
+    window.openEdgeEditDialog = function(edgeId) {
+        SVGManager.openEdgeEditDialog(edgeId);
+    };
+    window.saveWorkflowEdge = function() {
+        SVGManager.saveWorkflowEdge();
+    };
+    window.deleteWorkflowEdge = function() {
+        SVGManager.deleteWorkflowEdge();
+    };
+
+    window.SVGManager = SVGManager;
+
+})();

@@ -1,0 +1,6 @@
+1、target/** 文件不考虑
+2、*.log 文件不考虑
+3、history/文件不考虑
+4、powershell 环境命令 连接符 
+
+
