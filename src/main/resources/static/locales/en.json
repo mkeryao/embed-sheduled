@@ -71,6 +71,25 @@
         "finish": "Finish",
         "confirm.delete": "Are you sure you want to delete this? This action cannot be undone."
     },
+    "api": {
+        "errors": {
+            "taskNameAndCronRequired": "Task name and CRON expression must not be empty.",
+            "invalidCronExpression": "Invalid CRON expression format.",
+            "invalidJsonForTaskType": "beanParameters is not valid JSON for HTTP/Shell task type.",
+            "workflowContainsCycle": "Workflow configuration contains a cycle. Please correct the workflow definition.",
+            "requestBodyNull": "Request body cannot be null.",
+            "cronExpressionEmpty": "CRON expression cannot be empty.",
+            "failedToParseCron": "Failed to parse CRON expression or determine next execution time: {{error}}",
+            "errorTriggeringTask": "Error triggering task {{taskId}}: {{error}}"
+        },
+        "success": {
+            "taskTriggered": "Task {{taskId}} triggered successfully.",
+            "taskAlreadyEnabled": "Task {{taskId}} is already enabled.",
+            "taskEnabled": "Task {{taskId}} enabled successfully.",
+            "taskAlreadyDisabled": "Task {{taskId}} is already disabled.",
+            "taskDisabled": "Task {{taskId}} disabled successfully."
+        }
+    },
     "tasksPage": {
         "title": "Tasks - Task Scheduler",
         "validation": {

@@ -28,12 +28,14 @@ import org.springframework.web.bind.annotation.RestController; // Added for DAG 
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
+import com.example.taskscheduler.dao.TaskCalendarDao;
 import com.example.taskscheduler.dao.TaskConfigDao;
 import com.example.taskscheduler.dto.TaskConfigDto;
 import com.example.taskscheduler.dto.workflow.WorkflowEdge;
 import com.example.taskscheduler.dto.workflow.WorkflowNode;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.scheduler.CoreSchedulerService;
+import com.example.taskscheduler.scheduler.CustomTaskTrigger;
 import com.example.taskscheduler.util.DagCycleDetector;
 
 @RestController
@@ -47,6 +49,9 @@ public class TaskConfigController {
 
     @Autowired
     private CoreSchedulerService coreSchedulerService;
+
+    @Autowired
+    private TaskCalendarDao taskCalendarDao;
 
     // ObjectMapper is no longer needed here if Fastjson is the primary via
     // HttpMessageConverter
@@ -402,7 +407,7 @@ public class TaskConfigController {
                 // This catch might be redundant if isValidExpression is comprehensive
                 // but good as a safeguard if parse has stricter checks or for unforeseen
                 // issues.
-                response.put("isValid", false); // Correct the status if parse fails
+                response.put("isValid", true); // Correct the status if parse fails
                 response.put("error",
                         "Failed to parse CRON expression or determine next execution time: " + e.getMessage());
                 // Still return 200 OK as it's a validation endpoint, but indicate failure in
@@ -413,6 +418,88 @@ public class TaskConfigController {
             response.put("error", "Invalid CRON expression format.");
             // Return 200 OK with isValid:false, as per common validation endpoint patterns
             return ResponseEntity.ok(response);
+        }
+    }
+
+    @GetMapping("/{id}/next-runs")
+    public ResponseEntity<Map<String, Object>> getNextRunsWithConstraints(
+            @PathVariable Integer id,
+            @RequestParam(defaultValue = "5") int count) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        // Fetch the task
+        Optional<TaskConfig> taskOptional = taskConfigDao.findById(id);
+        if (!taskOptional.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        TaskConfig task = taskOptional.get();
+
+        // Create a CustomTaskTrigger to leverage its nextExecutionTime logic
+        CustomTaskTrigger trigger = new CustomTaskTrigger(task, taskCalendarDao);
+
+        List<String> nextTimes = new ArrayList<>();
+
+        // Create a simple trigger context for prediction
+        SimpleTriggerContext context = new SimpleTriggerContext(
+                null, null, null);
+
+        for (int i = 0; i < count; i++) {
+            java.util.Date nextTime = trigger.nextExecutionTime(context);
+            if (nextTime == null) {
+                // No more valid execution times
+                break;
+            }
+            nextTimes.add(nextTime.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime().toString());
+
+            // Update context for next iteration, add 1 ms to avoid same time repeated
+            context = new SimpleTriggerContext(new java.util.Date(nextTime.getTime() + 1), nextTime,
+                    new java.util.Date(nextTime.getTime() + 1));
+        }
+
+        response.put("taskId", id);
+        response.put("taskName", task.getTaskName());
+        response.put("cronExpression", task.getCronExpression());
+        response.put("calendarGroup", task.getTaskCalendarGroup());
+        response.put("excludeTimes", task.getTaskExcludeTimes());
+        response.put("startDate", task.getStartDate());
+        response.put("endDate", task.getEndDate());
+        response.put("nextExecutionTimes", nextTimes);
+        response.put("isValid", true);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Simple TriggerContext implementation for calculating next execution times.
+     */
+    private static class SimpleTriggerContext implements org.springframework.scheduling.TriggerContext {
+        private final java.util.Date lastScheduledExecutionTime;
+        private final java.util.Date lastActualExecutionTime;
+        private final java.util.Date lastCompletionTime;
+
+        public SimpleTriggerContext(java.util.Date lastScheduledExecutionTime,
+                java.util.Date lastActualExecutionTime,
+                java.util.Date lastCompletionTime) {
+            this.lastScheduledExecutionTime = lastScheduledExecutionTime;
+            this.lastActualExecutionTime = lastActualExecutionTime;
+            this.lastCompletionTime = lastCompletionTime;
+        }
+
+        @Override
+        public java.util.Date lastScheduledExecutionTime() {
+            return this.lastScheduledExecutionTime;
+        }
+
+        @Override
+        public java.util.Date lastActualExecutionTime() {
+            return this.lastActualExecutionTime;
+        }
+
+        @Override
+        public java.util.Date lastCompletionTime() {
+            return this.lastCompletionTime;
         }
     }
 }

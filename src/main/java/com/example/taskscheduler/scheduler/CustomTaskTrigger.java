@@ -33,7 +33,8 @@ public class CustomTaskTrigger implements Trigger {
         this.taskConfig = taskConfig;
         this.taskCalendarDao = taskCalendarDao;
         // Assuming system default time zone if not specified in TaskConfig
-        // For production, it's better to have timezone explicitly in TaskConfig or application default
+        // For production, it's better to have timezone explicitly in TaskConfig or
+        // application default
         this.cronTrigger = new CronTrigger(taskConfig.getCronExpression(), TimeZone.getDefault());
     }
 
@@ -46,22 +47,30 @@ public class CustomTaskTrigger implements Trigger {
         // If both are null, it means this is the first execution after scheduling,
         // or we are predicting from 'now'.
         // For prediction via API, lastScheduledExecutionTime might be set to 'now'.
-        Date nextPotentialExecutionTime = (lastExecutionTime != null) ? lastExecutionTime : new Date();
+        Date nextPotentialExecutionTime = (lastExecutionTime != null) ? new Date(lastExecutionTime.getTime() + 1)
+                : new Date();
 
         Calendar maxFutureDate = Calendar.getInstance();
         maxFutureDate.add(Calendar.YEAR, MAX_YEARS_IN_FUTURE);
 
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             // 1. Get next time from CronTrigger
-            nextPotentialExecutionTime = cronTrigger.nextExecutionTime(new SimpleTriggerContext(nextPotentialExecutionTime, lastExecutionTime, triggerContext.lastCompletionTime()));
+            nextPotentialExecutionTime = cronTrigger.nextExecutionTime(new SimpleTriggerContext(
+                    nextPotentialExecutionTime, lastExecutionTime, triggerContext.lastCompletionTime()));
 
             if (nextPotentialExecutionTime == null) {
-                logger.warn("Task ID {}: Cron expression '{}' yielded no further execution times.", taskConfig.getTaskId(), taskConfig.getCronExpression());
+                logger.warn("Task ID {}: Cron expression '{}' yielded no further execution times.",
+                        taskConfig.getTaskId(), taskConfig.getCronExpression());
                 return null; // No more executions as per cron
             }
 
+            // Update lastExecutionTime to the new nextPotentialExecutionTime for next
+            // iteration
+            lastExecutionTime = nextPotentialExecutionTime;
+
             if (nextPotentialExecutionTime.after(maxFutureDate.getTime())) {
-                logger.warn("Task ID {}: Searched for next execution time beyond {} years. Stopping search.", taskConfig.getTaskId(), MAX_YEARS_IN_FUTURE);
+                logger.warn("Task ID {}: Searched for next execution time beyond {} years. Stopping search.",
+                        taskConfig.getTaskId(), MAX_YEARS_IN_FUTURE);
                 return null; // Safety break: too far in future
             }
 
@@ -86,12 +95,14 @@ public class CustomTaskTrigger implements Trigger {
             if (StringUtils.hasText(taskConfig.getTaskCalendarGroup())) {
                 java.sql.Date executionSqlDate = new java.sql.Date(nextPotentialExecutionTime.getTime());
                 boolean isExcludedByCalendar = taskCalendarDao.findCalendarByName(taskConfig.getTaskCalendarGroup())
-                        .flatMap(calendar -> taskCalendarDao.findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), executionSqlDate))
+                        .flatMap(calendar -> taskCalendarDao
+                                .findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), executionSqlDate))
                         .map(calendarDay -> !calendarDay.isWorkingDay()) // true if it's a non-working day (excluded)
                         .orElse(false); // Not in calendar or is a working day -> not excluded
 
                 if (isExcludedByCalendar) {
-                    logger.debug("Task ID {}: Candidate time {} is excluded by calendar group '{}'. Skipping.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getTaskCalendarGroup());
+                    logger.debug("Task ID {}: Candidate time {} is excluded by calendar group '{}'. Skipping.",
+                            taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getTaskCalendarGroup());
                     continue;
                 }
             }
@@ -108,26 +119,31 @@ public class CustomTaskTrigger implements Trigger {
                             LocalTime excludeStartTime = LocalTime.parse(times[0].trim());
                             LocalTime excludeEndTime = LocalTime.parse(times[1].trim());
                             // Check if executionLocalTime is within [excludeStartTime, excludeEndTime)
-                            if (!executionLocalTime.isBefore(excludeStartTime) && executionLocalTime.isBefore(excludeEndTime)) {
+                            if (!executionLocalTime.isBefore(excludeStartTime)
+                                    && executionLocalTime.isBefore(excludeEndTime)) {
                                 excludedByTime = true;
                                 break;
                             }
                         } catch (java.time.format.DateTimeParseException e) {
-                            logger.warn("Task ID {}: Invalid time format in task_exclude_times: '{}'. Range: {}", taskConfig.getTaskId(), e.getMessage(), range);
+                            logger.warn("Task ID {}: Invalid time format in task_exclude_times: '{}'. Range: {}",
+                                    taskConfig.getTaskId(), e.getMessage(), range);
                         }
                     }
                 }
                 if (excludedByTime) {
-                    logger.debug("Task ID {}: Candidate time {} is within excluded time ranges '{}'. Skipping.", taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getTaskExcludeTimes());
+                    logger.debug("Task ID {}: Candidate time {} is within excluded time ranges '{}'. Skipping.",
+                            taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getTaskExcludeTimes());
                     continue;
                 }
             }
 
             // If all checks pass, this is a valid execution time
-            logger.debug("Task ID {}: Found valid next execution time: {}", taskConfig.getTaskId(), nextPotentialExecutionTime);
+            logger.debug("Task ID {}: Found valid next execution time: {}", taskConfig.getTaskId(),
+                    nextPotentialExecutionTime);
             return nextPotentialExecutionTime;
         }
-        logger.warn("Task ID {}: Could not find a valid next execution time after {} iterations.", taskConfig.getTaskId(), MAX_ITERATIONS);
+        logger.warn("Task ID {}: Could not find a valid next execution time after {} iterations.",
+                taskConfig.getTaskId(), MAX_ITERATIONS);
         return null; // Max iterations reached without finding a valid time
     }
 
@@ -141,7 +157,8 @@ public class CustomTaskTrigger implements Trigger {
         private final Date lastActualExecutionTime;
         private final Date lastCompletionTime;
 
-        public SimpleTriggerContext(Date lastScheduledExecutionTime, Date lastActualExecutionTime, Date lastCompletionTime) {
+        public SimpleTriggerContext(Date lastScheduledExecutionTime, Date lastActualExecutionTime,
+                Date lastCompletionTime) {
             this.lastScheduledExecutionTime = lastScheduledExecutionTime;
             this.lastActualExecutionTime = lastActualExecutionTime;
             this.lastCompletionTime = lastCompletionTime;

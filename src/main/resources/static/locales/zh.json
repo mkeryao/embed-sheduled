@@ -71,6 +71,25 @@
         "finish": "完成",
         "confirm.delete": "确定要删除吗？此操作无法撤销。"
     },
+    "api": {
+        "errors": {
+            "taskNameAndCronRequired": "任务名称和CRON表达式不能为空。",
+            "invalidCronExpression": "无效的CRON表达式格式。",
+            "invalidJsonForTaskType": "HTTP/Shell任务类型的beanParameters不是有效的JSON。",
+            "workflowContainsCycle": "工作流配置包含循环。请修正工作流定义。",
+            "requestBodyNull": "请求体不能为空。",
+            "cronExpressionEmpty": "CRON表达式不能为空。",
+            "failedToParseCron": "解析CRON表达式或确定下次执行时间失败：{{error}}",
+            "errorTriggeringTask": "触发任务 {{taskId}} 时出错：{{error}}"
+        },
+        "success": {
+            "taskTriggered": "任务 {{taskId}} 触发成功。",
+            "taskAlreadyEnabled": "任务 {{taskId}} 已经启用。",
+            "taskEnabled": "任务 {{taskId}} 启用成功。",
+            "taskAlreadyDisabled": "任务 {{taskId}} 已经禁用。",
+            "taskDisabled": "任务 {{taskId}} 禁用成功。"
+        }
+    },
     "tasksPage": {
         "title": "任务管理 - 任务调度器",
         "validation": {

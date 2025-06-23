@@ -43,6 +43,7 @@
     <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+    <script src="libs/chartjs/chart.min.js"></script>
     <script src="js/main.js"></script>
     <script>
         $(document).ready(function() {
@@ -99,30 +100,56 @@
             }
         }
 
+        // Chart instances
+        let globalCountsChart = null;
+        let topSlowestTasksChart = null;
+        let taskBreakdownChart = null;
+
         function loadGlobalStats() {
-            $('#globalStatsBody').html(`<p class="text-muted">${i18n.translate('common.loading', 'Loading...')}</p>`);
+            $('#globalStatsBody').html(`<canvas id="globalCountsChart" width="100%" height="100"></canvas>`);
             makeApiCall('GET', '/logs/statistics/global-counts', null,
                 function(data) {
-                    let html = '';
-                    const statesOrder = ["SUCCESS", "FAILED", "RUNNING", "SKIPPED", "TIMED_OUT", "CANCELLED"];
-                    let foundStates = 0;
-                    statesOrder.forEach(state => {
-                        if (data.hasOwnProperty(state)) {
-                            // Assuming logsPage.logStatuses keys are available or moved to common/statisticsPage
-                            const translatedStateName = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
-                            html += `<p class="mb-1"><strong>${translatedStateName}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
-                            foundStates++;
+                    const ctx = document.getElementById('globalCountsChart').getContext('2d');
+                    const labels = [];
+                    const counts = [];
+                    const backgroundColors = [];
+                    const colorMap = {
+                        'SUCCESS': '#28a745',
+                        'FAILED': '#dc3545',
+                        'RUNNING': '#17a2b8',
+                        'SKIPPED': '#ffc107',
+                        'TIMED_OUT': '#ffc107',
+                        'CANCELLED': '#343a40'
+                    };
+                    for (const state in data) {
+                        labels.push(state);
+                        counts.push(data[state]);
+                        backgroundColors.push(colorMap[state] || '#6c757d');
+                    }
+                    if (globalCountsChart) {
+                        globalCountsChart.destroy();
+                    }
+                    globalCountsChart = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: counts,
+                                backgroundColor: backgroundColors
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                },
+                                tooltip: {
+                                    enabled: true
+                                }
+                            }
                         }
                     });
-                    // Add any other states not in the preferred order
-                    for (const state in data) {
-                        if (!statesOrder.includes(state.toUpperCase())) {
-                             const translatedStateName = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
-                            html += `<p class="mb-1"><strong>${translatedStateName}:</strong> <span class="badge ${getBadgeClass(state)}">${data[state]}</span></p>`;
-                            foundStates++;
-                        }
-                    }
-                    $('#globalStatsBody').html(foundStates > 0 ? html : `<p>${i18n.translate('statisticsPage.stats.noGlobalStats', 'No global statistics available.')}</p>`);
                 },
                 function(jqXHR) {
                     const errorMsg = i18n.translate('statisticsPage.feedback.errorLoadingGlobalStats', 'Failed to load global stats.');
@@ -133,23 +160,49 @@
         }
 
         function loadTopSlowestTasks() {
-             $('#topSlowestTasksBody').html(`<p class="text-muted">${i18n.translate('common.loading', 'Loading...')}</p>`);
+            $('#topSlowestTasksBody').html(`<canvas id="topSlowestTasksChart" width="100%" height="150"></canvas>`);
             makeApiCall('GET', '/logs/statistics/top-avg-execution-time?limit=5', null,
                 function(tasks) {
-                    let html = '';
+                    const ctx = document.getElementById('topSlowestTasksChart').getContext('2d');
+                    const labels = [];
+                    const durations = [];
                     if (tasks && tasks.length > 0) {
-                        html = '<ul class="list-group list-group-flush">';
                         tasks.forEach(task => {
-                            html += `<li class="list-group-item d-flex justify-content-between align-items-center small p-2">
-                                        <span>${task.task_name || 'N/A'} (ID: ${task.task_id})</span>
-                                        <span class="badge badge-primary badge-pill">${parseFloat(task.avg_duration_ms).toFixed(2)} ms</span>
-                                     </li>`;
+                            labels.push(`${task.task_name || 'N/A'} (ID: ${task.task_id})`);
+                            durations.push(parseFloat(task.avg_duration_ms).toFixed(2));
                         });
-                        html += '</ul>';
-                    } else {
-                        html = `<p>${i18n.translate('statisticsPage.stats.noSlowestTasks', 'No data for slowest tasks (or no successful executions recorded).')}</p>`;
                     }
-                    $('#topSlowestTasksBody').html(html);
+                    if (topSlowestTasksChart) {
+                        topSlowestTasksChart.destroy();
+                    }
+                    topSlowestTasksChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Avg Execution Time (ms)',
+                                data: durations,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    beginAtZero: true
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    enabled: true
+                                }
+                            }
+                        }
+                    });
                 },
                 function(jqXHR) {
                     const errorMsg = i18n.translate('statisticsPage.feedback.errorLoadingSlowestTasks', 'Failed to load slowest tasks data.');
@@ -160,34 +213,68 @@
         }
 
         function loadTaskBreakdownStats() {
-            $('#taskBreakdownBody').html(`<p class="text-muted">${i18n.translate('common.loading', 'Loading...')}</p>`);
+            $('#taskBreakdownBody').html(`<canvas id="taskBreakdownChart" width="100%" height="300"></canvas>`);
             makeApiCall('GET', '/logs/statistics/task-breakdown', null,
                 function(tasks) {
-                    let html = '';
+                    const ctx = document.getElementById('taskBreakdownChart').getContext('2d');
+                    const labels = [];
+                    const successCounts = [];
+                    const failedCounts = [];
                     if (tasks && tasks.length > 0) {
-                        html = `<div class="table-responsive">
-                                    <table class="table table-sm table-bordered table-hover" style="font-size: 0.85rem;">
-                                        <thead class="thead-light">
-                                            <tr>
-                                                <th data-i18n-key="statisticsPage.stats.taskNameIdHeader">Task Name (ID)</th>
-                                                <th class="text-center" data-i18n-key="statisticsPage.stats.successHeader">Success</th>
-                                                <th class="text-center" data-i18n-key="statisticsPage.stats.failedHeader">Failed</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>`;
                         tasks.forEach(task => {
-                            html += `<tr>
-                                        <td>${task.task_name || 'N/A'} (ID: ${task.task_id})</td>
-                                        <td class="text-center"><span class="badge badge-success">${task.success_count}</span></td>
-                                        <td class="text-center"><span class="badge badge-danger">${task.failed_count}</span></td>
-                                     </tr>`;
+                            labels.push(`${task.task_name || 'N/A'} (ID: ${task.task_id})`);
+                            successCounts.push(task.success_count);
+                            failedCounts.push(task.failed_count);
                         });
-                        html += '</tbody></table></div>';
-                    } else {
-                        html = `<p>${i18n.translate('statisticsPage.stats.noTaskBreakdown', 'No task breakdown data available.')}</p>`;
                     }
-                    $('#taskBreakdownBody').html(html);
-                    if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to new table headers
+                    if (taskBreakdownChart) {
+                        taskBreakdownChart.destroy();
+                    }
+                    taskBreakdownChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Success',
+                                    data: successCounts,
+                                    backgroundColor: '#28a745'
+                                },
+                                {
+                                    label: 'Failed',
+                                    data: failedCounts,
+                                    backgroundColor: '#dc3545'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                x: {
+                                    stacked: true
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    stacked: true,
+                                    ticks: {
+                                        // Adjust step size or max ticks to improve vertical axis distribution
+                                        maxTicksLimit: 10,
+                                        // Optionally, set stepSize if needed, e.g. stepSize: 1000
+                                    }
+                                }
+                            },
+
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                },
+                                tooltip: {
+                                    enabled: true
+                                }
+                            }
+                        }
+                    });
+                    if (typeof i18n !== 'undefined') { i18n.applyTranslations(); } // Apply to new chart labels
                 },
                 function(jqXHR) {
                     const errorMsg = i18n.translate('statisticsPage.feedback.errorLoadingTaskBreakdown', 'Failed to load task breakdown data.');

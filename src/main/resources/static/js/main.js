@@ -36,11 +36,28 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
         }
     }
 
+    let url = API_BASE_URL + endpoint;
+    let ajaxData = null;
+    
+    // For GET requests, append data as query parameters
+    if (method === 'GET' && data) {
+        const params = new URLSearchParams();
+        for (const key in data) {
+            if (data.hasOwnProperty(key)) {
+                params.append(key, data[key]);
+            }
+        }
+        url += '?' + params.toString();
+    } else if (data) {
+        // For other methods, send as JSON body
+        ajaxData = JSON.stringify(data);
+    }
+
     $.ajax({
-        url: API_BASE_URL + endpoint,
+        url: url,
         method: method,
-        contentType: 'application/json',
-        data: data ? JSON.stringify(data) : null,
+        contentType: method !== 'GET' ? 'application/json' : undefined,
+        data: ajaxData,
         headers: {
             'Authorization': 'Bearer' + token
         },

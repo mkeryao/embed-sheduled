@@ -50,13 +50,28 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                         <td>${status}</td>
                         <td>${task.executionMode || 'BROADCAST'}</td>
                         <td class="action-buttons">
-                            <a href="logs.html?taskId=${task.taskId}" class="btn btn-sm btn-outline-info mr-1" title="${i18n.translate('tasksPage.table.historyBtn', 'View Execution History')}">${historyBtnText}</a>
-                            <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.editBtn', 'Edit Task')}">${editBtnText}</button>
-                            <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.deleteBtn', 'Delete Task')}">${deleteBtnText}</button>
-                            <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.triggerBtn', 'Trigger Task Manually')}">${triggerBtnText}</button>
+                            <a href="logs.html?taskId=${task.taskId}" class="btn btn-sm btn-outline-info mr-1" title="${i18n.translate('tasksPage.table.historyBtn', 'View Execution History')}">
+                                <i class="bi bi-clock-history"></i> ${historyBtnText}
+                            </a>
+                            <button class="btn btn-sm btn-info edit-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.editBtn', 'Edit Task')}">
+                                <i class="bi bi-pencil-square"></i> ${editBtnText}
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.deleteBtn', 'Delete Task')}">
+                                <i class="bi bi-trash"></i> ${deleteBtnText}
+                            </button>
+                            <button class="btn btn-sm btn-secondary trigger-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.triggerBtn', 'Trigger Task Manually')}">
+                                <i class="bi bi-play-circle"></i> ${triggerBtnText}
+                            </button>
                             ${task.active
-                            ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.disableBtn', 'Disable Task')}">${disableBtnText}</button>`
-                            : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.enableBtn', 'Enable Task')}">${enableBtnText}</button>`}
+                            ? `<button class="btn btn-sm btn-warning disable-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.disableBtn', 'Disable Task')}">
+                                <i class="bi bi-pause-circle"></i> ${disableBtnText}
+                               </button>`
+                            : `<button class="btn btn-sm btn-success enable-btn" data-id="${task.taskId}" title="${i18n.translate('tasksPage.table.enableBtn', 'Enable Task')}">
+                                <i class="bi bi-check-circle"></i> ${enableBtnText}
+                               </button>`}
+                            <button class="btn btn-sm btn-primary next-runs-btn" data-id="${task.taskId}" data-cron="${task.cronExpression}" title="${i18n.translate('tasksPage.table.nextRunsBtn', 'View Next 5 Execution Times')}">
+                                <i class="bi bi-calendar-check"></i> ${i18n.translate('tasksPage.table.nextRunsBtnShort', 'Schedule')}
+                            </button>
                         </td>
                     </tr>`;
                     tableBody.append(row);
@@ -163,7 +178,8 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                 
                 if (calendars && Array.isArray(calendars)) {
                     calendars.forEach(function (calendar) {
-                        const option = `<option value='${calendar.calendarName}'>${calendar.calendarName}</option>`;
+                        const description = calendar.description ? ` (${calendar.description})` : '';
+                        const option = `<option value='${calendar.calendarName}'>${calendar.calendarName}${description}</option>`;
                         calendarSelect.append(option);
                     });
                     console.log("loadCalendarsForSelect: 成功添加", calendars.length, "个日历组选项");
@@ -176,6 +192,7 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                 showFeedback(i18n.translate('tasksPage.feedback.errorLoadingCalendars', 'Error loading calendars: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
             }
         );
+
     };
 
     // 加载可用任务到节点选择下拉框

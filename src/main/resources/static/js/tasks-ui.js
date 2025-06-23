@@ -22,6 +22,13 @@ if (typeof window.tasksUiInitialized === 'undefined') {
 
         const filterSelect = $('#filterTaskType');
         filterSelect.empty();
+
+        // Add a placeholder option for calendar group with description
+        const calendarGroupSelect = $('#calendarGroup');
+        if (calendarGroupSelect.length > 0) {
+            calendarGroupSelect.empty();
+            calendarGroupSelect.append($('<option></option>').attr('value', '').text('-- 选择日历组 --'));
+        }
         
         taskTypes.forEach(type => {
             filterSelect.append($('<option></option>')
@@ -29,6 +36,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 .text(type.name));
         });
     };
+
     
     /**
      * 增强的API错误处理
@@ -866,6 +874,248 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             );
         });
 
+        // 查看下次执行时间按钮点击事件
+        $('#tasks-table-body').on('click', '.next-runs-btn', function () {
+            const taskId = $(this).data('id');
+            const cronExpression = $(this).data('cron');
+            const startDate = $(this).data('start-date');
+            const endDate = $(this).data('end-date');
+            const calendarGroup = $(this).data('calendar-group');
+            
+            if (!cronExpression || cronExpression.trim() === '') {
+                showFeedback(i18n.translate('tasksPage.feedback.noCronExpression', 'This task does not have a CRON expression'), true);
+                return;
+            }
+            
+            // 创建模态框显示下次执行时间
+            const modalHtml = `
+                <div class="modal fade" id="nextRunsModal" tabindex="-1" role="dialog" aria-labelledby="nextRunsModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="nextRunsModalLabel">
+                                    <i class="bi bi-calendar-check"></i> ${i18n.translate('tasksPage.modal.nextRunsTitle', 'Next Execution Times')}
+                                </h5>
+                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="text-center">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="sr-only">${i18n.translate('common.loading', 'Loading...')}</span>
+                                    </div>
+                                    <p class="mt-2">${i18n.translate('tasksPage.modal.calculatingNextRuns', 'Calculating next execution times...')}</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                                    <i class="bi bi-x-circle"></i> ${i18n.translate('common.close', 'Close')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 移除之前的模态框（如果存在）
+            $('#nextRunsModal').remove();
+            
+            // 添加模态框到页面
+            $('body').append(modalHtml);
+            
+            // 显示模态框
+            $('#nextRunsModal').modal('show');
+            
+            // 准备API请求参数
+            const apiParams = { 
+                cronExpression: cronExpression,
+                count: 5  // 请求5个下次执行时间
+            };
+            
+            // 添加可选参数
+            if (startDate) {
+                apiParams.startDate = startDate;
+            }
+            if (endDate) {
+                apiParams.endDate = endDate;
+            }
+            if (calendarGroup) {
+                apiParams.calendarGroup = calendarGroup;
+            }
+            
+            // 调用API获取下次执行时间 - 使用新的端点
+            makeApiCall('GET', `/tasks/${taskId}/next-runs?count=5`, null,
+                function (response) {
+                    const modalBody = $('#nextRunsModal .modal-body');
+                    
+                    if (response && response.isValid && response.nextExecutionTimes && response.nextExecutionTimes.length > 0) {
+                        let contentHtml = `
+                            <div class="alert alert-info mb-3">
+                                <h6 class="alert-heading">
+                                    <i class="bi bi-info-circle"></i> ${i18n.translate('tasksPage.modal.taskInfo', 'Task Information')}
+                                </h6>
+                                <hr class="my-2">
+                                <p class="mb-1">
+                                    <strong>${i18n.translate('tasksPage.modal.taskId', 'Task ID')}:</strong> ${taskId}
+                                </p>
+                                <p class="mb-0">
+                                    <strong>${i18n.translate('tasksPage.modal.cronExpression', 'CRON Expression')}:</strong> 
+                                    <code class="text-dark">${cronExpression}</code>
+                                </p>
+                            </div>
+                            <h6 class="mb-3">
+                                <i class="bi bi-calendar3"></i> ${i18n.translate('tasksPage.modal.scheduledExecutions', 'Scheduled Executions')}:
+                            </h6>
+                            <div class="list-group">
+                        `;
+                        
+                        // 显示所有返回的执行时间
+                        response.nextExecutionTimes.forEach((executionTime, index) => {
+                            const runTime = new Date(executionTime);
+                            const formattedTime = runTime.toLocaleString();
+                            const relativeTime = getRelativeTime(runTime);
+                            const dayOfWeek = runTime.toLocaleDateString('default', { weekday: 'long' });
+                            
+                            // 为第一个执行时间添加特殊样式
+                            const itemClass = index === 0 ? 'list-group-item-primary' : '';
+                            const badge = index === 0 ? 'badge-success' : 'badge-primary';
+                            
+                            contentHtml += `
+                                <div class="list-group-item ${itemClass}">
+                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                <i class="bi bi-clock"></i> ${formattedTime}
+                                            </h6>
+                                            <small class="text-muted">${dayOfWeek}</small>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class="badge ${badge} badge-pill">${relativeTime}</span>
+                                            ${index === 0 ? '<br><small class="text-muted">' + i18n.translate('tasksPage.modal.nextExecution', 'Next Execution') + '</small>' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        contentHtml += '</div>';
+                        
+                        // 添加时区信息
+                        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                        contentHtml += `
+                            <div class="mt-3 text-muted small text-center">
+                                <i class="bi bi-globe"></i> ${i18n.translate('tasksPage.modal.timezone', 'Timezone')}: ${timezone}
+                            </div>
+                        `;
+                        
+                        modalBody.html(contentHtml);
+                    } else if (response && !response.isValid) {
+                        // CRON表达式无效
+                        modalBody.html(`
+                            <div class="alert alert-danger">
+                                <h5 class="alert-heading">
+                                    <i class="bi bi-x-circle"></i> ${i18n.translate('tasksPage.modal.invalidCron', 'Invalid CRON Expression')}
+                                </h5>
+                                <hr>
+                                <p class="mb-0">${response.error || i18n.translate('tasksPage.modal.invalidCronDesc', 'The CRON expression is not valid.')}</p>
+                            </div>
+                        `);
+                    } else {
+                        // 其他错误情况
+                        modalBody.html(`
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> ${i18n.translate('tasksPage.modal.noExecutionTimes', 'No execution times could be calculated')}
+                            </div>
+                        `);
+                    }
+                },
+                function (jqXHR) {
+                    const modalBody = $('#nextRunsModal .modal-body');
+                    let errorMsg = i18n.translate('tasksPage.modal.errorCalculatingNextRuns', 'Error calculating next execution times');
+                    
+                    if (jqXHR.responseJSON) {
+                        if (jqXHR.responseJSON.error) {
+                            errorMsg = jqXHR.responseJSON.error;
+                        } else if (jqXHR.responseJSON.message) {
+                            errorMsg = jqXHR.responseJSON.message;
+                        }
+                    }
+                    
+                    modalBody.html(`
+                        <div class="alert alert-danger">
+                            <h5 class="alert-heading">
+                                <i class="bi bi-x-circle"></i> ${i18n.translate('common.error', 'Error')}
+                            </h5>
+                            <hr>
+                            <p class="mb-0">${errorMsg}</p>
+                        </div>
+                    `);
+                }
+            );
+            
+            // 清理模态框
+            $('#nextRunsModal').on('hidden.bs.modal', function () {
+                $(this).remove();
+            });
+        });
+        
+        // 辅助函数：计算相对时间
+        function getRelativeTime(date) {
+            const now = new Date();
+            const diff = date - now;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
+            const weeks = Math.floor(days / 7);
+            const months = Math.floor(days / 30);
+            
+            if (months > 0) {
+                const monthText = months === 1 
+                    ? i18n.translate('tasksPage.modal.inMonth', 'in 1 month')
+                    : i18n.translate('tasksPage.modal.inMonths', 'in {{months}} months').replace('{{months}}', months);
+                return monthText;
+            } else if (weeks > 0) {
+                const weekText = weeks === 1 
+                    ? i18n.translate('tasksPage.modal.inWeek', 'in 1 week')
+                    : i18n.translate('tasksPage.modal.inWeeks', 'in {{weeks}} weeks').replace('{{weeks}}', weeks);
+                return weekText;
+            } else if (days > 0) {
+                const dayText = days === 1 
+                    ? i18n.translate('tasksPage.modal.tomorrow', 'tomorrow')
+                    : i18n.translate('tasksPage.modal.inDays', 'in {{days}} days').replace('{{days}}', days);
+                return dayText;
+            } else if (hours > 0) {
+                const hourText = hours === 1 
+                    ? i18n.translate('tasksPage.modal.inHour', 'in 1 hour')
+                    : i18n.translate('tasksPage.modal.inHours', 'in {{hours}} hours').replace('{{hours}}', hours);
+                return hourText;
+            } else if (minutes > 0) {
+                const minuteText = minutes === 1 
+                    ? i18n.translate('tasksPage.modal.inMinute', 'in 1 minute')
+                    : i18n.translate('tasksPage.modal.inMinutes', 'in {{minutes}} minutes').replace('{{minutes}}', minutes);
+                return minuteText;
+            } else if (diff > 0) {
+                return i18n.translate('tasksPage.modal.soon', 'soon');
+            } else {
+                // 如果时间已过
+                const absDiff = Math.abs(diff);
+                const pastMinutes = Math.floor(absDiff / 60000);
+                const pastHours = Math.floor(pastMinutes / 60);
+                const pastDays = Math.floor(pastHours / 24);
+                
+                if (pastDays > 0) {
+                    return i18n.translate('tasksPage.modal.daysAgo', '{{days}} days ago').replace('{{days}}', pastDays);
+                } else if (pastHours > 0) {
+                    return i18n.translate('tasksPage.modal.hoursAgo', '{{hours}} hours ago').replace('{{hours}}', pastHours);
+                } else if (pastMinutes > 0) {
+                    return i18n.translate('tasksPage.modal.minutesAgo', '{{minutes}} minutes ago').replace('{{minutes}}', pastMinutes);
+                } else {
+                    return i18n.translate('tasksPage.modal.justNow', 'just now');
+                }
+            }
+        }
+
         // 保存边缘按钮点击事件
         $('#saveEdgeBtn').on('click', function () {
             const fromNode = $('#edgeModalFromNode').val();
@@ -1409,31 +1659,57 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             // 显示加载指示
             $('#cronValidationResult').html(`<div class="text-center"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> ${i18n.translate('common.loading', 'Loading...')}</div>`).show();
             
-            // 调用API验证CRON表达式
-            makeApiCall('POST', '/tasks/validate-cron', { cronExpression: cronExpression },
+            // 调用API验证CRON表达式 - 使用正确的响应字段
+            makeApiCall('GET', '/tasks/validate-cron', { 
+                cronExpression: cronExpression,
+                count: 5
+            },
                 function (response) {
                     if (response && response.isValid) {
-                        let nextRunsHtml = '';
-                        if (response.nextRuntimes && response.nextRuntimes.length > 0) {
+                        let resultHtml = `<div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> ${i18n.translate('tasksPage.modal.validCronExpression', 'Valid CRON expression')}
+                        </div>`;
+                        
+                        if (response.nextExecutionTimes && response.nextExecutionTimes.length > 0) {
                             const nextRunsLabel = i18n.translate('tasksPage.modal.nextRuns', 'Next runs:');
-                            nextRunsHtml = `<p class="mt-2"><strong>${nextRunsLabel}</strong><br>`;
-                            // 显示最多5个未来的运行时间
-                            for (let i = 0; i < Math.min(response.nextRuntimes.length, 5); i++) {
-                                nextRunsHtml += `${new Date(response.nextRuntimes[i]).toLocaleString()}<br>`;
-                            }
-                            nextRunsHtml += '</p>';
+                            resultHtml += `<div class="mt-2"><strong>${nextRunsLabel}</strong><ul class="list-unstyled mt-2">`;
+                            
+                            response.nextExecutionTimes.forEach((executionTime, index) => {
+                                const runTime = new Date(executionTime);
+                                const formattedTime = runTime.toLocaleString();
+                                const relativeTime = getRelativeTime(runTime);
+                                resultHtml += `<li><i class="bi bi-clock text-muted"></i> ${formattedTime} <span class="text-muted">(${relativeTime})</span></li>`;
+                            });
+                            
+                            resultHtml += '</ul></div>';
                         }
-                        $('#cronValidationResult').html(`<div class="alert alert-success">${response.message}</div>${nextRunsHtml}`).show();
+                        
+                        $('#cronValidationResult').html(resultHtml).show();
                     } else {
                         const invalidCronMsg = i18n.translate('tasksPage.modal.invalidCronExpression', 'Invalid CRON expression');
-                        $('#cronValidationResult').html(`<div class="alert alert-danger">${invalidCronMsg}: ${response ? response.message : ''}</div>`).show();
+                        const errorDetail = response && response.error ? response.error : '';
+                        $('#cronValidationResult').html(`
+                            <div class="alert alert-danger">
+                                <i class="bi bi-x-circle"></i> ${invalidCronMsg}
+                                ${errorDetail ? '<br><small class="text-muted">' + errorDetail + '</small>' : ''}
+                            </div>
+                        `).show();
                     }
                 },
                 function (jqXHR) {
-                    const errorMsg = jqXHR.responseJSON && jqXHR.responseJSON.message 
-                        ? jqXHR.responseJSON.message 
-                        : i18n.translate('tasksPage.modal.invalidCronExpression', 'Invalid CRON expression');
-                    $('#cronValidationResult').html(`<div class="alert alert-danger">${errorMsg}</div>`).show();
+                    let errorMsg = i18n.translate('tasksPage.modal.errorValidatingCron', 'Error validating CRON expression');
+                    if (jqXHR.responseJSON) {
+                        if (jqXHR.responseJSON.error) {
+                            errorMsg = jqXHR.responseJSON.error;
+                        } else if (jqXHR.responseJSON.message) {
+                            errorMsg = jqXHR.responseJSON.message;
+                        }
+                    }
+                    $('#cronValidationResult').html(`
+                        <div class="alert alert-danger">
+                            <i class="bi bi-x-circle"></i> ${errorMsg}
+                        </div>
+                    `).show();
                 }
             );
         });
