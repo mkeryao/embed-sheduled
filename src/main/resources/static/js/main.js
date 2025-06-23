@@ -42,7 +42,7 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
         contentType: 'application/json',
         data: data ? JSON.stringify(data) : null,
         headers: {
-            'Authorization': 'Bearer ' + token
+            'Authorization': 'Bearer' + token
         },
         success: onSuccess,
         error: function(jqXHR, textStatus, errorThrown) {

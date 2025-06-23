@@ -34,7 +34,7 @@
             const newNode = {
                 id: this._generateNodeId(nodeType),
                 nodeId: null, // For compatibility if old data used this
-                name: `Node ${this._nextNodeIdCounter - 1} (${nodeType})`, // Corrected counter
+                nodeName: `Node ${this._nextNodeIdCounter - 1} (${nodeType})`, // Using nodeName instead of name
                 type: nodeType,
                 x: window.SVGManager.nextNodeX,
                 y: window.SVGManager.nextNodeY,
@@ -98,7 +98,7 @@
                     const nodeElement = currentDagSvg.querySelector(`.workflow-node[data-node-id="${nodeId}"]`);
                     if (nodeElement) {
                         const textLabel = nodeElement.querySelector('.workflow-node-label');
-                        if (textLabel) textLabel.textContent = node.name; // Direct update for responsiveness
+                        if (textLabel) textLabel.textContent = node.nodeName; // Direct update for responsiveness
                     }
                 }
                 // this.renderDAG(); // Could be called, or rely on serialize and future full redraws

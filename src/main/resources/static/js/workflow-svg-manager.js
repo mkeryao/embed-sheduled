@@ -188,7 +188,7 @@
             text.setAttribute('dominant-baseline', 'middle');
             text.setAttribute('fill', '#333');
             text.setAttribute('class', 'workflow-node-label');
-            text.textContent = node.name || node.id;
+            text.textContent = node.nodeName || node.id;
 
             nodeGroup.appendChild(rect);
             nodeGroup.appendChild(text);

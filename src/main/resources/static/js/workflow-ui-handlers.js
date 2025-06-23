@@ -249,7 +249,7 @@ window.openNodeEditDialog = function(nodeId) {
     if (node) {
         $('#editingNodeArrayIndex').val(node.id);
         $('#wfNodeId').val(node.id).prop('readonly', true);
-        $('#wfNodeName').val(node.name);
+        $('#wfNodeName').val(node.nodeName);
 
         const taskSelector = $('#workflowNodeEditModal #wfNodeTaskConfigSelect');
         if (taskSelector && taskSelector.length) { // Ensure element exists
@@ -295,7 +295,7 @@ $(document).on('click', '.workflow-node', function(event) {
 
         if (nodeId && nodeName) {
             window.NodeManager.updateNode(nodeId, {
-                name: nodeName,
+                nodeName: nodeName,
                 taskConfigId: taskConfigId,
                 parameters: nodeParams
             });
@@ -320,8 +320,8 @@ window.openEdgeEditDialog = function(edgeId = null) {
 
     if (window.NodeManager.nodes && Array.isArray(window.NodeManager.nodes)) {
         window.NodeManager.nodes.forEach(function(node) {
-            fromSelect.append($('<option>', { value: node.id, text: `${node.name || node.id} (${node.id})` }));
-            toSelect.append($('<option>', { value: node.id, text: `${node.name || node.id} (${node.id})` }));
+            fromSelect.append($('<option>', { value: node.id, text: `${node.nodeName || node.id} (${node.id})` }));
+            toSelect.append($('<option>', { value: node.id, text: `${node.nodeName || node.id} (${node.id})` }));
         });
     }
 

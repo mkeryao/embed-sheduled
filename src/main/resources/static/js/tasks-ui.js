@@ -7,38 +7,80 @@
 if (typeof window.tasksUiInitialized === 'undefined') {
     console.log('初始化tasks UI脚本...');
     window.tasksUiInitialized = true;
-    window.workflowGraphHasUnsavedChanges = false; // Flag to track unsaved workflow changes
 
     /**
-     * 填充任务类型过滤器下拉菜单
+     * 填充任务类型过滤器下拉框
      */
-    function populateTaskTypeFilter() {
-        const taskTypes = {
-            '0': 'Bean 任务',
-            '2': 'HTTP 任务',
-            '4': 'Shell 任务',
-            '10': '工作流任务'
-        };
-        const select = $('#filterTaskType');
-        if (!select.length) return;
+    window.populateTaskTypeFilter = function() {
+        const taskTypes = [
+            { id: '', name: i18n.translate('tasksPage.filter.allTypes', '所有类型') },
+            { id: '0', name: i18n.translate('tasksPage.taskType.bean', 'Bean任务') },
+            { id: '2', name: i18n.translate('tasksPage.taskType.http', 'HTTP任务') },
+            { id: '4', name: i18n.translate('tasksPage.taskType.shell', 'Shell任务') },
+            { id: '10', name: i18n.translate('tasksPage.taskType.workflow', '工作流任务') }
+        ];
 
-        select.empty();
-        select.append($('<option>').val('').text(i18n.translate('tasksPage.filters.allTypes', 'All Types')));
-        for (const key in taskTypes) {
-            // 构造一个i18n键，例如 'tasksPage.taskTypes.0'
-            const i18nKey = `tasksPage.taskTypes.${key}`;
-            // 提供一个默认的回退文本
-            const fallbackText = taskTypes[key];
-            const translatedName = i18n.translate(i18nKey, fallbackText);
-            select.append($('<option>').val(key).text(translatedName));
+        const filterSelect = $('#filterTaskType');
+        filterSelect.empty();
+        
+        taskTypes.forEach(type => {
+            filterSelect.append($('<option></option>')
+                .attr('value', type.id)
+                .text(type.name));
+        });
+    };
+    
+    /**
+     * 增强的API错误处理
+     * @param {Object} jqXHR - jQuery XHR对象
+     * @param {string} textStatus - 状态文本
+     * @param {string} errorThrown - 抛出的错误
+     * @param {string} context - 错误上下文描述
+     */
+    window.handleApiError = function(jqXHR, textStatus, errorThrown, context) {
+        let errorMessage = '';
+        
+        // 尝试从响应中获取详细错误信息
+        if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+            errorMessage = jqXHR.responseJSON.message;
+        } else if (jqXHR.responseText) {
+            try {
+                const resp = JSON.parse(jqXHR.responseText);
+                if (resp.message) {
+                    errorMessage = resp.message;
+                }
+            } catch (e) {
+                // 不是JSON格式，使用原始响应文本
+                if (jqXHR.responseText.length < 100) {
+                    errorMessage = jqXHR.responseText;
+                }
+            }
         }
-    }
-    window.populateTaskTypeFilter = populateTaskTypeFilter;
-    // 预加载任务配置列表并缓存，用于下拉菜单
+        
+        // 如果没有提取到有意义的错误信息，使用状态代码和错误文本
+        if (!errorMessage) {
+            errorMessage = `${jqXHR.status}: ${errorThrown || textStatus}`;
+        }
+        
+        // 记录详细错误到控制台
+        console.error(`API错误 (${context}):`, {
+            status: jqXHR.status,
+            statusText: jqXHR.statusText,
+            responseText: jqXHR.responseText,
+            errorThrown: errorThrown,
+            url: jqXHR.responseURL || '未知URL'
+        });
+        
+        // 显示用户友好的错误提示
+        showFeedback(`${context}: ${errorMessage}`, true);
+        
+        return errorMessage;
+    };
+      // 预加载任务配置列表并缓存，用于下拉菜单
     window.cachedTasks = [];
     $(document).ready(function() {
         console.log('预加载任务配置列表...');
-        makeApiCall('GET', '/tasks', null,
+        makeApiCall('GET', '/tasks', null, 
             function(response) {
                 console.log('成功获取任务配置，缓存 ' + response.length + ' 条记录');
                 if (Array.isArray(response)) {
@@ -50,7 +92,105 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             }
         );
     });
-
+    
+    /**
+     * 缩放DAG图的函数
+     * @param {number} factor 缩放因子，大于1表示放大，小于1表示缩小
+     */
+    function zoomDag(factor) {
+        try {
+            // 确保currentScale已初始化
+            if (typeof window.currentScale !== 'number') {
+                window.currentScale = 1.0;
+            }
+            
+            // 计算新的缩放比例
+            const newScale = window.currentScale * factor;
+            
+            // 限制缩放范围，避免过大或过小
+            if (newScale < 0.2) {
+                console.log('已达到最小缩放比例');
+                return;
+            }
+            if (newScale > 3.0) {
+                console.log('已达到最大缩放比例');
+                return;
+            }
+            
+            // 更新全局缩放比例
+            window.currentScale = newScale;
+            
+            // 应用新的缩放比例到SVG元素
+            const svg = $('#dagContainer svg');
+            if (svg.length) {
+                svg.css('transform', `scale(${newScale})`);
+                svg.css('transform-origin', 'top left');
+                
+                // 根据缩放更新视觉反馈
+                updateZoomFeedback();
+                
+                console.log(`DAG图已缩放: ${Math.round(newScale * 100)}%`);
+            } else {
+                console.warn('找不到SVG元素，无法应用缩放');
+            }
+        } catch (e) {
+            console.error('缩放DAG图时出错:', e);
+        }
+    }
+    
+    /**
+     * 重置DAG图缩放到100%
+     */
+    function resetZoom() {
+        try {
+            // 重置全局缩放比例
+            window.currentScale = 1.0;
+            
+            // 重置SVG元素的缩放
+            const svg = $('#dagContainer svg');
+            if (svg.length) {
+                svg.css('transform', 'scale(1.0)');
+                svg.css('transform-origin', 'top left');
+                
+                // 更新视觉反馈
+                updateZoomFeedback();
+                
+                console.log('DAG图缩放已重置到100%');
+            } else {
+                console.warn('找不到SVG元素，无法重置缩放');
+            }
+        } catch (e) {
+            console.error('重置DAG图缩放时出错:', e);
+        }
+    }
+    
+    /**
+     * 更新缩放视觉反馈
+     */
+    function updateZoomFeedback() {
+        try {
+            // 显示当前缩放百分比
+            const zoomPercentage = Math.round(window.currentScale * 100);
+            $('#resetZoomBtn').text(`${zoomPercentage}%`);
+            
+            // 可选：根据缩放比例调整其他UI元素
+            const dagContainer = $('#dagContainer');
+            if (zoomPercentage > 100) {
+                dagContainer.addClass('zoomed-in').removeClass('zoomed-out');
+            } else if (zoomPercentage < 100) {
+                dagContainer.addClass('zoomed-out').removeClass('zoomed-in');
+            } else {
+                dagContainer.removeClass('zoomed-in zoomed-out');
+            }
+        } catch (e) {
+            console.error('更新缩放反馈时出错:', e);
+        }
+    }
+    
+    // 将函数暴露为全局函数，以便其他脚本可以调用
+    window.zoomDag = zoomDag;
+    window.resetZoom = resetZoom;
+    
     /**
      * 确保任务表单模态窗口处于打开状态
      * 如果任务表单窗口不可见，则重新显示它
@@ -62,8 +202,86 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             return true;
         }
         return false;
+    };    /**
+     * 安全调用DAG重绘函数的辅助方法
+     * 避免直接引用window.redrawDAG可能导致的未定义错误
+     * 增强版本：增加重复调用保护和超时处理
+     */
+    window.safeRedrawDAG = function(enableDragging) {
+        // 全局递归调用保护 - 使用递归调用计数器而不是简单标志位
+        if (!window.redrawDAGCounter) {
+            window.redrawDAGCounter = 0;
+        }
+        
+        // 如果检测到过多的连续调用，强制冷却一段时间
+        if (window.redrawDAGCounter > 2) {
+            console.warn('检测到过多的连续redrawDAG调用，强制冷却5秒');
+            if (!window.redrawDAGCooldown) {
+                window.redrawDAGCooldown = true;
+                setTimeout(function() {
+                    console.log('redrawDAG冷却期结束，重置计数器');
+                    window.redrawDAGCounter = 0;
+                    window.redrawDAGCooldown = false;
+                }, 5000);
+            }
+            return;
+        }
+        
+        // 增加调用计数
+        window.redrawDAGCounter++;
+        
+        // 如果当前正在重绘，防止递归调用
+        if (window.isRedrawingDAG) {
+            console.warn('避免递归调用redrawDAG - 当前已有重绘任务在进行中');
+            return;
+        }
+        
+        // 防止多个快速连续调用
+        if (window.redrawDagTimer) {
+            clearTimeout(window.redrawDagTimer);
+            window.redrawDagTimer = null;
+        }
+        
+        // 使用延时确保DOM更新完成并避免连续调用
+        window.redrawDagTimer = setTimeout(function() {
+            try {
+                // 设置正在绘制的标志
+                window.isRedrawingDAG = true;
+                
+                // 直接调用原始函数，增加错误处理
+                if (typeof window.redrawDAG_backup === 'function') {
+                    // 使用保存的备份函数
+                    window.redrawDAG_backup(enableDragging);
+                } else if (typeof window.redrawDAG === 'function') {
+                    window.redrawDAG(enableDragging);
+                } else {
+                    console.error('redrawDAG函数未定义，请确保tasks-workflow.js已正确加载');
+                    
+                    // 最后的备用实现 - 只清空容器并显示提示
+                    const svgContainer = $('#dagContainer');
+                    if (svgContainer.length) {
+                        svgContainer.empty().html('<p class="text-muted small">图形绘制函数未加载，请刷新页面尝试。</p>');
+                    }
+                }
+            } catch (e) {
+                console.error('调用redrawDAG时出错:', e);
+            } finally {
+                // 清理标志位和减少计数
+                window.isRedrawingDAG = false;
+                window.redrawDagTimer = null;
+                setTimeout(function() {
+                    if (window.redrawDAGCounter > 0) {
+                        window.redrawDAGCounter--;
+                    }
+                }, 500);            }
+        }, 50); // 略微增加延迟，确保DOM更新完成
     };
-
+    
+    // 创建全局函数的备份，但确保不覆盖现有函数
+    if (typeof window.redrawDAG === 'function' && typeof window.redrawDAG_backup === 'undefined') {
+        window.redrawDAG_backup = window.redrawDAG;
+    }
+    
     /**
      * 确保节点助手可见性函数的应急方案
      * 如果tasks-workflow.js中的原始函数未定义，使用这个替代版本
@@ -116,28 +334,13 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 e.preventDefault();
                 logout();
             });
-        });        // 确保模态窗口可以正确滚动和应用国际化
+        });
+        
+        // 确保模态窗口可以正确滚动
         $('#taskFormModal').on('shown.bs.modal', function() {
             // 重置模态窗口滚动条位置到顶部
             $(this).find('.modal-body').scrollTop(0);
             
-            // 加载日历和用户数据
-            if (typeof window.loadCalendarsForTaskForm === 'function') {
-                window.loadCalendarsForTaskForm();
-            }
-            
-            if (typeof window.loadUsersForNotifications === 'function') {
-                window.loadUsersForNotifications();
-            }
-            
-            // 延迟执行以确保所有DOM元素都已完全加载，然后强制应用国际化翻译
-            setTimeout(function() {
-                if (typeof i18n !== 'undefined' && typeof i18n.applyTranslations === 'function') {
-                    console.log('应用国际化到任务表单模态框');
-                    i18n.applyTranslations();
-                }
-            }, 200);
-
             // 确保高级设置部分可以通过滚动到达
             setTimeout(function() {
                 // 延迟处理，确保模态窗口已完全渲染
@@ -262,30 +465,36 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         // 添加任务表单提交处理
         $('#task-form').submit(function (event) {
             event.preventDefault();
-            const taskId = $('#taskId').val();            const taskData = {
+            const taskId = $('#taskId').val();
+            
+            // Get selected users for notifications
+            const successUsers = $('#notifySuccess').val() || [];
+            const failedUsers = $('#notifyFailed').val() || [];
+            
+            const taskData = {
                 taskName: $('#taskName').val(),
                 taskGroup: $('#taskGroup').val(),
                 cronExpression: $('#cronExpression').val(),
                 description: $('#description').val(),
                 executionMode: $('#executionMode').val(),
                 taskType: parseInt($('#taskType').val()),
-                isActive: $('#active').is(':checked'), // 修正ID为active
+                active: $('#active').is(':checked'),
                 beanName: $('#beanName').val(),
                 methodName: $('#methodName').val(),
-                startDate: $('#startDate').val() ? ($('#startDate').val() + ":00") : null, // Append seconds for backend parsing
+                startDate: $('#startDate').val() ? ($('#startDate').val() + ":00") : null,
                 endDate: $('#endDate').val() ? ($('#endDate').val() + ":00") : null,
-                taskCalendarGroup: $('#calendarGroup').val() || null, // 修正ID为calendarGroup
-                taskExcludeTimes: $('#excludeTimes').val() || null, // 修正ID为excludeTimes
-                executeTimeoutSeconds: parseInt($('#taskTimeout').val()) || 0, // 修正ID为taskTimeout
-                notifySuccessUserIds: $('#notifySuccess').val() ? $('#notifySuccess').val().join(',') : null, // 修正ID为notifySuccess
-                notifyFailedUserIds: $('#notifyFailed').val() ? $('#notifyFailed').val().join(',') : null, // 修正ID为notifyFailed
+                taskCalendarGroup: $('#calendarGroup').val() || null,
+                taskExcludeTimes: $('#excludeTimes').val() || null,
+                executeTimeoutSeconds: parseInt($('#taskTimeout').val()) || 0,
+                notifySuccessUserIds: successUsers.length > 0 ? successUsers.join(',') : null,
+                notifyFailedUserIds: failedUsers.length > 0 ? failedUsers.join(',') : null,
                 workflowNodes: null,
                 workflowEdges: null,
                 globalParameters: null,
                 // 添加重试设置字段
                 maxRetryAttempts: parseInt($('#maxRetries').val()) || 0,
                 retryIntervalSeconds: parseInt($('#retryInterval').val()) || 30,
-                retryIntervalMultiplier: parseFloat($('#retryMultiplier').val()) || 1.0 // 修正ID为retryMultiplier
+                retryIntervalMultiplier: parseFloat($('#retryMultiplier').val()) || 1.0
             };
 
             if (taskData.taskType === 0) {
@@ -325,22 +534,13 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 // 确保所有工作流位置变更都被应用到JSON
                 if (typeof window.ensureWorkflowChangesSaved === 'function') {
                     console.log("执行工作流保存前检查");
-                    // Add visual feedback for this step
-                    const originalButtonText = $('#task-form button[type="submit"]').text();
-                    $('#task-form button[type="submit"]').text(i18n.translate('tasksPage.feedback.syncingWorkflow', 'Syncing workflow...')).prop('disabled', true);
-                    
                     const saveResult = window.ensureWorkflowChangesSaved();
-                    
-                    // Restore button
-                    $('#task-form button[type="submit"]').text(originalButtonText).prop('disabled', false);
-
                     if (saveResult === false) {
                         // ensureWorkflowChangesSaved 返回 false 表示有错误发生
                         console.error("工作流保存预处理失败，停止提交");
                         showFeedback(i18n.translate('tasksPage.feedback.workflowPreSaveFailed', '工作流保存前检查失败，请修正错误后再尝试保存'), true);
                         return; // 停止保存操作
                     }
-                    console.log("工作流保存前检查成功");
                 }
                 
                 try {
@@ -398,7 +598,6 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                         
                         // 清除状态，防止再次编辑时出现问题
                         window.nodePositionChanged = false;
-                        window.workflowGraphHasUnsavedChanges = false; // Reset unsaved changes flag
                         
                         // 提供更详细的成功反馈
                         successMsg += ` (${workflowDetails})`;
@@ -467,11 +666,12 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
             } else if (type === '2') {
                 $('#httpTaskFields').show();
-                $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();            } else if (type === '10') {
+                $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
+            } else if (type === '10') {
                 $('#workflowTaskFields').show();
                 $('#beanName, #methodName, #beanParameters').closest('.form-group').hide();
                 loadAvailableTasksForNodes();
-                // safeRedrawDAG();
+                safeRedrawDAG();
             }
             
             // 确保国际化应用到新显示的字段
@@ -479,7 +679,10 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 i18n.applyTranslations();
                 console.log("已在任务类型切换后重新应用国际化");
             }, 100);
-        }).trigger('change');
+        }).trigger('change');        // 刷新DAG视图
+        $('#refreshDagViewBtn').on('click', function () {
+            safeRedrawDAG();
+        });
 
         // 编辑按钮点击事件
         $('#tasks-table-body').on('click', '.edit-btn', function () {
@@ -497,27 +700,20 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     $('#taskType').val(task.taskType.toString()).trigger('change');
                     $('#cronExpression').val(task.cronExpression);
                     $('#description').val(task.description);
-                    window.workflowGraphHasUnsavedChanges = false; // Reset on loading a task
                     $('#executionMode').val(task.executionMode || 'BROADCAST');
-                    $('#active').prop('checked', task.isActive === undefined ? task.active : task.isActive);
+                    $('#active').prop('checked', task.active);
 
-                    // 填充高级设置
-                    $('#startDate').val(task.startDate || '');
-                    $('#endDate').val(task.endDate || '');
-                    $('#calendarGroup').val(task.taskCalendarGroup || '');
-                    $('#excludeTimes').val(task.taskExcludeTimes || '');
-                    $('#taskTimeout').val(task.executeTimeoutSeconds || '');
-                    
-                    // 填充重试设置
-                    $('#maxRetries').val(task.maxRetryAttempts || 0);
-                    $('#retryInterval').val(task.retryIntervalSeconds || 30);
-                    $('#retryMultiplier').val(task.retryIntervalMultiplier || 1.0);
-                    
-                    // 填充通知设置
-                    const successUserIds = task.notifySuccessUserIds ? task.notifySuccessUserIds.split(',') : [];
-                    $('#notifySuccess').val(successUserIds);
-                    const failedUserIds = task.notifyFailedUserIds ? task.notifyFailedUserIds.split(',') : [];
-                    $('#notifyFailed').val(failedUserIds);
+                    // Set startDate and endDate
+                    if (task.startDate) {
+                        // Remove seconds and timezone part if present
+                        const startDate = task.startDate.replace(/:\d\d(\.\d+)?([+-]\d{2}:?\d{2}|Z)?$/, '');
+                        $('#startDate').val(startDate);
+                    }
+                    if (task.endDate) {
+                        // Remove seconds and timezone part if present
+                        const endDate = task.endDate.replace(/:\d\d(\.\d+)?([+-]\d{2}:?\d{2}|Z)?$/, '');
+                        $('#endDate').val(endDate);
+                    }
 
                     // 处理特定类型任务的额外字段
                     if (task.taskType === 0) { // Bean Task
@@ -566,16 +762,51 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                             }
                         }
                     } else if (task.taskType === 10) { // Workflow Task
-                        if (task.beanParameters) {
-                            try {
-                                const workflowParams = typeof task.beanParameters === 'string' ? 
-                                    JSON.parse(task.beanParameters) : task.beanParameters;                                $('#workflowNodesJson').val(JSON.stringify(workflowParams.nodes || [], null, 2));
-                                $('#workflowEdgesJson').val(JSON.stringify(workflowParams.edges || [], null, 2));
-                            } catch (e) {
-                                console.warn('Failed to parse Workflow task parameters JSON:', e);
-                            }
+                        // Initialize workflow data
+                        const workflowNodes = task.workflowNodes || [];
+                        const workflowEdges = task.workflowEdges || [];
+                        const globalParams = task.globalParameters || {};
+
+                        // Update JSON textareas
+                        $('#workflowNodesJson').val(JSON.stringify(workflowNodes, null, 2));
+                        $('#workflowEdgesJson').val(JSON.stringify(workflowEdges, null, 2));
+                        $('#globalParametersJson').val(JSON.stringify(globalParams, null, 2));
+
+                        // Initialize NodeManager with the workflow data
+                        if (window.NodeManager && typeof window.NodeManager.initializeEditor === 'function') {
+                            window.NodeManager.initializeEditor('dagContainer', workflowNodes, workflowEdges);
+                        } else {
+                            console.error('NodeManager not available for workflow initialization');
                         }
-                    }                    // 这些字段已在上面处理，删除重复代码
+
+                        // Show workflow task fields
+                        $('#workflowTaskFields').show();
+                        
+                        // Load available tasks for nodes
+                        loadAvailableTasksForNodes();
+
+                        // Redraw DAG after setting the values
+                        setTimeout(() => {
+                            if (typeof safeRedrawDAG === 'function') {
+                                safeRedrawDAG(true); // Enable dragging for workflow nodes
+                            }
+                        }, 100);
+                    }
+
+                    // 日期时间处理
+                    $('#calendarGroup').val(task.taskCalendarGroup || '');
+                    $('#excludeTimes').val(task.taskExcludeTimes || '');
+                    $('#taskTimeout').val(task.executeTimeoutSeconds != null ? task.executeTimeoutSeconds : 0);
+
+                    // 加载重试配置
+                    $('#maxRetries').val(task.maxRetryAttempts != null ? task.maxRetryAttempts : 0);
+                    $('#retryInterval').val(task.retryIntervalSeconds != null ? task.retryIntervalSeconds : 30);
+                    $('#retryMultiplier').val(task.retryIntervalMultiplier != null ? task.retryIntervalMultiplier : 1.0);
+
+                    const successUserIds = task.notifySuccessUserIds ? task.notifySuccessUserIds.split(',') : [];
+                    $('#notifySuccess').val(successUserIds);
+                    const failedUserIds = task.notifyFailedUserIds ? task.notifyFailedUserIds.split(',') : [];
+                    $('#notifyFailed').val(failedUserIds);
 
                     $('#taskFormModal').modal('show');
                 },
@@ -749,24 +980,37 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 .html(priorityHelpText)
                 .insertAfter('#edgePriority');
                 
-            // The autocomplete functionality that depended on jQuery UI has been removed.
-            // The datalist implementation remains as a suitable native HTML5 alternative.
+            // 为表达式字段添加自动完成功能
             const fromNodeId = $('#edgeModalFromNode').val();
+            
+            // 常见变量的自动完成提示
             const autoCompleteTerms = [
                 `\${${fromNodeId}_status}`,
                 `\${${fromNodeId}_result}`,
                 `\${${fromNodeId}_execution_time}`,
-                '\'SUCCESS\'',
+                '\'SUCCESS\'', 
                 '\'FAILED\'',
                 '\'COMPLETED\'',
-                '==', '!=', '>', '<', '>=', '<='
+                '==', 
+                '!=', 
+                '>', 
+                '<', 
+                '>=', 
+                '<='
             ];
+            
+            // 假设我们这里使用简单的自动填充功能，后续可以考虑集成更复杂的库
             $('#edgeExpression').attr('list', 'expressionSuggestions');
+            
+            // 移除之前的数据列表，避免重复添加
             $('#expressionSuggestions').remove();
+            
+            // 添加数据列表
             const datalist = $('<datalist id="expressionSuggestions"></datalist>');
             autoCompleteTerms.forEach(term => {
                 datalist.append($('<option></option>').val(term));
             });
+            
             $('#edgeExpression').after(datalist);
         });
         
@@ -907,12 +1151,10 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     }, 200);
                 } else {
                     $('#workflowNodeEditModal').modal('hide');
-                }
-            } catch (e) {
+                }            } catch (e) {
                 console.error('关闭节点编辑窗口时出错:', e);
                 // 如果出错，使用默认方式关闭
-                $('#workflowNodeEditModal').modal('hide');
-            }
+                $('#workflowNodeEditModal').modal('hide');            }
               // 安全调用redrawDAG函数
             safeRedrawDAG();
             
@@ -959,21 +1201,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             if (typeof window.checkWorkflowSafetyState === 'function') {
                 window.checkWorkflowSafetyState();
             }
-        });
-
-        // Handle task form modal close event to check for unsaved workflow changes
-        $('#taskFormModal').on('hide.bs.modal', function (e) {
-            const taskType = parseInt($('#taskType').val());
-            if (taskType === 10 && window.workflowGraphHasUnsavedChanges) {
-                if (!confirm(i18n.translate('tasksPage.feedback.confirmCloseWithUnsavedChanges', 'You have unsaved workflow changes. Are you sure you want to close?'))) {
-                    e.preventDefault(); // Prevent modal from closing
-                } else {
-                    window.workflowGraphHasUnsavedChanges = false; // User confirmed, reset flag
-                }
-            }
-        });
-
-        // 添加工作流DAG上下文菜单功能
+        });        // 添加工作流DAG上下文菜单功能
         $('#dagContainer').on('contextmenu', function(e) {
             // 移除之前的任何上下文菜单
             $('.dag-context-menu').remove();
@@ -1015,8 +1243,12 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     text: i18n.translate('tasksPage.dagContextMenu.toggleGuide', '显示/隐藏操作指南'),
                     icon: 'bi-info-circle',
                     action: function() {
-                        // Call the new local function to create/show/hide the guide
-                        displayDagOperationGuide();
+                        const guide = $('#dagContainer').find('.dag-operation-guide');
+                        if (guide.length) {
+                            guide.toggle();
+                        } else {
+                            $('#dagContainer').append(window.showDagOperationGuide());
+                        }
                     }
                 },
                 {
@@ -1512,46 +1744,6 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 }
             }
         });
-
-        // Helper function to display the DAG operation guide
-        function displayDagOperationGuide() {
-            // Check if guide already exists and is visible
-            const existingGuide = $('#dagContainer').find('.dag-operation-guide');
-            if (existingGuide.length > 0 && existingGuide.is(':visible')) {
-                existingGuide.hide(); // If visible, hide it (toggle behavior)
-                return;
-            } else if (existingGuide.length > 0 && !existingGuide.is(':visible')) {
-                existingGuide.show(); // If exists but hidden, show it
-                return;
-            }
-
-            // If guide doesn't exist, create it
-            const guideTitle = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.title', '工作流操作指南') : 'Workflow Guide';
-            const editNodeText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.editNode', '双击节点进行编辑。') : 'Double-click node to edit.';
-            const moveNodeText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.moveNode', '拖拽节点进行移动。') : 'Drag node to move.';
-            const connectNodesText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.connectNodes', '右键点击源节点，然后左键点击目标节点以创建连线。') : 'Right-click source node, then left-click target node to create a connection.';
-            const closeText = typeof i18n !== 'undefined' ? i18n.translate('tasksPage.dagGuide.close', '关闭') : 'Close';
-
-            const guideHtml = `
-                <div class="dag-operation-guide" style="position: absolute; top: 10px; right: 10px; width: 280px; background-color: #f8f9fa; border: 1px solid #ced4da; border-radius: .25rem; padding: 15px; z-index: 1050; box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);">
-                    <h5 style="margin-top: 0; margin-bottom: .75rem;">${guideTitle}</h5>
-                    <ul style="padding-left: 20px; margin-bottom: 1rem; font-size: 0.875rem;">
-                        <li>${editNodeText}</li>
-                        <li>${moveNodeText}</li>
-                        <li>${connectNodesText}</li>
-                    </ul>
-                    <button type="button" class="btn btn-sm btn-secondary dag-guide-close-btn" style="float: right;">${closeText}</button>
-                    <div style="clear: both;"></div>
-                </div>
-            `;
-            $('#dagContainer').append(guideHtml);
-
-            // Add event listener for the close button within the guide
-            // Ensure event is delegated and not bound multiple times if guide is recreated
-            $('#dagContainer').off('click.dagGuideClose').on('click.dagGuideClose', '.dag-guide-close-btn', function() {
-                $(this).closest('.dag-operation-guide').hide();
-            });
-        }
         
         // 工作流编辑模式切换处理
         $('#editorModeForm, #editorModeGraph').on('click', function() {
@@ -1674,18 +1866,6 @@ if (typeof window.tasksUiInitialized === 'undefined') {
     });
 }
 
-/**
- * 确保任务表单模态窗口处于打开状态
- * 如果任务表单窗口不可见，则重新显示它
- */
-window.ensureTaskFormModalOpen = function() {
-    if (!$('#taskFormModal').hasClass('show')) {
-        console.log('确保任务表单窗口显示中');
-        $('#taskFormModal').modal('show');
-        return true;
-    }
-    return false;
-};
 /**
      * 安全调用initGraphMode函数的辅助方法
      * 避免直接引用window.initGraphMode可能导致的未定义错误
@@ -1932,7 +2112,8 @@ function loadTaskConfigOptions(selectElementId) {
             onTasksLoaded(window.cachedTasks);
             return;
         }
-          // 如果没有缓存，从服务器获取任务配置列表
+        
+        // 如果没有缓存，从服务器获取任务配置列表
         console.log('从服务器加载任务配置...');
         makeApiCall('GET', '/tasks', null, 
             function(response) {
@@ -1954,17 +2135,16 @@ function loadTaskConfigOptions(selectElementId) {
     }
 }
 
-// 使用上方定义的加载任务配置选项函数
-
 /**
  * 打开添加工作流节点对话框
  * 处理图形模式下添加新节点的功能
  */
-window.openAddNodeDialog = function() {    try {
+window.openAddNodeDialog = function() {
+    try {
         console.log('执行openAddNodeDialog函数');
         
         // 设置模态窗口标题
-        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeEditModal.title', '添加工作流节点'));
+        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeModal.addNodeTitle', '添加工作流节点'));
         
         // 设置为新节点模式
         $('#editingNodeArrayIndex').val('-1'); // -1 表示新建节点
@@ -1980,8 +2160,9 @@ window.openAddNodeDialog = function() {    try {
         // 清空名称和参数
         $('#editNodeName').val('');
         $('#editNodeParams').val('{}');
-          // 设置显示节点ID
-        $('#displayNodeId').text(i18n.translate('tasksPage.nodeEditModal.nodeId', '节点ID:'));
+        
+        // 设置显示节点ID
+        $('#displayNodeId').text(i18n.translate('tasksPage.nodeModal.newNode', '新节点'));
         
         // 隐藏删除节点按钮
         $('#deleteNodeBtn').hide();
@@ -2008,222 +2189,58 @@ window.openAddNodeDialog = function() {    try {
     }
 };
 
-// 加载日历数据用于任务表单
-window.loadCalendarsForTaskForm = function() {
-    console.log('加载日历数据...');
-    makeApiCall('GET', '/calendars', null,
-        function(response) {
-            const calendarSelect = $('#calendarGroup');
-            if (calendarSelect.length === 0) {
-                console.warn('未找到日历选择器元素');
-                return;
-            }
-            
-            // 清除除了第一个选项之外的所有选项
-            calendarSelect.find('option:not(:first)').remove();
-              // 添加日历选项
-            if (Array.isArray(response)) {
-                response.forEach(calendar => {
-                    calendarSelect.append(
-                        $('<option>')
-                            .val(calendar.calendarName) // 使用日历名称作为值
-                            .text(calendar.calendarName) // 简化显示，只使用日历名称
-                    );
-                });
-            }
-            
-            console.log(`加载了 ${response ? response.length : 0} 个日历选项`);
-        },
-        function(jqXHR) {
-            console.error('加载日历数据失败:', jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText);
-        }
-    );
-    // 触发select元素的change事件，确保UI刷新
-    $('#calendarGroup').trigger('change');
-};
+// 使用上方定义的加载任务配置选项函数
 
-
-// 加载用户数据用于通知设置
-window.loadUsersForNotifications = function() {
-    console.log('加载用户数据用于通知设置...');
-    
-    const notifySuccessSelect = $('#notifySuccess');
-    const notifyFailedSelect = $('#notifyFailed');
-    
-    if (notifySuccessSelect.length === 0 || notifyFailedSelect.length === 0) {
-        console.warn('未找到通知选择器元素');
-        return;
+/**
+ * 打开添加工作流节点对话框
+ * 处理图形模式下添加新节点的功能
+ */
+window.openAddNodeDialog = function() {
+    try {
+        console.log('执行openAddNodeDialog函数');
+        
+        // 设置模态窗口标题
+        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeModal.addNodeTitle', '添加工作流节点'));
+        
+        // 设置为新节点模式
+        $('#editingNodeArrayIndex').val('-1'); // -1 表示新建节点
+          // 显示节点ID输入框（仅在添加新节点时需要）
+        $('.node-id-input-group').show();
+        $('.existing-node-id-group').hide(); // 隐藏现有节点ID显示组
+        
+        // 生成一个默认节点ID
+        const timestamp = new Date().getTime();
+        const defaultNodeId = 'node_' + timestamp.toString().substring(timestamp.toString().length - 6);
+        $('#editNodeId').val(defaultNodeId);
+        
+        // 清空名称和参数
+        $('#editNodeName').val('');
+        $('#editNodeParams').val('{}');
+        
+        // 设置显示节点ID
+        $('#displayNodeId').text(i18n.translate('tasksPage.nodeModal.newNode', '新节点'));
+        
+        // 隐藏删除节点按钮
+        $('#deleteNodeBtn').hide();
+        
+        // 先清空任务配置选择框，再添加一个初始选项
+        const selectElement = $('#editTaskConfigId');
+        selectElement.empty();
+        selectElement.append(
+            $('<option></option>')
+                .attr('value', '')
+                .text(i18n.translate('tasksPage.nodeModal.selectTaskConfig', '- 选择任务配置 -'))
+        );
+        
+        // 加载可用的任务配置选项
+        loadTaskConfigOptions();
+        
+        // 打开模态窗口
+        $('#workflowNodeEditModal').modal('show');
+        
+        console.log('已打开添加节点对话框');
+    } catch (e) {
+        console.error('打开添加节点对话框时出错:', e);
+        showFeedback(i18n.translate('tasksPage.feedback.errorOpeningNodeDialog', '打开添加节点对话框时出错: ') + e.message, true);
     }
-    
-    // 清除除了第一个选项之外的所有选项
-    notifySuccessSelect.find('option:not(:first)').remove();
-    notifyFailedSelect.find('option:not(:first)').remove();
-
-    // 启用多选插件（如果有）
-    if ($.fn.select2) {
-        try {
-            notifySuccessSelect.select2({
-                placeholder: "选择通知用户",
-                allowClear: true,
-                width: '100%'
-            });
-            notifyFailedSelect.select2({
-                placeholder: "选择通知用户",
-                allowClear: true,
-                width: '100%'
-            });
-            console.log("应用Select2插件到用户选择框");
-        } catch (e) {
-            console.warn("Select2初始化失败:", e);
-        }
-    }
-
-        makeApiCall('GET', '/users', null,
-        function(response) {
-            window.debugLog('获取到用户数据:', response);
-            
-            try {
-                // 缓存用户数据，避免重复加载
-                window.cachedUserList = response;
-                
-                // 先检查数据格式
-                if (!Array.isArray(response)) {
-                    console.warn('用户数据不是数组格式，尝试转换...');
-                    // 尝试将对象转为数组
-                    if (typeof response === 'object' && response !== null) {
-                        if (response.users && Array.isArray(response.users)) {
-                            response = response.users;
-                        } else if (response.data && Array.isArray(response.data)) {
-                            response = response.data;
-                        } else if (response.content && Array.isArray(response.content)) {
-                            response = response.content;
-                        } else {
-                            // 最后尝试将对象值转为数组
-                            const values = Object.values(response);
-                            if (values.length > 0 && typeof values[0] === 'object') {
-                                response = values;
-                            } else {
-                                console.error('用户数据格式无法处理');
-                                return;
-                            }
-                        }
-                    } else {
-                        console.error('用户数据格式无法处理');
-                        return;
-                    }
-                }
-                
-                if (response.length === 0) {
-                    console.warn('用户列表为空');
-                    return;
-                }
-                
-                // 获取用户ID字段名（可能是id或userId）
-                const firstUser = response[0];
-                const idField = firstUser.hasOwnProperty('id') ? 'id' : 
-                                firstUser.hasOwnProperty('userId') ? 'userId' : 'id';
-                
-                window.debugLog(`使用 ${idField} 作为用户ID字段`);
-                
-                // 构建所有用户选项但一次性添加，提高性能
-                const successOptions = [];
-                const failedOptions = [];
-                
-                response.forEach(user => {
-                    const userId = user[idField];
-                    // 使用多种可能的名称字段组合
-                    const displayName = user.fullName || user.username || user.name || 
-                                        (user.firstName && user.lastName ? (user.firstName + ' ' + user.lastName) : null) || 
-                                        (user.firstName || user.lastName || userId);
-                    
-                    successOptions.push(`<option value="${userId}">${displayName}</option>`);
-                    failedOptions.push(`<option value="${userId}">${displayName}</option>`);
-                });
-                
-                // 一次性添加所有选项
-                notifySuccessSelect.append(successOptions.join(''));
-                notifyFailedSelect.append(failedOptions.join(''));
-                
-                window.debugLog(`加载了 ${response.length} 个用户选项`);
-                
-                // 添加后刷新select2（如果使用）
-                if ($.fn.select2) {
-                    try {
-                        notifySuccessSelect.select2('destroy').select2({
-                            placeholder: "选择通知用户",
-                            allowClear: true,
-                            width: '100%'
-                        });
-                        notifyFailedSelect.select2('destroy').select2({
-                            placeholder: "选择通知用户",
-                            allowClear: true,
-                            width: '100%'
-                        });
-                    } catch (e) {
-                        console.warn("Select2刷新失败:", e);
-                    }
-                }
-            } catch (err) {
-                console.error('处理用户数据时出错:', err);
-            }
-        },
-        function(jqXHR) {
-            console.error('加载用户数据失败:', jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText);
-        }
-    );
-};
-
-
-// 注意：表单提交处理已在前面的submit事件处理函数中完成
-    
-// 重写加载任务详情的函数，支持新字段
-const originalLoadTaskDetails = window.loadTaskDetails;
-window.loadTaskDetails = function(taskId) {
-    console.log('加载任务详情, ID:', taskId);
-    
-    makeApiCall('GET', `/tasks/${taskId}`, null,
-        function(task) {
-            console.log('任务详情获取成功:', task);
-            
-            // 填充基础字段
-            $('#taskId').val(task.taskId);
-            $('#taskName').val(task.taskName);
-            $('#taskGroup').val(task.taskGroup);
-            $('#cronExpression').val(task.cronExpression);
-            $('#executionMode').val(task.executionMode);
-            $('#description').val(task.description);
-            $('#taskType').val(task.taskType).trigger('change');
-              // 填充高级设置
-            $('#startDate').val(task.startDate || '');
-            $('#endDate').val(task.endDate || '');
-            $('#calendarGroup').val(task.taskCalendarGroup || ''); // 修正字段名为taskCalendarGroup
-            $('#excludeTimes').val(task.taskExcludeTimes || ''); // 修正字段名为taskExcludeTimes
-            $('#taskTimeout').val(task.executeTimeoutSeconds || ''); // 修正字段名为executeTimeoutSeconds
-              // 填充重试设置
-            $('#maxRetries').val(task.maxRetryAttempts || 0);
-            $('#retryInterval').val(task.retryIntervalSeconds || 30);
-            $('#retryMultiplier').val(task.retryIntervalMultiplier || 1.0);
-            
-            // 填充通知设置
-            if (task.notifySuccessUserIds) {
-                const successUserIds = task.notifySuccessUserIds.split(',');
-                $('#notifySuccess').val(successUserIds);
-            }
-            if (task.notifyFailedUserIds) {
-                const failedUserIds = task.notifyFailedUserIds.split(',');
-                $('#notifyFailed').val(failedUserIds);
-            }
-              // 设置激活状态
-            $('#active').prop('checked', task.isActive === undefined ? task.active : task.isActive);
-            
-            // 根据任务类型填充特定字段
-            fillTypeSpecificFields(task);
-            
-            // 显示模态框
-            $('#taskFormModal').modal('show');
-        },
-        function(jqXHR) {
-            showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTaskDetails', 'Error loading task details: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
-        }
-    );
 };

@@ -5,11 +5,13 @@
     <title data-i18n-key="tasksPage.title">Task Management - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    
+    <link rel="stylesheet" href="libs/select2/css/select2.min.css">
     <link rel="stylesheet" href="css/style.css">
     <!-- Removed workflow.css link to fix loading issue -->
     <script src="libs/jquery/jquery-3.5.1.min.js"></script>
     <script src="libs/popperjs/popper.min.js"></script>
     <script src="libs/bootstrap/js/bootstrap.min.js"></script>    
+    <script src="libs/select2/js/select2.min.js"></script>
     <script src="js/main.js"></script>
     <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
@@ -121,7 +123,7 @@
                   <label for="executionMode" data-i18n-key="tasksPage.modal.executionModeLabel">Execution Mode</label>
                   <select class="form-control" id="executionMode" name="executionMode">
                     <option value="BROADCAST" data-i18n-key="tasksPage.modal.executionMode.broadcast">Broadcast</option>
-                    <option value="SINGLE" data-i18n-key="tasksPage.modal.executionMode.single">Single</option>
+                    <option value="CLUSTER" data-i18n-key="tasksPage.modal.executionMode.cluster">Cluster</option>
                   </select>
                 </div>
               </div>
@@ -345,12 +347,12 @@
                 <div id="advancedSettingsBody" class="collapse show card-body">
                   <div class="form-row">
                     <div class="form-group col-md-6">
-                      <label for="startDate" data-i18n-key="tasksPage.modal.startDateLabel">Start Date</label>
-                      <input type="date" class="form-control" id="startDate" name="startDate" data-i18n-key-placeholder="tasksPage.modal.startDatePlaceholder">
+                      <label for="startDate" data-i18n-key="tasksPage.modal.startDateLabel">Start Date & Time</label>
+                      <input type="datetime-local" class="form-control" id="startDate" name="startDate" data-i18n-key-placeholder="tasksPage.modal.startDatePlaceholder">
                     </div>
                     <div class="form-group col-md-6">
-                      <label for="endDate" data-i18n-key="tasksPage.modal.endDateLabel">End Date</label>
-                      <input type="date" class="form-control" id="endDate" name="endDate" data-i18n-key-placeholder="tasksPage.modal.endDatePlaceholder">
+                      <label for="endDate" data-i18n-key="tasksPage.modal.endDateLabel">End Date & Time</label>
+                      <input type="datetime-local" class="form-control" id="endDate" name="endDate" data-i18n-key-placeholder="tasksPage.modal.endDatePlaceholder">
                     </div>
                   </div>
                   <div class="form-row">
@@ -623,7 +625,7 @@
           </div>
           <div class="form-group">
             <label for="wfNodeName" data-i18n-key="tasksPage.nodeEditModal.nodeName">Node Name:</label>
-            <input type="text" class="form-control" id="wfNodeName" required>
+            <input type="text" class="form-control" id="wfNodeName" name="nodeName" data-field="nodeName" required>
           </div>
           <div class="form-group">
             <label for="wfNodeTaskConfigSelect" data-i18n-key="tasksPage.nodeEditModal.taskConfig">Task Configuration:</label>

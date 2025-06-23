@@ -48,7 +48,8 @@ public class TaskConfigController {
     @Autowired
     private CoreSchedulerService coreSchedulerService;
 
-    // ObjectMapper is no longer needed here if Fastjson is the primary via HttpMessageConverter
+    // ObjectMapper is no longer needed here if Fastjson is the primary via
+    // HttpMessageConverter
     // @Autowired
     // private ObjectMapper objectMapper;
     // --- DTO Mappers ---
@@ -67,11 +68,13 @@ public class TaskConfigController {
                 dto.setWorkflowEdges(JSON.parseArray(taskConfig.getWorkflowEdgesJson(), WorkflowEdge.class));
             }
             if (StringUtils.hasText(taskConfig.getGlobalParametersJson())) {
-                dto.setGlobalParameters(JSON.parseObject(taskConfig.getGlobalParametersJson(), new TypeReference<Map<String, Object>>() {
-                }));
+                dto.setGlobalParameters(JSON.parseObject(taskConfig.getGlobalParametersJson(),
+                        new TypeReference<Map<String, Object>>() {
+                        }));
             }
         } catch (Exception e) { // Fastjson might throw different exceptions
-            logger.error("Error parsing workflow/global params JSON (Fastjson) to DTO for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
+            logger.error("Error parsing workflow/global params JSON (Fastjson) to DTO for task ID {}: {}",
+                    taskConfig.getTaskId(), e.getMessage(), e);
         }
         return dto;
     }
@@ -100,7 +103,9 @@ public class TaskConfigController {
                 entity.setGlobalParametersJson(null);
             }
         } catch (Exception e) { // Fastjson might throw different exceptions
-            logger.error("Error stringifying workflow/global params DTO to JSON (Fastjson) for entity (Task Name {}): {}", dto.getTaskName(), e.getMessage(), e);
+            logger.error(
+                    "Error stringifying workflow/global params DTO to JSON (Fastjson) for entity (Task Name {}): {}",
+                    dto.getTaskName(), e.getMessage(), e);
         }
         return entity;
     }
@@ -108,7 +113,8 @@ public class TaskConfigController {
     // --- API Endpoints ---
     @PostMapping
     public ResponseEntity<?> createTask(@RequestBody TaskConfigDto taskConfigDto) {
-        if (taskConfigDto == null || !StringUtils.hasText(taskConfigDto.getTaskName()) || !StringUtils.hasText(taskConfigDto.getCronExpression())) {
+        if (taskConfigDto == null || !StringUtils.hasText(taskConfigDto.getTaskName())
+                || !StringUtils.hasText(taskConfigDto.getCronExpression())) {
             return ResponseEntity.badRequest().body("Task name and CRON expression must not be empty.");
         }
 
@@ -120,12 +126,13 @@ public class TaskConfigController {
         // beanParameters JSON Validation
         Integer taskType = taskConfigDto.getTaskType();
         String beanParams = taskConfigDto.getBeanParameters();
-        if (beanParams != null && !beanParams.trim().isEmpty()) {
+        if (beanParams != null && StringUtils.hasText(beanParams)) {
             if (taskType != null && (taskType == 2 || taskType == 4)) { // 2 for HTTP, 4 for Shell
                 try {
                     JSON.parse(beanParams); // Try to parse to check validity
                 } catch (com.alibaba.fastjson.JSONException e) {
-                    return ResponseEntity.badRequest().body("beanParameters is not valid JSON for HTTP/Shell task type.");
+                    return ResponseEntity.badRequest()
+                            .body("beanParameters is not valid JSON for HTTP/Shell task type.");
                 }
             }
         }
@@ -135,10 +142,12 @@ public class TaskConfigController {
             List<WorkflowNode> workflowNodes = taskConfigDto.getWorkflowNodes();
             List<WorkflowEdge> workflowEdges = taskConfigDto.getWorkflowEdges();
 
-            if (workflowNodes != null && !workflowNodes.isEmpty() && workflowEdges != null && !workflowEdges.isEmpty()) {
+            if (workflowNodes != null && !workflowNodes.isEmpty() && workflowEdges != null
+                    && !workflowEdges.isEmpty()) {
                 DagCycleDetector detector = new DagCycleDetector();
                 if (detector.hasCycle(workflowNodes, workflowEdges)) {
-                    return ResponseEntity.badRequest().body("Workflow configuration contains a cycle. Please correct the workflow definition.");
+                    return ResponseEntity.badRequest()
+                            .body("Workflow configuration contains a cycle. Please correct the workflow definition.");
                 }
             }
         }
@@ -194,7 +203,8 @@ public class TaskConfigController {
         }
 
         // CRON Validation (if cron expression is part of the update)
-        if (StringUtils.hasText(taskConfigDto.getCronExpression()) && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+        if (StringUtils.hasText(taskConfigDto.getCronExpression())
+                && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
             return ResponseEntity.badRequest().body("Invalid CRON expression format.");
         }
 
@@ -202,9 +212,12 @@ public class TaskConfigController {
         Integer taskType = taskConfigDto.getTaskType();
         String beanParams = taskConfigDto.getBeanParameters();
 
-        // If taskType is not provided in DTO for update, we might need to fetch existing entity to check its type.
-        // For simplicity, this validation applies if taskType is explicitly in DTO or if beanParams are being updated.
-        // A more robust approach might fetch the existing entity if taskType is null in DTO.
+        // If taskType is not provided in DTO for update, we might need to fetch
+        // existing entity to check its type.
+        // For simplicity, this validation applies if taskType is explicitly in DTO or
+        // if beanParams are being updated.
+        // A more robust approach might fetch the existing entity if taskType is null in
+        // DTO.
         if (beanParams != null && !beanParams.trim().isEmpty()) {
             Integer effectiveTaskType = taskType;
             if (effectiveTaskType == null) {
@@ -214,11 +227,13 @@ public class TaskConfigController {
                 }
             }
 
-            if (effectiveTaskType != null && (effectiveTaskType == 2 || effectiveTaskType == 4)) { // 2 for HTTP, 4 for Shell
+            if (effectiveTaskType != null && (effectiveTaskType == 2 || effectiveTaskType == 4)) { // 2 for HTTP, 4 for
+                                                                                                   // Shell
                 try {
                     JSON.parse(beanParams); // Try to parse to check validity
                 } catch (com.alibaba.fastjson.JSONException e) {
-                    return ResponseEntity.badRequest().body("beanParameters is not valid JSON for HTTP/Shell task type.");
+                    return ResponseEntity.badRequest()
+                            .body("beanParameters is not valid JSON for HTTP/Shell task type.");
                 }
             }
         }
@@ -237,18 +252,25 @@ public class TaskConfigController {
             List<WorkflowNode> workflowNodes = taskConfigDto.getWorkflowNodes();
             List<WorkflowEdge> workflowEdges = taskConfigDto.getWorkflowEdges();
 
-            // If nodes/edges are not part of the DTO (e.g. partial update not affecting them),
+            // If nodes/edges are not part of the DTO (e.g. partial update not affecting
+            // them),
             // we might need to fetch existing ones to perform a complete cycle check.
             // For now, assume if type is 10, nodes/edges are provided or are being cleared.
-            // If workflowNodes or workflowEdges are explicitly null in DTO, it implies clearing them.
-            // If they are not present in DTO (partial update), this check might be insufficient
+            // If workflowNodes or workflowEdges are explicitly null in DTO, it implies
+            // clearing them.
+            // If they are not present in DTO (partial update), this check might be
+            // insufficient
             // without merging with existing entity's nodes/edges first.
-            // The current DTO structure and convertToEntity seems to handle full replacements or
-            // relies on frontend sending complete node/edge lists if they are part of the update.
-            if (workflowNodes != null && !workflowNodes.isEmpty() && workflowEdges != null && !workflowEdges.isEmpty()) {
+            // The current DTO structure and convertToEntity seems to handle full
+            // replacements or
+            // relies on frontend sending complete node/edge lists if they are part of the
+            // update.
+            if (workflowNodes != null && !workflowNodes.isEmpty() && workflowEdges != null
+                    && !workflowEdges.isEmpty()) {
                 DagCycleDetector detector = new DagCycleDetector();
                 if (detector.hasCycle(workflowNodes, workflowEdges)) {
-                    return ResponseEntity.badRequest().body("Workflow configuration contains a cycle. Please correct the workflow definition.");
+                    return ResponseEntity.badRequest()
+                            .body("Workflow configuration contains a cycle. Please correct the workflow definition.");
                 }
             }
             // If workflowNodes or workflowEdges are cleared (e.g. to empty lists or null),
@@ -262,7 +284,8 @@ public class TaskConfigController {
         TaskConfig taskConfigToUpdate = convertToEntity(taskConfigDto);
         taskConfigToUpdate.setTaskId(id); // Ensure ID is set for update
 
-        // Preserve fields not typically updated or if they are null in DTO but set in DB
+        // Preserve fields not typically updated or if they are null in DTO but set in
+        // DB
         TaskConfig existingEntity = existingTaskOptional.get();
         if (taskConfigToUpdate.getTaskName() == null) {
             taskConfigToUpdate.setTaskName(existingEntity.getTaskName());
@@ -270,7 +293,8 @@ public class TaskConfigController {
         if (taskConfigToUpdate.getCronExpression() == null) {
             taskConfigToUpdate.setCronExpression(existingEntity.getCronExpression());
         }
-        // Add other fields as necessary to preserve from existingEntity if not provided in DTO
+        // Add other fields as necessary to preserve from existingEntity if not provided
+        // in DTO
 
         int updatedRows = taskConfigDao.update(taskConfigToUpdate);
         if (updatedRows == 0) {
@@ -308,7 +332,8 @@ public class TaskConfigController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build(); // If task not found by triggerTaskManually
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error triggering task " + id + ": " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error triggering task " + id + ": " + e.getMessage());
         }
     }
 
@@ -375,10 +400,13 @@ public class TaskConfigController {
                 return ResponseEntity.ok(response);
             } catch (IllegalArgumentException e) {
                 // This catch might be redundant if isValidExpression is comprehensive
-                // but good as a safeguard if parse has stricter checks or for unforeseen issues.
+                // but good as a safeguard if parse has stricter checks or for unforeseen
+                // issues.
                 response.put("isValid", false); // Correct the status if parse fails
-                response.put("error", "Failed to parse CRON expression or determine next execution time: " + e.getMessage());
-                // Still return 200 OK as it's a validation endpoint, but indicate failure in body
+                response.put("error",
+                        "Failed to parse CRON expression or determine next execution time: " + e.getMessage());
+                // Still return 200 OK as it's a validation endpoint, but indicate failure in
+                // body
                 return ResponseEntity.ok(response);
             }
         } else {
