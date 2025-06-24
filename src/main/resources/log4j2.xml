@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="debug" name="embed-sheduled" monitorInterval="30">
 	<Properties>
-		<Property name="LOG_HOME">/apps/staing/embbed-scheduled/logs/</Property>
+		<Property name="LOG_HOME">/apps/staging/embbed-scheduled/logs/</Property>
 		<Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{traceId}][%X{execute_no}] %c - %msg%n</Property>
 		<Property name="LOG_PATTERN2">%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</Property>
 		<Property name="APP_NAME">embed-sheduled</Property>
@@ -13,9 +13,9 @@
 
 
 	<Appenders>
-		<Console name="console" target="SYSTEM_OUT">
+		<Console name="debug" target="SYSTEM_OUT">
 			<!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
-			<ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+			<ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY"/>
 			<PatternLayout pattern="${LOG_PATTERN}" />
 		</Console>
 
@@ -143,7 +143,7 @@
 	</Appenders>
 
 	<Loggers>
-		<Root level="info">
+		<Root level="debug">
 			<AppenderRef ref="file-info" />
 			<AppenderRef ref="file-error" />
 			<AppenderRef ref="file-debug" />
@@ -151,10 +151,6 @@
 		</Root>
 		<AsyncLogger name="access" level="info" additivity="false">
 			<AppenderRef ref="file-info" />
-			<AppenderRef ref="console" />
-		</AsyncLogger>
-		<AsyncLogger name="com" level="error" additivity="false">
-			<AppenderRef ref="file-error" />
 			<AppenderRef ref="console" />
 		</AsyncLogger>
 		<AsyncLogger name="com.example.taskscheduler" level="debug" additivity="false">

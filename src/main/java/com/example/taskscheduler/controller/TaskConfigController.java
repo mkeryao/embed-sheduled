@@ -454,8 +454,9 @@ public class TaskConfigController {
             nextTimes.add(nextTime.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime().toString());
 
             // Update context for next iteration, add 1 ms to avoid same time repeated
-            context = new SimpleTriggerContext(new java.util.Date(nextTime.getTime() + 1), nextTime,
-                    new java.util.Date(nextTime.getTime() + 1));
+            context = new SimpleTriggerContext(new java.util.Date(nextTime.getTime() + 1000),
+                    nextTime,
+                    new java.util.Date(nextTime.getTime() + 1000));
         }
 
         response.put("taskId", id);

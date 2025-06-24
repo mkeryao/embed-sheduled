@@ -1,14 +1,15 @@
 package com.example.taskscheduler.entity;
 
+import java.sql.Date;
+
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.sql.Date;
 
 /**
  * Entity representing a specific day entry within a {@link TaskCalendar}.
- * It defines whether a particular date is considered a working day or a non-working day
+ * It defines whether a particular date is considered a working day or a
+ * non-working day
  * (e.g., a holiday) for task scheduling purposes.
  */
 @Data
@@ -30,6 +31,10 @@ public class TaskCalendarDay {
      */
     private boolean isWorkingDay;
 
-    /** Optional description for this day entry (e.g., "Christmas Day", "Company Holiday"). */
+    /**
+     * Optional description for this day entry (e.g., "Christmas Day", "Company
+     * Holiday").
+     */
     private String description;
+
 }

@@ -1,9 +1,13 @@
 package com.example.taskscheduler.dao;
 
-import com.example.taskscheduler.entity.TaskCalendar;
-import com.example.taskscheduler.entity.TaskCalendarDay;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,18 +18,15 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+import com.example.taskscheduler.entity.TaskCalendar;
+import com.example.taskscheduler.entity.TaskCalendarDay;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 /**
  * JDBC implementation of the {@link TaskCalendarDao} interface.
- * Handles database operations for {@link TaskCalendar} and {@link TaskCalendarDay} entities
+ * Handles database operations for {@link TaskCalendar} and
+ * {@link TaskCalendarDay} entities
  * using Spring's {@link JdbcTemplate}.
  * Implements Guava caching for frequently accessed calendar data.
  */
@@ -59,7 +60,6 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
             .expireAfterWrite(1, TimeUnit.HOURS)
             .build();
 
-
     // TaskCalendar SQL
     private static final String INSERT_CALENDAR_SQL = "INSERT INTO task_calendar (calendar_name, description) VALUES (?, ?)";
     private static final String UPDATE_CALENDAR_SQL = "UPDATE task_calendar SET calendar_name=?, description=? WHERE calendar_id=?";
@@ -76,7 +76,6 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
     private static final String SELECT_CALENDAR_DAY_BY_CALENDAR_ID_AND_DATE_SQL = "SELECT * FROM task_calendar_day WHERE calendar_id=? AND event_date=?";
     private static final String DELETE_CALENDAR_DAY_BY_ID_SQL = "DELETE FROM task_calendar_day WHERE day_id=?";
     private static final String DELETE_CALENDAR_DAYS_BY_CALENDAR_ID_SQL = "DELETE FROM task_calendar_day WHERE calendar_id=?";
-
 
     private final RowMapper<TaskCalendar> calendarRowMapper = (rs, rowNum) -> {
         TaskCalendar calendar = new TaskCalendar();
@@ -111,13 +110,15 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
         }
         // Invalidate relevant caches
         if (calendar.getCalendarName() != null) {
-            logger.debug("Calendar saved/updated. Invalidating cache for calendar name: {}", calendar.getCalendarName());
+            logger.debug("Calendar saved/updated. Invalidating cache for calendar name: {}",
+                    calendar.getCalendarName());
             calendarCacheByName.invalidate(calendar.getCalendarName());
         }
         if (calendar.getCalendarId() != null) {
-             logger.debug("Invalidating cache for calendar ID: {}", calendar.getCalendarId());
+            logger.debug("Invalidating cache for calendar ID: {}", calendar.getCalendarId());
             calendarCacheById.invalidate(calendar.getCalendarId());
-             // New calendar group won't have days in day-specific caches yet, but good to clear group list cache
+            // New calendar group won't have days in day-specific caches yet, but good to
+            // clear group list cache
             calendarDaysByCalendarIdCache.invalidate(calendar.getCalendarId());
         }
         return calendar;
@@ -125,7 +126,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public Optional<TaskCalendar> findCalendarById(Integer calendarId) {
-        if (calendarId == null) return Optional.empty();
+        if (calendarId == null)
+            return Optional.empty();
         TaskCalendar cachedCalendar = calendarCacheById.getIfPresent(calendarId);
         if (cachedCalendar != null) {
             logger.debug("Cache hit for calendar ID: {}", calendarId);
@@ -133,7 +135,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
         }
         logger.debug("Cache miss for calendar ID: {}", calendarId);
         try {
-            TaskCalendar calendarFromDb = jdbcTemplate.queryForObject(SELECT_CALENDAR_BY_ID_SQL, new Object[]{calendarId}, calendarRowMapper);
+            TaskCalendar calendarFromDb = jdbcTemplate.queryForObject(SELECT_CALENDAR_BY_ID_SQL,
+                    new Object[] { calendarId }, calendarRowMapper);
             if (calendarFromDb != null) {
                 logger.debug("DB hit for calendar ID: {}. Caching result.", calendarId);
                 calendarCacheById.put(calendarId, calendarFromDb);
@@ -150,7 +153,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public Optional<TaskCalendar> findCalendarByName(String calendarName) {
-        if (calendarName == null) return Optional.empty();
+        if (calendarName == null)
+            return Optional.empty();
         TaskCalendar cachedCalendar = calendarCacheByName.getIfPresent(calendarName);
         if (cachedCalendar != null) {
             logger.debug("Cache hit for calendar name: {}", calendarName);
@@ -158,7 +162,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
         }
         logger.debug("Cache miss for calendar name: {}", calendarName);
         try {
-            TaskCalendar calendarFromDb = jdbcTemplate.queryForObject(SELECT_CALENDAR_BY_NAME_SQL, new Object[]{calendarName}, calendarRowMapper);
+            TaskCalendar calendarFromDb = jdbcTemplate.queryForObject(SELECT_CALENDAR_BY_NAME_SQL,
+                    new Object[] { calendarName }, calendarRowMapper);
             if (calendarFromDb != null) {
                 logger.debug("DB hit for calendar name: {}. Caching result.", calendarName);
                 calendarCacheByName.put(calendarName, calendarFromDb);
@@ -181,20 +186,27 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public int updateCalendar(TaskCalendar calendar) {
-        int affectedRows = jdbcTemplate.update(UPDATE_CALENDAR_SQL, calendar.getCalendarName(), calendar.getDescription(), calendar.getCalendarId());
+        int affectedRows = jdbcTemplate.update(UPDATE_CALENDAR_SQL, calendar.getCalendarName(),
+                calendar.getDescription(), calendar.getCalendarId());
         if (affectedRows > 0) {
-            logger.debug("Calendar updated. Invalidating caches for calendar ID: {} and name: {}", calendar.getCalendarId(), calendar.getCalendarName());
-            if (calendar.getCalendarId() != null) calendarCacheById.invalidate(calendar.getCalendarId());
-            if (calendar.getCalendarName() != null) calendarCacheByName.invalidate(calendar.getCalendarName());
-            // Days list for this calendar might have changed if name changed, but less direct impact.
-            // For simplicity, not invalidating calendarDaysByCalendarIdCache here unless description changes are critical to it.
+            logger.debug("Calendar updated. Invalidating caches for calendar ID: {} and name: {}",
+                    calendar.getCalendarId(), calendar.getCalendarName());
+            if (calendar.getCalendarId() != null)
+                calendarCacheById.invalidate(calendar.getCalendarId());
+            if (calendar.getCalendarName() != null)
+                calendarCacheByName.invalidate(calendar.getCalendarName());
+            // Days list for this calendar might have changed if name changed, but less
+            // direct impact.
+            // For simplicity, not invalidating calendarDaysByCalendarIdCache here unless
+            // description changes are critical to it.
         }
         return affectedRows;
     }
 
     @Override
     public int deleteCalendarById(Integer calendarId) {
-        if (calendarId == null) return 0;
+        if (calendarId == null)
+            return 0;
         Optional<TaskCalendar> calendarOptional = findCalendarById(calendarId); // Uses cache
 
         // Manually cascade delete associated calendar days
@@ -209,7 +221,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
                     calendarCacheByName.invalidate(cal.getCalendarName());
                 }
             });
-            // calendarDaysByCalendarIdCache already invalidated by deleteCalendarDaysByCalendarId
+            // calendarDaysByCalendarIdCache already invalidated by
+            // deleteCalendarDaysByCalendarId
         }
         return affectedRows;
     }
@@ -219,7 +232,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
     public TaskCalendarDay saveCalendarDay(TaskCalendarDay calendarDay) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(INSERT_CALENDAR_DAY_SQL, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = connection.prepareStatement(INSERT_CALENDAR_DAY_SQL,
+                    Statement.RETURN_GENERATED_KEYS);
             ps.setInt(1, calendarDay.getCalendarId());
             ps.setDate(2, calendarDay.getEventDate());
             ps.setBoolean(3, calendarDay.isWorkingDay());
@@ -230,21 +244,26 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
             calendarDay.setDayId(keyHolder.getKey().intValue());
         }
         // Invalidate caches
-        logger.debug("Calendar day saved/updated. Invalidating caches for calendar ID: {} and date: {}", calendarDay.getCalendarId(), calendarDay.getEventDate());
+        logger.debug("Calendar day saved/updated. Invalidating caches for calendar ID: {} and date: {}",
+                calendarDay.getCalendarId(), calendarDay.getEventDate());
         calendarDaysByCalendarIdCache.invalidate(calendarDay.getCalendarId());
         if (calendarDay.getEventDate() != null) {
-            specificCalendarDayCache.invalidate(calendarDay.getCalendarId() + "_" + calendarDay.getEventDate().toString());
+            specificCalendarDayCache
+                    .invalidate(
+                            calendarDay.getCalendarId() + "_" + calendarDay.getEventDate().toString().substring(0, 10));
         }
         return calendarDay;
     }
 
     @Override
     public Optional<TaskCalendarDay> findCalendarDayById(Integer dayId) {
-        // Individual day by its own ID is less frequently used for caching in this context,
+        // Individual day by its own ID is less frequently used for caching in this
+        // context,
         // but could be added if needed. For now, direct DB access.
         logger.debug("Executing findCalendarDayById for dayId {} (bypasses cache).", dayId);
         try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(SELECT_CALENDAR_DAY_BY_ID_SQL, new Object[]{dayId}, calendarDayRowMapper));
+            return Optional.ofNullable(jdbcTemplate.queryForObject(SELECT_CALENDAR_DAY_BY_ID_SQL,
+                    new Object[] { dayId }, calendarDayRowMapper));
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
@@ -252,21 +271,24 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public List<TaskCalendarDay> findCalendarDaysByCalendarId(Integer calendarId) {
-        if (calendarId == null) return Collections.emptyList();
+        if (calendarId == null)
+            return Collections.emptyList();
         List<TaskCalendarDay> cachedDays = calendarDaysByCalendarIdCache.getIfPresent(calendarId);
         if (cachedDays != null) {
             logger.debug("Cache hit for calendar days list for calendar ID: {}", calendarId);
             return cachedDays;
         }
         logger.debug("Cache miss for calendar days list for calendar ID: {}", calendarId);
-        List<TaskCalendarDay> daysFromDb = jdbcTemplate.query(SELECT_CALENDAR_DAYS_BY_CALENDAR_ID_SQL, new Object[]{calendarId}, calendarDayRowMapper);
+        List<TaskCalendarDay> daysFromDb = jdbcTemplate.query(SELECT_CALENDAR_DAYS_BY_CALENDAR_ID_SQL,
+                new Object[] { calendarId }, calendarDayRowMapper);
         if (daysFromDb != null) { // query typically returns empty list, not null
             logger.debug("DB hit for calendar days list for calendar ID: {}. Caching result.", calendarId);
             calendarDaysByCalendarIdCache.put(calendarId, daysFromDb);
             // Populate specific day cache
             for (TaskCalendarDay day : daysFromDb) {
                 if (day.getEventDate() != null) {
-                    specificCalendarDayCache.put(day.getCalendarId() + "_" + day.getEventDate().toString(), day);
+                    specificCalendarDayCache.put(day.getCalendarId() + "_" + day.getEventDate().toString()
+                            .substring(0, 10), day);
                 }
             }
         }
@@ -275,8 +297,10 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public Optional<TaskCalendarDay> findCalendarDayByCalendarIdAndDate(Integer calendarId, Date eventDate) {
-        if (calendarId == null || eventDate == null) return Optional.empty();
-        String cacheKey = calendarId + "_" + eventDate.toString();
+        if (calendarId == null || eventDate == null) {
+            return Optional.empty();
+        }
+        String cacheKey = calendarId + "_" + eventDate.toString().substring(0, 10);
         TaskCalendarDay cachedDay = specificCalendarDayCache.getIfPresent(cacheKey);
         if (cachedDay != null) {
             logger.debug("Cache hit for specific calendar day: {}", cacheKey);
@@ -284,7 +308,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
         }
         logger.debug("Cache miss for specific calendar day: {}", cacheKey);
         try {
-            TaskCalendarDay dayFromDb = jdbcTemplate.queryForObject(SELECT_CALENDAR_DAY_BY_CALENDAR_ID_AND_DATE_SQL, new Object[]{calendarId, eventDate}, calendarDayRowMapper);
+            TaskCalendarDay dayFromDb = jdbcTemplate.queryForObject(SELECT_CALENDAR_DAY_BY_CALENDAR_ID_AND_DATE_SQL,
+                    new Object[] { calendarId, eventDate }, calendarDayRowMapper);
             if (dayFromDb != null) {
                 logger.debug("DB hit for specific calendar day: {}. Caching result.", cacheKey);
                 specificCalendarDayCache.put(cacheKey, dayFromDb);
@@ -298,14 +323,21 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public int updateCalendarDay(TaskCalendarDay calendarDay) {
-        int affectedRows = jdbcTemplate.update(UPDATE_CALENDAR_DAY_SQL, calendarDay.getCalendarId(), calendarDay.getEventDate(), calendarDay.isWorkingDay(), calendarDay.getDescription(), calendarDay.getDayId());
+        int affectedRows = jdbcTemplate.update(UPDATE_CALENDAR_DAY_SQL, calendarDay.getCalendarId(),
+                calendarDay.getEventDate(), calendarDay.isWorkingDay(), calendarDay.getDescription(),
+                calendarDay.getDayId());
         if (affectedRows > 0) {
-            logger.debug("Calendar day updated. Invalidating caches for calendar ID: {} and date: {}", calendarDay.getCalendarId(), calendarDay.getEventDate());
+            logger.debug("Calendar day updated. Invalidating caches for calendar ID: {} and date: {}",
+                    calendarDay.getCalendarId(), calendarDay.getEventDate());
             calendarDaysByCalendarIdCache.invalidate(calendarDay.getCalendarId());
             if (calendarDay.getEventDate() != null) {
-                specificCalendarDayCache.invalidate(calendarDay.getCalendarId() + "_" + calendarDay.getEventDate().toString());
+                specificCalendarDayCache
+                        .invalidate(calendarDay.getCalendarId() + "_"
+                                + calendarDay.getEventDate().toString().substring(0, 10));
                 // Re-cache the updated day
-                specificCalendarDayCache.put(calendarDay.getCalendarId() + "_" + calendarDay.getEventDate().toString(), calendarDay);
+                specificCalendarDayCache.put(
+                        calendarDay.getCalendarId() + "_" + calendarDay.getEventDate().toString().substring(0, 10),
+                        calendarDay);
             }
         }
         return affectedRows;
@@ -313,7 +345,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public int deleteCalendarDayById(Integer dayId) {
-        if (dayId == null) return 0;
+        if (dayId == null)
+            return 0;
         // Fetch day before deleting to get its details for cache invalidation
         Optional<TaskCalendarDay> dayOptional = findCalendarDayById(dayId); // Bypasses cache for now
 
@@ -322,10 +355,12 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
         if (affectedRows > 0 && dayOptional.isPresent()) {
             TaskCalendarDay deletedDay = dayOptional.get();
             logger.debug("Calendar day deleted for ID: {}. Invalidating caches for calendar ID: {} and date: {}",
-                         dayId, deletedDay.getCalendarId(), deletedDay.getEventDate());
+                    dayId, deletedDay.getCalendarId(), deletedDay.getEventDate());
             calendarDaysByCalendarIdCache.invalidate(deletedDay.getCalendarId());
             if (deletedDay.getEventDate() != null) {
-                specificCalendarDayCache.invalidate(deletedDay.getCalendarId() + "_" + deletedDay.getEventDate().toString());
+                specificCalendarDayCache
+                        .invalidate(deletedDay.getCalendarId() + "_" + deletedDay.getEventDate()
+                                .toString().substring(0, 10));
             }
         }
         return affectedRows;
@@ -333,7 +368,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     @Override
     public int deleteCalendarDaysByCalendarId(Integer calendarId) {
-        if (calendarId == null) return 0;
+        if (calendarId == null)
+            return 0;
         // Before deleting, get all days to invalidate specific day cache
         List<TaskCalendarDay> daysToDelete = findCalendarDaysByCalendarId(calendarId); // Uses cache if populated
 
@@ -345,7 +381,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
             if (daysToDelete != null) {
                 for (TaskCalendarDay day : daysToDelete) {
                     if (day.getEventDate() != null) {
-                        specificCalendarDayCache.invalidate(day.getCalendarId() + "_" + day.getEventDate().toString());
+                        specificCalendarDayCache
+                                .invalidate(day.getCalendarId() + "_" + day.getEventDate().toString().substring(0, 10));
                     }
                 }
             }

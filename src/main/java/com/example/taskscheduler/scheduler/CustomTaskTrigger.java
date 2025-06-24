@@ -98,7 +98,7 @@ public class CustomTaskTrigger implements Trigger {
                         .flatMap(calendar -> taskCalendarDao
                                 .findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), executionSqlDate))
                         .map(calendarDay -> !calendarDay.isWorkingDay()) // true if it's a non-working day (excluded)
-                        .orElse(false); // Not in calendar or is a working day -> not excluded
+                        .orElse(true); // Not in calendar or is a working day -> not excluded
 
                 if (isExcludedByCalendar) {
                     logger.debug("Task ID {}: Candidate time {} is excluded by calendar group '{}'. Skipping.",
