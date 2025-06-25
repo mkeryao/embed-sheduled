@@ -213,7 +213,12 @@
         }
 
         function loadTaskBreakdownStats() {
-            $('#taskBreakdownBody').html(`<canvas id="taskBreakdownChart" width="100%" height="300"></canvas>`);
+            // Create a container with fixed height and scrollable content
+            $('#taskBreakdownBody').html(`
+                <div style="height: 400px; overflow-y: auto; overflow-x: hidden;">
+                    <canvas id="taskBreakdownChart"></canvas>
+                </div>
+            `);
             makeApiCall('GET', '/logs/statistics/task-breakdown', null,
                 function(tasks) {
                     const ctx = document.getElementById('taskBreakdownChart').getContext('2d');
@@ -227,9 +232,24 @@
                             failedCounts.push(task.failed_count);
                         });
                     }
+                    
+                    // Calculate dynamic height based on number of tasks
+                    // Minimum 300px, maximum 800px, 40px per task
+                    const dynamicHeight = Math.min(800, Math.max(300, tasks.length * 40));
+                    
+                    // Set canvas height
+                    const canvas = document.getElementById('taskBreakdownChart');
+                    canvas.height = dynamicHeight;
+                    
                     if (taskBreakdownChart) {
                         taskBreakdownChart.destroy();
                     }
+                    
+                    // Calculate max value for Y-axis to prevent extreme scaling
+                    const allCounts = [...successCounts, ...failedCounts];
+                    const maxCount = Math.max(...allCounts);
+                    const suggestedMax = Math.ceil(maxCount * 1.1); // Add 10% padding
+                    
                     taskBreakdownChart = new Chart(ctx, {
                         type: 'bar',
                         data: {
@@ -249,27 +269,51 @@
                         },
                         options: {
                             responsive: true,
+                            maintainAspectRatio: false,
                             scales: {
                                 x: {
-                                    stacked: true
+                                    stacked: true,
+                                    ticks: {
+                                        autoSkip: false,
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
                                 },
                                 y: {
                                     beginAtZero: true,
                                     stacked: true,
+                                    suggestedMax: suggestedMax,
                                     ticks: {
                                         // Adjust step size or max ticks to improve vertical axis distribution
                                         maxTicksLimit: 10,
-                                        // Optionally, set stepSize if needed, e.g. stepSize: 1000
+                                        callback: function(value) {
+                                            // Format large numbers
+                                            if (value >= 1000000) {
+                                                return (value / 1000000).toFixed(1) + 'M';
+                                            } else if (value >= 1000) {
+                                                return (value / 1000).toFixed(1) + 'K';
+                                            }
+                                            return value;
+                                        }
                                     }
                                 }
                             },
-
                             plugins: {
                                 legend: {
                                     position: 'bottom'
                                 },
                                 tooltip: {
-                                    enabled: true
+                                    enabled: true,
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            label += context.parsed.y.toLocaleString();
+                                            return label;
+                                        }
+                                    }
                                 }
                             }
                         }

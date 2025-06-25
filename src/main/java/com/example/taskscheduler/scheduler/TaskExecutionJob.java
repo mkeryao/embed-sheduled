@@ -11,6 +11,7 @@ import com.example.taskscheduler.dao.TaskExecuteLogDao;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
 import com.example.taskscheduler.enums.ExecutionMode;
+import com.example.taskscheduler.enums.ExecutionPattern;
 import com.example.taskscheduler.service.BeanTaskExecutor; // Added
 import com.example.taskscheduler.service.DistributedLockService;
 import com.example.taskscheduler.service.HttpTaskExecutor;
@@ -77,17 +78,20 @@ public class TaskExecutionJob implements Runnable {
         log.setInstanceId(this.instanceId);
 
         if (this.attemptNumber > 1) {
-            log.setTaskPattern("RETRY_ATTEMPT");
+            log.setTaskPattern(ExecutionPattern.RETRY_ATTEMPT.name() + "_" + this.attemptNumber);
         } else {
-            log.setTaskPattern(this.initialTaskPattern != null ? this.initialTaskPattern : "NORMAL");
+            log.setTaskPattern(
+                    this.initialTaskPattern != null ? this.initialTaskPattern : ExecutionPattern.NORMAL.name());
         }
 
         if (this.parentLogId != null) {
-            log.setParentLogId(this.parentLogId.intValue()); // Corrected setter and added intValue() for Long to Integer conversion
+            log.setParentLogId(this.parentLogId.intValue()); // Corrected setter and added intValue() for Long to
+                                                             // Integer conversion
         }
 
         // Set workflow_node_id if this is a workflow step
-        if ("WORKFLOW_STEP".equals(log.getTaskPattern()) && this.workflowNodeId != null && !this.workflowNodeId.isEmpty()) {
+        if (ExecutionPattern.WORKFLOW_STEP.name().equals(log.getTaskPattern()) && this.workflowNodeId != null
+                && !this.workflowNodeId.isEmpty()) {
             log.setWorkflowNodeId(this.workflowNodeId);
         }
 
@@ -117,9 +121,12 @@ public class TaskExecutionJob implements Runnable {
                 logger.info("CLUSTER Lock '{}' acquired for task ID {}", derivedLockName, taskConfig.getTaskId());
             }
 
-            // Exclusion checks (date, calendar, time) - These are now primarily handled by CustomTaskTrigger for cron.
-            // For manual triggers or direct retries, these checks might still be relevant here if not done by caller.
-            // For simplicity of retry logic, assuming these checks are bypassed for retries, or handled if necessary.
+            // Exclusion checks (date, calendar, time) - These are now primarily handled by
+            // CustomTaskTrigger for cron.
+            // For manual triggers or direct retries, these checks might still be relevant
+            // here if not done by caller.
+            // For simplicity of retry logic, assuming these checks are bypassed for
+            // retries, or handled if necessary.
             logger.info("Executing task: {} (ID: {}, Log ID: {}, Attempt: {})",
                     taskConfig.getTaskName(), taskConfig.getTaskId(), this.executionLogId, this.attemptNumber);
 
@@ -133,15 +140,18 @@ public class TaskExecutionJob implements Runnable {
                         configForBeanRun = new TaskConfig();
                         org.springframework.beans.BeanUtils.copyProperties(taskConfig, configForBeanRun);
                         configForBeanRun.setBeanParameters(this.effectiveBeanParametersJson);
-                        logger.debug("Using effectiveBeanParameters for task ID {}, Log ID {}", taskConfig.getTaskId(), this.executionLogId);
+                        logger.debug("Using effectiveBeanParameters for task ID {}, Log ID {}", taskConfig.getTaskId(),
+                                this.executionLogId);
                     }
                     beanTaskExecutor.execute(configForBeanRun); // This might throw exceptions including timeout
                     finalStatus = "SUCCESS"; // If no exception
                     break;
                 case 2: // HTTP task
                     HttpTaskExecutor httpTaskExecutor = applicationContext.getBean(HttpTaskExecutor.class);
-                    // HttpTaskExecutor's execute method needs to be refactored to not update log status itself,
-                    // but rather return status or throw exception. For now, assume it throws on failure.
+                    // HttpTaskExecutor's execute method needs to be refactored to not update log
+                    // status itself,
+                    // but rather return status or throw exception. For now, assume it throws on
+                    // failure.
                     httpTaskExecutor.execute(taskConfig, savedLog); // Pass savedLog for it to update if it must
                     // If httpTaskExecutor updates the log, we need to fetch its state.
                     TaskExecuteLog httpUpdatedLog = taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog);
@@ -158,10 +168,13 @@ public class TaskExecutionJob implements Runnable {
                     returnMessage = shellUpdatedLog.getRtnMsg();
                     break;
                 case 10: // Workflow task
-                    WorkflowExecutionService workflowService = applicationContext.getBean(WorkflowExecutionService.class);
+                    WorkflowExecutionService workflowService = applicationContext
+                            .getBean(WorkflowExecutionService.class);
                     workflowService.startWorkflow(taskConfig, savedLog);
-                    // Workflow status is complex; assume it sets its own final log status or calls back separately.
-                    // For this basic retry, we might only retry if the initial startWorkflow itself fails.
+                    // Workflow status is complex; assume it sets its own final log status or calls
+                    // back separately.
+                    // For this basic retry, we might only retry if the initial startWorkflow itself
+                    // fails.
                     // If startWorkflow is synchronous and throws error for immediate failure:
                     TaskExecuteLog wfUpdatedLog = taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog);
                     finalStatus = wfUpdatedLog.getState();
@@ -174,17 +187,20 @@ public class TaskExecutionJob implements Runnable {
                     logger.error(exceptionMessage + " for task ID: {}", taskConfig.getTaskId());
                     break;
             }
-            if ("RUNNING".equals(finalStatus) && "SUCCESS".equals(taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog).getState())) {
+            if ("RUNNING".equals(finalStatus)
+                    && "SUCCESS".equals(taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog).getState())) {
                 // If executor updated to SUCCESS inside its method.
                 finalStatus = "SUCCESS";
             }
 
         } catch (BeanTaskExecutor.TaskTimeoutException e) {
-            logger.error("Task {} (ID: {}) timed out on attempt {}.", taskConfig.getTaskName(), taskConfig.getTaskId(), this.attemptNumber, e);
+            logger.error("Task {} (ID: {}) timed out on attempt {}.", taskConfig.getTaskName(), taskConfig.getTaskId(),
+                    this.attemptNumber, e);
             finalStatus = "TIMED_OUT";
             exceptionMessage = e.getMessage();
         } catch (Exception e) {
-            logger.error("Task {} (ID: {}) failed on attempt {} with an unexpected exception.", taskConfig.getTaskName(), taskConfig.getTaskId(), this.attemptNumber, e);
+            logger.error("Task {} (ID: {}) failed on attempt {} with an unexpected exception.",
+                    taskConfig.getTaskName(), taskConfig.getTaskId(), this.attemptNumber, e);
             finalStatus = "FAILED";
             exceptionMessage = e.getClass().getSimpleName() + ": " + e.getMessage();
         } finally {
@@ -194,15 +210,19 @@ public class TaskExecutionJob implements Runnable {
             }
 
             // Update final log status for this attempt
-            // If an executor (HTTP/Shell/Workflow) already set a terminal state, respect it.
+            // If an executor (HTTP/Shell/Workflow) already set a terminal state, respect
+            // it.
             TaskExecuteLog currentLogState = taskExecuteLogDao.findById(this.executionLogId).orElse(null);
             if (currentLogState != null && "RUNNING".equals(currentLogState.getState())) {
                 taskExecuteLogDao.updateLogStatus(this.executionLogId, finalStatus, returnMessage, exceptionMessage);
             } else if (currentLogState == null) { // Should not happen
-                logger.error("Log entry {} disappeared before final update for task {}", this.executionLogId, taskConfig.getTaskId());
+                logger.error("Log entry {} disappeared before final update for task {}", this.executionLogId,
+                        taskConfig.getTaskId());
             }
             // Fetch the final state again for notification and completion handler
-            TaskExecuteLog finalLogEntry = taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog); // Refresh log state
+            TaskExecuteLog finalLogEntry = taskExecuteLogDao.findById(this.executionLogId).orElse(savedLog); // Refresh
+                                                                                                             // log
+                                                                                                             // state
 
             // Send notification for this attempt's outcome
             notificationService.sendNotification(taskConfig, finalLogEntry);

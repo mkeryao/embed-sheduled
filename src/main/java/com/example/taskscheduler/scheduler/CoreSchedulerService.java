@@ -28,6 +28,7 @@ import com.example.taskscheduler.dao.TaskExecuteLogDao;
 import com.example.taskscheduler.entity.TaskConfig;
 import com.example.taskscheduler.entity.TaskExecuteLog;
 import com.example.taskscheduler.enums.ExecutionMode;
+import com.example.taskscheduler.enums.ExecutionPattern;
 import com.example.taskscheduler.service.BeanTaskExecutor;
 import com.example.taskscheduler.service.DistributedLockService;
 import com.example.taskscheduler.service.NotificationService;
@@ -213,7 +214,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 this.notificationService,
                 this.distributedLockService.getSchedulerInstanceId(),
                 1, // Initial attempt for a cron-scheduled run
-                "NORMAL", // initialTaskPattern for cron
+                ExecutionPattern.NORMAL.name(),
+                // initialTaskPattern for cron
                 null, // parentLogId for cron
                 null, // effectiveBeanParametersJson for cron
                 null // workflowNodeId for cron
@@ -551,7 +553,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     public void triggerTaskManually(Integer taskId) {
         // Default manual trigger: "NORMAL" pattern, no parent, no override parameters,
         // no workflow node ID.
-        triggerTaskManually(taskId, "NORMAL", null, null, null);
+        triggerTaskManually(taskId, ExecutionPattern.MANAUL.name(), null, null, null);
     }
 
     /**

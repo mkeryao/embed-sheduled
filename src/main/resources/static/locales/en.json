@@ -91,7 +91,7 @@
         }
     },
     "tasksPage": {
-        "title": "Tasks - Task Scheduler",
+        "title": "Task Management - Task Scheduler",
         "validation": {
             "noNodes": "No nodes in workflow",
             "noStartNode": "Workflow must contain a start node",
@@ -117,7 +117,29 @@
             "circularDependencyDetected": "Circular dependency detected in workflow.",
             "nodeNameRequired": "Node name cannot be empty.",
             "nodeNameConflict": "Node name conflicts, please use a unique name.",
-            "taskConfigRequiredForNode": "A task must be selected for this node type."
+            "taskConfigRequiredForNode": "A task must be selected for this node type.",
+            "errorLoadingTasks": "Failed to load tasks: {{error}}",
+            "taskSaved": "Task saved successfully!",
+            "errorSaving": "Failed to save task: {{error}}",
+            "errorLoadingTaskDetails": "Failed to get task details: {{error}}",
+            "confirmDelete": "Are you sure you want to delete task {{taskId}}?",
+            "taskDeleted": "Task deleted successfully",
+            "errorDeleting": "Failed to delete task: {{error}}",
+            "taskTriggered": "Successfully triggered task {{taskId}}!",
+            "errorTriggering": "Failed to trigger task: {{error}}",
+            "nodeHelperErrorParseNodes": "Error parsing workflow nodes JSON",
+            "nodeEditErrorParse": "Error parsing workflow nodes JSON for editing",
+            "nodeEditNotFound": "Node data not found for editing",
+            "cycleDetected": "Warning: Cycle detected in workflow graph. This may cause infinite loops during execution. Please proceed with caution.",
+            "nodeUpdated": "Node {{nodeId}} updated.",
+            "nodeAdded": "Node {{nodeId}} added.",
+            "nodeParamsInvalid": "Invalid node parameters JSON.",
+            "quickNodeAdded": "Added ",
+            "jsonFormatted": "JSON formatted successfully.",
+            "invalidJsonFormat": "Invalid JSON: Unable to format. Please check syntax. {{error}}",
+            "autoLayoutNotReady": "Auto layout feature not ready yet",
+            "edgeErrorParse": "Error parsing existing workflow edges JSON: {{message}}. Starting with new array.",
+            "edgeDeleteError": "Failed to delete edge"
         },
         "header": "Task Management",
         "addTaskBtn": "Add Task",
@@ -141,7 +163,8 @@
             "disableBtnShort": "Disable",
             "disableBtn": "Disable Task",
             "enableBtnShort": "Enable",
-            "enableBtn": "Enable Task"
+            "enableBtn": "Enable Task",
+            "nextRunsBtnShort": "Schedule"
         },
         "filters": {
             "header": "Task Filters",
@@ -166,13 +189,15 @@
         },
         "executionModes": {
             "broadcast": "Broadcast (All Instances)",
-            "cluster": "Cluster (Single Instance)"
+            "cluster": "Cluster (Single Instance)",
+            "single": "Single Instance"
         },
         "taskTypes": {
             "bean": "Bean Task",
             "http": "HTTP Task",
             "shell": "Shell Script Task",
-            "workflow": "Workflow Task"
+            "workflow": "Workflow Task",
+            "unknown": "Unknown ({{typeInt}})"
         },
         "actions": {
             "edit": "Edit",
@@ -201,10 +226,7 @@
                 "broadcast": "Broadcast (All Instances)",
                 "single": "Single Instance",
                 "cluster": "Cluster (Single Instance via Lock)"
-            },            "tasksPage.modal.executionMode": "Execution Mode",
-            "tasksPage.modal.executionModeLabel": "Execution Mode",
-            "tasksPage.modal.executionMode.broadcast": "Broadcast (All Instances)",
-            "tasksPage.modal.executionMode.single": "Single Instance",
+            },
             "taskTypeLabel": "Task Type",
             "taskType": "Task Type",
             "advancedSettingsHeader": "Advanced Settings",
@@ -225,7 +247,6 @@
             "excludeTimesHelp": "Exclude specific time ranges, format: HH:MM-HH:MM,HH:MM-HH:MM...",
             "timeoutLabel": "Execution Timeout (seconds)",
             "timeoutPlaceholder": "Task execution timeout",
-            
             "httpSuccessCode": "Success Status Code",
             "httpSuccessCodePlaceholder": "e.g.: 200,201,204",
             "httpRetryCount": "Retry Count",
@@ -234,17 +255,14 @@
             "httpConnectTimeoutPlaceholder": "e.g.: 5000",
             "httpReadTimeout": "Read Timeout (ms)",
             "httpReadTimeoutPlaceholder": "e.g.: 10000",
-            
             "notificationSettingsHeader": "Notification Settings",
             "notifySuccessLabel": "Success Notification",
             "notifyFailedLabel": "Failure Notification",
             "noUsersSelectedOption": "No notifications",
-            
             "retrySettingsHeader": "Retry Settings",
             "maxRetriesLabel": "Maximum Retries",
             "retryIntervalLabel": "Retry Interval (seconds)",
             "retryIntervalMultiplierLabel": "Interval Multiplier",
-            
             "activeLabel": "Active Status",
             "taskTypes": {
                 "bean": "Bean Task",
@@ -312,7 +330,45 @@
                     "decision": "Decision Node",
                     "parallel": "Parallel Node",
                     "join": "Join Node"
-                }
+                },
+                "nodePropertiesLabel": "Node Properties",
+                "nodeIdLabel": "Node ID",
+                "nodeNameLabel": "Node Name",
+                "nodeIdPlaceholder": "e.g.: step1",
+                "nodeNamePlaceholder": "e.g.: Process Data",
+                "nodeHelperCardHeader": "Workflow Node Helper",
+                "selectTaskPlaceholder": "-- Select Task --",
+                "nodeParamsLabel": "Node-specific Parameters (JSON, optional)",
+                "nodeParamsPlaceholder": "{\"input_file\": \"/path/to/data.csv\"}",
+                "addNodeToJsonBtn": "Add/Update Node in JSON below",
+                "addNodeNote": "This helper populates the \"Workflow Nodes (JSON)\" field. Ensure node IDs are unique within this workflow.",
+                "globalParamsLabel": "Global Parameters (JSON, optional)",
+                "globalParamsPlaceholder": "{\"key\": \"globalValue\", \"api_url\": \"https://example.com\"}",
+                "nodesJsonLabel": "Workflow Nodes (JSON)",
+                "nodesJsonPlaceholder": "[{\"nodeId\":\"node1\", \"taskConfigId\":1, \"parameters\": {\"input\": \"${global_api_key}\"} }]",
+                "nodesJsonNote": "Define tasks (nodes). Parameters can use templates like `${nodeA_status}` or `${global_param}`.",
+                "visualizerHeader": "Workflow Visualization",
+                "refreshDagBtn": "Refresh View",
+                "autoLayoutBtn": "Auto Layout",
+                "formMode": "Form Mode",
+                "graphMode": "Graph Mode",
+                "formModeHelp": "Form Mode: Manage workflow through node helper and JSON editors above",
+                "graphModeHelp": "Graph Mode: Drag nodes and create/edit edges directly on the graph",
+                "applyChangesBtn": "Apply Changes",
+                "quickAddBtn": "Quick Add",
+                "startNode": "Start Node",
+                "endNode": "End Node",
+                "processNode": "Process Node",
+                "decisionNode": "Decision Node",
+                "parallelNode": "Parallel Node",
+                "dagContainerPlaceholderInitial": "Nodes based on \"Workflow Nodes (JSON)\" above, edges based on \"Workflow Edges (JSON)\" below",
+                "dagContainerPlaceholderNoNodes": "No nodes to display. Please add workflow nodes first.",
+                "dagContainerErrorNotArray": "Error: Workflow nodes must be an array.",
+                "dagContainerErrorParseNodes": "Error parsing workflow nodes",
+                "dagContainerErrorParseEdges": "Error parsing workflow edges",
+                "edgesJsonLabel": "Workflow Edges (JSON)",
+                "edgesJsonPlaceholder": "[{\"fromNodeId\":\"node1\", \"toNodeId\":\"node2\", \"expression\": \"${node1_status} == 'SUCCESS'\"}]",
+                "edgesJsonNote": "Define transitions and conditions between nodes."
             }
         },
         "edgeModal": {
@@ -326,6 +382,325 @@
             "expressionHelp": "Use expressions to determine if this edge should activate. Examples:<br>- <code>${nodeA_status} == 'SUCCESS'</code> (when node A succeeds)<br>- <code>${nodeB_result} > 100</code> (when node B's result is > 100)<br>Leave empty for unconditional activation.",
             "saveBtn": "Save Changes",
             "deleteBtn": "Delete Edge"
+        },
+        "nodeEditModal": {
+            "title": "Edit Workflow Node",
+            "nodeId": "Node ID:",
+            "nodeName": "Node Name:",
+            "taskConfig": "Task Configuration:",
+            "selectTask": "-- Select Task --",
+            "selectTaskPlaceholder": "-- Select Task --",
+            "nodeParams": "Node Parameters (JSON):",
+            "saveBtn": "Save Changes",
+            "nodeNameLabel": "Node Name (Display Name)",
+            "nodeIdLabel": "Node ID:",
+            "nodeParamsLabel": "Node-specific Parameters (JSON)"
+        },
+        "workflowGuide": {
+            "title": "Graph Operation Guide",
+            "item1": "Click node: Select as source node",
+            "item2": "Click another node: Create edge",
+            "item3": "Click edge: Edit edge conditions",
+            "item4": "Double-click node: Edit node properties",
+            "closeTitle": "Close Guide"
+        },
+        "confirmations": {
+            "deleteTask": "Are you sure you want to delete this task? This action cannot be undone.",
+            "runTask": "Are you sure you want to run this task immediately?",
+            "activateTask": "Are you sure you want to activate this task?",
+            "deactivateTask": "Are you sure you want to deactivate this task?"
+        },
+        "notifications": {
+            "taskSaved": "Task saved successfully",
+            "taskDeleted": "Task deleted successfully",
+            "taskActivated": "Task activated",
+            "taskDeactivated": "Task deactivated",
+            "taskRunning": "Task triggered for execution",
+            "taskUpdateError": "Error updating task",
+            "taskDeleteError": "Error deleting task",
+            "taskRunError": "Error triggering task execution"
+        }
+    },
+    "statisticsPage": {
+        "title": "Task Statistics - Task Scheduler",
+        "header": "Task Execution Statistics",
+        "timeRange": {
+            "label": "Time Range",
+            "today": "Today",
+            "yesterday": "Yesterday",
+            "last7Days": "Last 7 Days",
+            "last30Days": "Last 30 Days",
+            "thisMonth": "This Month",
+            "lastMonth": "Last Month",
+            "custom": "Custom"
+        },
+        "stats": {
+            "globalCountsHeader": "Global Statistics",
+            "slowestTasksHeader": "Top 5 Slowest Tasks (Average Success Execution Time)",
+            "taskBreakdownHeader": "Task Success/Failure Counts",
+            "totalExecutions": "Total Executions",
+            "successfulExecutions": "Successful Executions",
+            "failedExecutions": "Failed Executions",
+            "averageExecutionTime": "Average Execution Time",
+            "successRate": "Success Rate",
+            "taskName": "Task Name",
+            "avgTime": "Average Time (ms)",
+            "maxTime": "Max Time (ms)",
+            "minTime": "Min Time (ms)",
+            "successCount": "Success Count",
+            "failureCount": "Failure Count",
+            "noStatsAvailable": "No statistics available",
+            "loading": "Loading...",
+            "executionTrend": "Execution Trend",
+            "successfulLabel": "Successful",
+            "failedLabel": "Failed",
+            "taskNameIdHeader": "Task Name (ID)",
+            "successHeader": "Success",
+            "failedHeader": "Failed",
+            "noGlobalStats": "No global statistics available.",
+            "noSlowestTasks": "No slowest tasks data (or no successful executions recorded).",
+            "noTaskBreakdown": "No task breakdown data available."
+        },
+        "feedback": {
+            "errorLoadingGlobalStats": "Failed to load global statistics.",
+            "errorLoadingSlowestTasks": "Failed to load slowest tasks data.",
+            "errorLoadingTaskBreakdown": "Failed to load task breakdown data."
+        }
+    },
+    "logsPage": {
+        "title": "Task Logs - Task Scheduler",
+        "header": "Task Execution Statistics",
+        "mainHeader": "Detailed Execution Logs",
+        "stats": {
+            "globalCountsHeader": "Global Statistics",
+            "slowestTasksHeader": "Top 5 Slowest Tasks (Average Success Execution Time)",
+            "taskBreakdownHeader": "Task Success/Failure Counts",
+            "loading": "Loading..."
+        },
+        "detailedLogsHeader": "Detailed Logs",
+        "filters": {
+            "taskIdLabel": "Filter by Task ID:",
+            "taskIdPlaceholder": "Enter task ID",
+            "statusLabel": "Filter by Status:",
+            "allStatuses": "All Statuses",
+            "applyBtn": "Apply Filters",
+            "resetBtn": "Reset Filters"
+        },
+        "table": {
+            "id": "ID",
+            "taskId": "Task ID",
+            "taskName": "Task Name",
+            "startTime": "Start Time",
+            "endTime": "End Time",
+            "duration": "Duration (ms)",
+            "status": "Status",
+            "instanceId": "Instance ID",
+            "actions": "Actions"
+        },
+        "logTable": {
+            "logId": "Log ID",
+            "taskId": "Task ID",
+            "taskName": "Task Name",
+            "status": "Status",
+            "instanceId": "Execution Instance",
+            "startTime": "Start Time",
+            "endTime": "End Time",
+            "duration": "Duration (ms)",
+            "message": "Message"
+        },
+        "logStatuses": {
+            "success": "Success",
+            "failed": "Failed",
+            "running": "Running",
+            "timed_out": "Timed Out",
+            "skipped": "Skipped",
+            "cancelled": "Cancelled"
+        },
+        "status": {
+            "success": "Success",
+            "failed": "Failed",
+            "running": "Running"
+        },
+        "actions": {
+            "viewDetails": "View Details"
+        },
+        "logDetailModal": {
+            "title": "Log Details",
+            "messageLabel": "Message:",
+            "exceptionLabel": "Exception:"
+        },
+        "logDetails": {
+            "title": "Log Details",
+            "taskInfo": "Task Information",
+            "executionInfo": "Execution Information",
+            "taskId": "Task ID",
+            "taskName": "Task Name",
+            "taskGroup": "Task Group",
+            "taskType": "Task Type",
+            "startTime": "Start Time",
+            "endTime": "End Time",
+            "duration": "Duration",
+            "status": "Status",
+            "instanceId": "Instance ID",
+            "parameters": "Parameters",
+            "output": "Output",
+            "exception": "Exception",
+            "stackTrace": "Stack Trace",
+            "close": "Close"
+        },
+        "noLogs": "No logs found",
+        "totalRecords": "Total {count} records",
+        "feedback": {
+            "errorLoadingLogs": "Failed to load logs: {{error}}",
+            "errorLoadingWorkflowInstance": "Failed to load workflow instance details.",
+            "noLogsFound": "No logs found matching current filter criteria."
+        },
+        "workflowInstanceModal": {
+            "title": "Workflow Execution Details",
+            "workflowName": "Workflow Name:",
+            "instanceLogId": "Instance Log ID:",
+            "instanceIdLabel": "Instance ID:",
+            "logIdLabel": "Log ID:",
+            "statusLabel": "Status:",
+            "startTimeLabel": "Start Time:",
+            "endTimeLabel": "End Time:",
+            "durationLabel": "Duration:",
+            "noNodesDefined": "This workflow has no nodes defined.",
+            "selectedNodeHeader": "Selected Node Details:",
+            "nodeId": "Node ID:",
+            "nodeStatusLabel": "Status:",
+            "nodeLastLogId": "Last Log ID:",
+            "nodeLastStartTime": "Last Start Time:",
+            "nodeLastEndTime": "Last End Time:",
+            "nodeLastMessage": "Last Message:",
+            "nodeStatus": {
+                "pending": "Pending",
+                "running": "Running",
+                "complete": "Complete",
+                "skipped": "Skipped",
+                "failed": "Failed"
+            }
+        },
+        "viewDetailsBtn": "Details",
+        "viewDetailsBtnTitle": "View full log details",
+        "viewWorkflowBtn": "View Workflow",
+        "viewWorkflowBtnTitle": "View workflow details"
+    },
+    "calendarsPage": {
+        "title": "Calendar Management - Task Scheduler",
+        "header": "Calendar Management",
+        "addCalendarBtn": "Add Calendar",
+        "table": {
+            "id": "ID",
+            "name": "Calendar Name (Group)",
+            "description": "Description (Notes)",
+            "actions": "Actions",
+            "manageDaysBtn": "Manage Days",
+            "manageDaysBtnTitle": "Manage days for this calendar",
+            "deleteCalendarBtnTitle": "Delete calendar"
+        },
+        "calendarFormModal": {
+            "titleAdd": "Add Calendar",
+            "titleEdit": "Edit Calendar",
+            "nameLabel": "Calendar Name (Group)",
+            "namePlaceholder": "Enter calendar name",
+            "descriptionLabel": "Description (Notes)",
+            "descriptionPlaceholder": "Enter description",
+            "saveBtn": "Save Calendar"
+        },
+        "daysModal": {
+            "title": "Manage Calendar Days: {{calendarName}}",
+            "addNewDayHeader": "Add New Day Entry",
+            "dateLabel": "Date",
+            "datePlaceholder": "Event date",
+            "descriptionLabel": "Description",
+            "descriptionPlaceholder": "Date description",
+            "isWorkingDayLabel": "Is Working Day?",
+            "addDayBtn": "Add Day",
+            "existingDaysHeader": "Existing Days",
+            "table": {
+                "date": "Date",
+                "description": "Description",
+                "workingDay": "Working Day?",
+                "actions": "Actions"
+            },
+            "noDaysFound": "No day entries found for this calendar."
+        },
+        "dayTypes": {
+            "working": "Yes",
+            "nonWorking": "No"
+        },
+        "feedback": {
+            "calendarSaved": "Calendar saved successfully!",
+            "calendarDeleted": "Calendar deleted successfully!",
+            "dayAdded": "Day added successfully!",
+            "dayDeleted": "Day deleted successfully!",
+            "dayExists": "An entry for this date already exists.",
+            "confirmDeleteCalendar": "Are you sure you want to delete calendar '{{name}}' (ID: {{id}})? This will also delete all its day entries.",
+            "confirmDeleteDay": "Are you sure you want to delete this day entry?",
+            "errorLoadingCalendars": "Failed to load calendars: {{error}}",
+            "errorSavingCalendar": "Failed to save calendar: {{error}}",
+            "errorDeletingCalendar": "Failed to delete calendar: {{error}}",
+            "errorLoadingDays": "Failed to load days.",
+            "errorLoadingDaysDetailed": "Failed to load calendar days: {{error}}",
+            "errorAddingDay": "Failed to add day entry: {{error}}",
+            "errorDeletingDay": "Failed to delete day entry: {{error}}",
+            "noCalendarSelected": "No calendar selected!",
+            "editingNotSupported": "Editing existing calendars through this form is not supported."
+        }
+    },
+    "usersPage": {
+        "title": "User Management - Task Scheduler",
+        "header": "User Management",
+        "addUserBtn": "Add User",
+        "table": {
+            "id": "ID",
+            "username": "Username",
+            "fullName": "Full Name",
+            "email": "Email",
+            "role": "Role",
+            "status": "Status",
+            "actions": "Actions",
+            "webhook": "Webhook",
+            "createdAt": "Created At"
+        },
+        "modal": {
+            "title": "Add/Edit User",
+            "usernameLabel": "Username",
+            "usernamePlaceholder": "Enter username",
+            "fullNameLabel": "Full Name",
+            "fullNamePlaceholder": "Enter full name",
+            "emailLabel": "Email",
+            "emailPlaceholder": "Enter email",
+            "passwordLabel": "Password",
+            "passwordPlaceholder": "Enter password",
+            "passwordConfirmLabel": "Confirm Password",
+            "passwordConfirmPlaceholder": "Enter password again",
+            "roleLabel": "Role",
+            "roles": {
+                "admin": "Admin",
+                "user": "User",
+                "viewer": "Viewer"
+            },
+            "activeLabel": "Active",
+            "saveBtn": "Save",
+            "closeBtn": "Close",
+            "webhookLabel": "Webhook URL",
+            "webhookPlaceholder": "Enter webhook URL",
+            "notificationPreferencesLabel": "Notification Preferences",
+            "notificationPreferencesPlaceholder": "Select notification preferences",
+            "notificationPreferencesHelp": "Select how to receive notifications when tasks succeed or fail",
+            "isAdminLabel": "Admin Privileges"
+        },
+        "confirmations": {
+            "deleteUser": "Are you sure you want to delete this user? This action cannot be undone."
+        },
+        "notifications": {
+            "userSaved": "User saved successfully",
+            "userDeleted": "User deleted successfully",
+            "userSaveError": "Error saving user",
+            "userDeleteError": "Error deleting user",
+            "passwordMismatch": "Passwords do not match"
         }
     }
 }
