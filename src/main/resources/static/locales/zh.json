@@ -94,6 +94,42 @@
     "title": "任务管理 - 任务调度器",
     "header": "任务管理",
     "addTaskBtn": "添加任务",
+    "manualTriggerConfirm": {
+      "title": "确认手动触发任务",
+      "message": "为防止误操作，请输入任务名称以确认手动触发：",
+      "inputPlaceholder": "请输入任务名称",
+      "validationError": "任务名称不匹配，请输入正确的任务名称",
+      "confirmBtn": "确认触发",
+      "successMessage": "任务触发成功。",
+      "errorMessage": "触发任务失败。"
+    },
+    "deleteConfirm": {
+      "title": "确认删除任务",
+      "message": "为防止误操作，请输入任务名称以确认删除：",
+      "inputPlaceholder": "请输入任务名称",
+      "validationError": "任务名称不匹配，请输入正确的任务名称",
+      "confirmBtn": "确认删除",
+      "successMessage": "任务删除成功。",
+      "errorMessage": "删除任务失败。"
+    },
+    "enableConfirm": {
+      "title": "确认启用任务",
+      "message": "为防止误操作，请输入任务名称以确认启用：",
+      "inputPlaceholder": "请输入任务名称",
+      "validationError": "任务名称不匹配，请输入正确的任务名称",
+      "confirmBtn": "确认启用",
+      "successMessage": "任务启用成功。",
+      "errorMessage": "启用任务失败。"
+    },
+    "disableConfirm": {
+      "title": "确认禁用任务",
+      "message": "为防止误操作，请输入任务名称以确认禁用：",
+      "inputPlaceholder": "请输入任务名称",
+      "validationError": "任务名称不匹配，请输入正确的任务名称",
+      "confirmBtn": "确认禁用",
+      "successMessage": "任务禁用成功。",
+      "errorMessage": "禁用任务失败。"
+    },
     "validation": {
       "noNodes": "工作流中没有节点",
       "noStartNode": "工作流必须包含一个开始节点",

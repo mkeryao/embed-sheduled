@@ -92,6 +92,42 @@
     },
     "tasksPage": {
         "title": "Task Management - Task Scheduler",
+        "manualTriggerConfirm": {
+            "title": "Confirm Manual Trigger",
+            "message": "To prevent misoperation, please enter the task name to confirm manual trigger:",
+            "inputPlaceholder": "Enter task name",
+            "validationError": "Task name does not match, please enter the correct task name",
+            "confirmBtn": "Confirm Trigger",
+            "successMessage": "Task triggered successfully.",
+            "errorMessage": "Failed to trigger task."
+        },
+        "deleteConfirm": {
+            "title": "Confirm Delete Task",
+            "message": "To prevent misoperation, please enter the task name to confirm deletion:",
+            "inputPlaceholder": "Enter task name",
+            "validationError": "Task name does not match, please enter the correct task name",
+            "confirmBtn": "Delete Task",
+            "successMessage": "Task deleted successfully.",
+            "errorMessage": "Failed to delete task."
+        },
+        "enableConfirm": {
+            "title": "Confirm Enable Task",
+            "message": "To prevent misoperation, please enter the task name to confirm enabling:",
+            "inputPlaceholder": "Enter task name",
+            "validationError": "Task name does not match, please enter the correct task name",
+            "confirmBtn": "Enable Task",
+            "successMessage": "Task enabled successfully.",
+            "errorMessage": "Failed to enable task."
+        },
+        "disableConfirm": {
+            "title": "Confirm Disable Task",
+            "message": "To prevent misoperation, please enter the task name to confirm disabling:",
+            "inputPlaceholder": "Enter task name",
+            "validationError": "Task name does not match, please enter the correct task name",
+            "confirmBtn": "Disable Task",
+            "successMessage": "Task disabled successfully.",
+            "errorMessage": "Failed to disable task."
+        },
         "validation": {
             "noNodes": "No nodes in workflow",
             "noStartNode": "Workflow must contain a start node",
@@ -291,7 +327,7 @@
             },
             "httpTaskFields": {
                 "urlLabel": "HTTP URL",
-                "urlPlaceholder": "https://example.com/api/data",
+                "urlPlaceholder": "https://example.com/embed-api/data",
                 "methodLabel": "HTTP Method",
                 "headersLabel": "HTTP Headers (JSON)",
                 "headersPlaceholder": "{\"Content-Type\": \"application/json\", \"X-API-KEY\":\"secret\"}",

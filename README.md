@@ -158,11 +158,11 @@ Key properties to configure:
 
 ## API Endpoints Overview
 
-The application exposes RESTful APIs for managing its resources. All API endpoints are prefixed with `/api`. Authentication is required for most endpoints using a JWT Bearer token.
+The application exposes RESTful APIs for managing its resources. All API endpoints are prefixed with `/embed-api`. Authentication is required for most endpoints using a JWT Bearer token.
 
-*   **Authentication (`/api/auth`)**
+*   **Authentication (`/embed-api/auth`)**
     *   `POST /login`: Authenticates a user, returns JWT.
-*   **Task Configurations (`/api/tasks`)**
+*   **Task Configurations (`/embed-api/tasks`)**
     *   `GET /`: List all task configurations.
     *   `POST /`: Create a new task configuration.
     *   `GET /{id}`: Get a specific task configuration.
@@ -171,17 +171,17 @@ The application exposes RESTful APIs for managing its resources. All API endpoin
     *   `POST /{id}/trigger`: Manually trigger a task.
     *   `POST /{id}/enable`: Enable a task.
     *   `POST /{id}/disable`: Disable a task.
-*   **Task Execution Logs (`/api/logs`)**
+*   **Task Execution Logs (`/embed-api/logs`)**
     *   `GET /`: List all task execution logs (supports pagination via query params `page` & `size`).
     *   `GET /task/{taskId}`: List logs for a specific task (supports pagination).
     *   `GET /{id}`: Get a specific log entry.
-*   **Users (`/api/users`)**
+*   **Users (`/embed-api/users`)**
     *   `GET /`: List all users.
     *   `POST /`: Create a new user.
     *   `GET /{id}`: Get a specific user.
     *   `PUT /{id}`: Update a user.
     *   `DELETE /{id}`: Delete a user.
-*   **Calendars (`/api/calendars`)**
+*   **Calendars (`/embed-api/calendars`)**
     *   `GET /`: List all calendars and their day entries.
     *   `POST /`: Create a new calendar.
     *   `GET /{id}`: Get a specific calendar and its days.
@@ -217,7 +217,7 @@ This is the central entity for defining a schedulable job.
 ### HTTP Tasks
 1.  Configure a `TaskConfig` with `taskType = 2`.
 2.  Store HTTP request details as a JSON string in the `beanParameters` field. This JSON must match the structure of the `HttpTaskParameters` DTO (`url`, `method`, `headers`, `body`, `connectTimeout`, `readTimeout`).
-    *   Example: `{"url":"https://api.example.com/data", "method":"POST", "headers":{"Content-Type":"application/json"}, "body":"{\"key\":\"value\"}", "connectTimeout":5000, "readTimeout":10000}`
+    *   Example: `{"url":"https://embed-api.example.com/data", "method":"POST", "headers":{"Content-Type":"application/json"}, "body":"{\"key\":\"value\"}", "connectTimeout":5000, "readTimeout":10000}`
 
 ### Workflow Tasks
 *   `taskType = 10`.

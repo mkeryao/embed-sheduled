@@ -39,7 +39,7 @@ import com.example.taskscheduler.scheduler.CustomTaskTrigger;
 import com.example.taskscheduler.util.DagCycleDetector;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/embed-api/tasks")
 public class TaskConfigController {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskConfigController.class); // Added logger

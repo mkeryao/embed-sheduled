@@ -32,7 +32,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     // Define paths to exclude from JWT validation
     private static final Set<String> EXCLUDED_PATHS = new HashSet<>(Arrays.asList(
-            "/api/auth/login",
+            "/embed-api/auth/login",
             "/error" // Spring Boot's default error path
     // Add other paths like H2 console if used, static resources, etc.
     // "/h2-console/" (and paths under it if H2 console is enabled and needs to be

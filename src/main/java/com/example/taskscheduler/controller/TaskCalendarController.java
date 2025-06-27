@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/calendars")
+@RequestMapping("/embed-api/calendars")
 public class TaskCalendarController {
 
     @Autowired
@@ -117,7 +117,7 @@ public class TaskCalendarController {
     }
 
     // --- Calendar Day Endpoints (within a specific calendar) ---
-    // These could be nested routes like /api/calendars/{calendarId}/days
+    // These could be nested routes like /embed-api/calendars/{calendarId}/days
 
     @PostMapping("/{calendarId}/days")
     public ResponseEntity<TaskCalendarDayDto> addDayToCalendar(@PathVariable Integer calendarId, @RequestBody TaskCalendarDayDto dayDto) {

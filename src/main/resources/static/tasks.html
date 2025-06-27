@@ -694,4 +694,100 @@
   </div>
 </div>
 
+<!-- 确认手动触发任务模态框 -->
+<div class="modal fade" id="manualTriggerConfirmModal" tabindex="-1" role="dialog" aria-labelledby="manualTriggerConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="manualTriggerConfirmModalLabel" data-i18n-key="tasksPage.manualTriggerConfirm.title">确认手动触发任务</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-i18n-key="tasksPage.manualTriggerConfirm.message">为防止误操作，请输入任务名称以确认手动触发：</p>
+        <input type="text" class="form-control" id="manualTriggerTaskNameInput" placeholder="" data-i18n-key-placeholder="tasksPage.manualTriggerConfirm.inputPlaceholder">
+        <div class="text-danger mt-2" id="manualTriggerValidationMessage" style="display:none;"></div>
+        <input type="hidden" id="manualTriggerTaskId" value="">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">取消</button>
+        <button type="button" class="btn btn-primary" id="confirmManualTriggerBtn" disabled data-i18n-key="tasksPage.manualTriggerConfirm.confirmBtn">确认触发</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 确认删除任务模态框 -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" role="dialog" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteConfirmModalLabel" data-i18n-key="tasksPage.deleteConfirm.title">确认删除任务</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-i18n-key="tasksPage.deleteConfirm.message">为防止误操作，请输入任务名称以确认删除：</p>
+        <input type="text" class="form-control" id="deleteTaskNameInput" placeholder="" data-i18n-key-placeholder="tasksPage.deleteConfirm.inputPlaceholder">
+        <div class="text-danger mt-2" id="deleteValidationMessage" style="display:none;"></div>
+        <input type="hidden" id="deleteTaskId" value="">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">取消</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled data-i18n-key="tasksPage.deleteConfirm.confirmBtn">确认删除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 确认启用任务模态框 -->
+<div class="modal fade" id="enableConfirmModal" tabindex="-1" role="dialog" aria-labelledby="enableConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="enableConfirmModalLabel" data-i18n-key="tasksPage.enableConfirm.title">确认启用任务</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-i18n-key="tasksPage.enableConfirm.message">为防止误操作，请输入任务名称以确认启用：</p>
+        <input type="text" class="form-control" id="enableTaskNameInput" placeholder="" data-i18n-key-placeholder="tasksPage.enableConfirm.inputPlaceholder">
+        <div class="text-danger mt-2" id="enableValidationMessage" style="display:none;"></div>
+        <input type="hidden" id="enableTaskId" value="">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">取消</button>
+        <button type="button" class="btn btn-success" id="confirmEnableBtn" disabled data-i18n-key="tasksPage.enableConfirm.confirmBtn">确认启用</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 确认禁用任务模态框 -->
+<div class="modal fade" id="disableConfirmModal" tabindex="-1" role="dialog" aria-labelledby="disableConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="disableConfirmModalLabel" data-i18n-key="tasksPage.disableConfirm.title">确认禁用任务</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-i18n-key="tasksPage.disableConfirm.message">为防止误操作，请输入任务名称以确认禁用：</p>
+        <input type="text" class="form-control" id="disableTaskNameInput" placeholder="" data-i18n-key-placeholder="tasksPage.disableConfirm.inputPlaceholder">
+        <div class="text-danger mt-2" id="disableValidationMessage" style="display:none;"></div>
+        <input type="hidden" id="disableTaskId" value="">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.cancel">取消</button>
+        <button type="button" class="btn btn-warning" id="confirmDisableBtn" disabled data-i18n-key="tasksPage.disableConfirm.confirmBtn">确认禁用</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </html>

@@ -440,7 +440,7 @@
                 if (filters.taskId) {
                     endpoint = `/logs/task/${filters.taskId}`;
                 }
-                // Note: The backend /api/logs doesn't currently support status filtering server-side.
+                // Note: The backend /embed-api/logs doesn't currently support status filtering server-side.
                 // The current implementation fetches all (or by task ID) then filters client-side.
                 // For true server-side filtering by status, the API would need to change.
 

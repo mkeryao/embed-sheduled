@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api'; // Adjust if your context path is different
+const API_BASE_URL = '/embed-api'; // Adjust if your context path is different
 
 // 全局调试模式开关
 window.debugMode = localStorage.getItem('debugMode') === 'true';

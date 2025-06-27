@@ -25,7 +25,7 @@ import org.slf4j.Logger; // Added
 import org.slf4j.LoggerFactory; // Added
 
 @RestController
-@RequestMapping("/api/logs")
+@RequestMapping("/embed-api/logs")
 public class TaskExecuteLogController {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskExecuteLogController.class); // Added

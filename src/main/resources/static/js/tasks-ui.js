@@ -824,54 +824,272 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             );
         });
 
-        // 删除按钮点击事件
+        // 删除按钮点击事件，显示确认模态框
         $('#tasks-table-body').on('click', '.delete-btn', function () {
-            const taskId = $(this).data('id');
-            if (confirm(i18n.translate('tasksPage.feedback.confirmDelete', "Are you sure you want to delete task {{taskId}}?").replace('{{taskId}}', taskId))) {
+            var $row = $(this).closest('tr');
+            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskId = $(this).data('id');
+       
+
+
+            $('#deleteTaskId').val(taskId);
+            $('#deleteTaskNameInput').val('');
+            $('#confirmDeleteBtn').prop('disabled', true);
+            $('#deleteValidationMessage').hide();
+          
+            $('#deleteTaskNameInput').attr('data-i18n-key-placeholder',  taskName);
+            $('#deleteTaskNameInput').attr('placeholder', taskName);
+            // 确保国际化应用到模态框
+            i18n.applyTranslations();
+            
+            $('#deleteConfirmModal').modal('show');
+        });
+        
+        // 确认删除按钮点击事件
+        $('#confirmDeleteBtn').off('click').on('click', function() {
+            var inputName = $('#deleteTaskNameInput').val().trim();
+            var taskId = $('#deleteTaskId').val();
+            var expectedName = $('#deleteTaskNameInput').attr('placeholder');
+            
+            if (inputName === expectedName) {
+                // 通过API删除任务
                 makeApiCall('DELETE', `/tasks/${taskId}`, null,
                     function () {
-                        showFeedback(i18n.translate('tasksPage.feedback.taskDeleted'), false);
+                        $('#deleteConfirmModal').modal('hide');
+                        showFeedback(i18n.translate('tasksPage.feedback.taskDeleted', "Task deleted successfully"), false);
                         loadTasks();
                     },
                     function (jqXHR) {
                         showFeedback(i18n.translate('tasksPage.feedback.errorDeleting', "Error deleting task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
                     }
                 );
+            } else {
+                $('#deleteValidationMessage').text(i18n.translate('tasksPage.deleteConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+            }
+        });
+        
+        // 输入框内容变化时验证任务名称（删除确认）
+        $('#deleteTaskNameInput').off('input').on('input', function () {
+            var inputName = $(this).val().trim();
+            var expectedName = $(this).attr('placeholder');
+            
+            if (inputName === expectedName) {
+                $('#confirmDeleteBtn').prop('disabled', false);
+                $('#deleteValidationMessage').hide();
+            } else {
+                $('#confirmDeleteBtn').prop('disabled', true);
+                if (inputName && inputName.length > 0) {
+                    $('#deleteValidationMessage').text(i18n.translate('tasksPage.deleteConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+                } else {
+                    $('#deleteValidationMessage').hide();
+                }
+            }
+        });
+        
+        // 监听Enter键在输入框中的按下事件（删除确认）
+        $('#deleteTaskNameInput').keypress(function(e) {
+            if (e.which === 13 && !$('#confirmDeleteBtn').prop('disabled')) {
+                $('#confirmDeleteBtn').click();
             }
         });
 
-        // 触发按钮点击事件
+        // 触发按钮点击事件，显示确认模态框
         $('#tasks-table-body').on('click', '.trigger-btn', function () {
-            const taskId = $(this).data('id');
-            makeApiCall('POST', `/tasks/${taskId}/trigger`, null,
-                function () {
-                    showFeedback(i18n.translate('tasksPage.feedback.taskTriggered', "Task {{taskId}} triggered successfully!").replace('{{taskId}}', taskId), false);
-                },
-                function (jqXHR) {
-                    showFeedback(i18n.translate('tasksPage.feedback.errorTriggering', "Error triggering task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
-                }
-            );
-        });
-
-        // 启用/禁用按钮点击事件
-        $('#tasks-table-body').on('click', '.enable-btn, .disable-btn', function () {
-            const taskId = $(this).data('id');
-            const isEnable = $(this).hasClass('enable-btn');
-            const endpoint = `/tasks/${taskId}/${isEnable ? 'enable' : 'disable'}`;
+            var $row = $(this).closest('tr');
+            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskId = $(this).data('id');
+            $('#manualTriggerTaskId').val(taskId);
+            $('#manualTriggerTaskNameInput').val('');
+            $('#confirmManualTriggerBtn').prop('disabled', true);
+            $('#manualTriggerValidationMessage').hide();
+            // 设置placeholder为任务名称
+            $('#manualTriggerTaskNameInput').attr('placeholder', taskName);
+            $('#manualTriggerTaskNameInput').attr('data-i18n-key-placeholder',  taskName);
             
-            makeApiCall('POST', endpoint, null,
-                function () {
-                    const messageKey = isEnable ? 'tasksPage.feedback.taskEnabled' : 'tasksPage.feedback.taskDisabled';
-                    const defaultMessage = isEnable ? "Task {{taskId}} enabled successfully!" : "Task {{taskId}} disabled successfully!";
-                    showFeedback(i18n.translate(messageKey, defaultMessage).replace('{{taskId}}', taskId), false);
-                    loadTasks();
-                },
-                function (jqXHR) {
-                    const messageKey = isEnable ? 'tasksPage.feedback.errorEnabling' : 'tasksPage.feedback.errorDisabling';
-                    const defaultMessage = isEnable ? "Error enabling task: {{error}}" : "Error disabling task: {{error}}";
-                    showFeedback(i18n.translate(messageKey, defaultMessage).replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
+            // 确保国际化应用到模态框
+            i18n.applyTranslations();
+            
+            $('#manualTriggerConfirmModal').modal('show');
+        });
+        
+        // 确认触发按钮点击事件
+        $('#confirmManualTriggerBtn').off('click').on('click', function() {
+            var inputName = $('#manualTriggerTaskNameInput').val().trim();
+            var taskId = $('#manualTriggerTaskId').val();
+            var expectedName = $('#manualTriggerTaskNameInput').attr('placeholder');
+            
+            if (inputName === expectedName) {
+                // 通过API触发任务
+                makeApiCall('POST', `/tasks/${taskId}/trigger`, null,
+                    function () {
+                        $('#manualTriggerConfirmModal').modal('hide');
+                        showFeedback(i18n.translate('tasksPage.feedback.taskTriggered', "Task {{taskId}} triggered successfully!").replace('{{taskId}}', taskId), false);
+                    },
+                    function (jqXHR) {
+                        showFeedback(i18n.translate('tasksPage.feedback.errorTriggering', "Error triggering task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
+                    }
+                );
+            } else {
+                $('#manualTriggerValidationMessage').text(i18n.translate('tasksPage.manualTriggerConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+            }
+        });
+        
+        // 输入框内容变化时验证任务名称
+        $('#manualTriggerTaskNameInput').off('input').on('input', function () {
+            var inputName = $(this).val().trim();
+            var expectedName = $(this).attr('placeholder');
+            
+            if (inputName === expectedName) {
+                $('#confirmManualTriggerBtn').prop('disabled', false);
+                $('#manualTriggerValidationMessage').hide();
+            } else {
+                $('#confirmManualTriggerBtn').prop('disabled', true);
+                if (inputName && inputName.length > 0) {
+                    $('#manualTriggerValidationMessage').text(i18n.translate('tasksPage.manualTriggerConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+                } else {
+                    $('#manualTriggerValidationMessage').hide();
                 }
-            );
+            }
+        });
+        
+        // 监听Enter键在输入框中的按下事件
+        $('#manualTriggerTaskNameInput').keypress(function(e) {
+            if (e.which === 13 && !$('#confirmManualTriggerBtn').prop('disabled')) {
+                // 如果按下Enter键并且确认按钮已启用，则触发确认按钮的点击事件
+                $('#confirmManualTriggerBtn').click();
+            }
+        });
+        
+        // 启用按钮点击事件
+        $('#tasks-table-body').on('click', '.enable-btn', function () {
+            var $row = $(this).closest('tr');
+            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskId = $(this).data('id');
+            
+            $('#enableTaskId').val(taskId);
+            $('#enableTaskNameInput').val('');
+            $('#confirmEnableBtn').prop('disabled', true);
+            $('#enableValidationMessage').hide();
+            $('#enableTaskNameInput').attr('placeholder', taskName);
+            $('#enableTaskNameInput').attr('data-i18n-key-placeholder',  taskName);
+            // 确保国际化应用到模态框
+            i18n.applyTranslations();
+            
+            $('#enableConfirmModal').modal('show');
+        });
+        
+        // 确认启用按钮点击事件
+        $('#confirmEnableBtn').off('click').on('click', function() {
+            var inputName = $('#enableTaskNameInput').val().trim();
+            var taskId = $('#enableTaskId').val();
+            var expectedName = $('#enableTaskNameInput').attr('placeholder');
+            
+            if (inputName === expectedName) {
+                // 通过API启用任务
+                makeApiCall('POST', `/tasks/${taskId}/enable`, null,
+                    function () {
+                        $('#enableConfirmModal').modal('hide');
+                        showFeedback(i18n.translate('tasksPage.feedback.taskEnabled', "Task {{taskId}} enabled successfully!").replace('{{taskId}}', taskId), false);
+                        loadTasks();
+                    },
+                    function (jqXHR) {
+                        showFeedback(i18n.translate('tasksPage.feedback.errorEnabling', "Error enabling task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
+                    }
+                );
+            } else {
+                $('#enableValidationMessage').text(i18n.translate('tasksPage.enableConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+            }
+        });
+        
+        // 输入框内容变化时验证任务名称（启用确认）
+        $('#enableTaskNameInput').off('input').on('input', function () {
+            var inputName = $(this).val().trim();
+            var expectedName = $(this).attr('placeholder');
+            
+            if (inputName === expectedName) {
+                $('#confirmEnableBtn').prop('disabled', false);
+                $('#enableValidationMessage').hide();
+            } else {
+                $('#confirmEnableBtn').prop('disabled', true);
+                if (inputName && inputName.length > 0) {
+                    $('#enableValidationMessage').text(i18n.translate('tasksPage.enableConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+                } else {
+                    $('#enableValidationMessage').hide();
+                }
+            }
+        });
+        
+        // 监听Enter键在输入框中的按下事件（启用确认）
+        $('#enableTaskNameInput').keypress(function(e) {
+            if (e.which === 13 && !$('#confirmEnableBtn').prop('disabled')) {
+                $('#confirmEnableBtn').click();
+            }
+        });
+        
+        // 禁用按钮点击事件
+        $('#tasks-table-body').on('click', '.disable-btn', function () {
+            var $row = $(this).closest('tr');
+            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskId = $(this).data('id');
+            
+            $('#disableTaskId').val(taskId);
+            $('#disableTaskNameInput').val('');
+            $('#confirmDisableBtn').prop('disabled', true);
+            $('#disableValidationMessage').hide();
+            $('#disableTaskNameInput').attr('placeholder', taskName);
+            $('#disableTaskNameInput').attr('data-i18n-key-placeholder',  taskName);
+            // 确保国际化应用到模态框
+            i18n.applyTranslations();
+            
+            $('#disableConfirmModal').modal('show');
+        });
+        
+        // 确认禁用按钮点击事件
+        $('#confirmDisableBtn').off('click').on('click', function() {
+            var inputName = $('#disableTaskNameInput').val().trim();
+            var taskId = $('#disableTaskId').val();
+            var expectedName = $('#disableTaskNameInput').attr('placeholder');
+            
+            if (inputName === expectedName) {
+                // 通过API禁用任务
+                makeApiCall('POST', `/tasks/${taskId}/disable`, null,
+                    function () {
+                        $('#disableConfirmModal').modal('hide');
+                        showFeedback(i18n.translate('tasksPage.feedback.taskDisabled', "Task {{taskId}} disabled successfully!").replace('{{taskId}}', taskId), false);
+                        loadTasks();
+                    },
+                    function (jqXHR) {
+                        showFeedback(i18n.translate('tasksPage.feedback.errorDisabling', "Error disabling task: {{error}}").replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
+                    }
+                );
+            } else {
+                $('#disableValidationMessage').text(i18n.translate('tasksPage.disableConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+            }
+        });
+        
+        // 输入框内容变化时验证任务名称（禁用确认）
+        $('#disableTaskNameInput').off('input').on('input', function () {
+            var inputName = $(this).val().trim();
+            var expectedName = $(this).attr('placeholder');
+            
+            if (inputName === expectedName) {
+                $('#confirmDisableBtn').prop('disabled', false);
+                $('#disableValidationMessage').hide();
+            } else {
+                $('#confirmDisableBtn').prop('disabled', true);
+                if (inputName && inputName.length > 0) {
+                    $('#disableValidationMessage').text(i18n.translate('tasksPage.disableConfirm.validationError', '任务名称不匹配，请输入正确的任务名称')).show();
+                } else {
+                    $('#disableValidationMessage').hide();
+                }
+            }
+        });
+        
+        // 监听Enter键在输入框中的按下事件（禁用确认）
+        $('#disableTaskNameInput').keypress(function(e) {
+            if (e.which === 13 && !$('#confirmDisableBtn').prop('disabled')) {
+                $('#confirmDisableBtn').click();
+            }
         });
 
         // 查看下次执行时间按钮点击事件
@@ -1708,6 +1926,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     $('#cronValidationResult').html(`
                         <div class="alert alert-danger">
                             <i class="bi bi-x-circle"></i> ${errorMsg}
+                       
                         </div>
                     `).show();
                 }
@@ -2270,7 +2489,7 @@ function fillDefaultTaskOptions(selectElement, hideNotice) {
     ];
     
     // 添加这些选项到下拉框
-    defaultOptions.forEach(function(task) {
+    defaultOptions.forEach(task => {
         selectElement.append(
             $('<option></option>')
                 .attr('value', task.id)
@@ -2410,62 +2629,6 @@ function loadTaskConfigOptions(selectElementId) {
         fillDefaultTaskOptions($('#' + (selectElementId || 'editTaskConfigId')));
     }
 }
-
-/**
- * 打开添加工作流节点对话框
- * 处理图形模式下添加新节点的功能
- */
-window.openAddNodeDialog = function() {
-    try {
-        console.log('执行openAddNodeDialog函数');
-        
-        // 设置模态窗口标题
-        $('#workflowNodeEditModalLabel').text(i18n.translate('tasksPage.nodeModal.addNodeTitle', '添加工作流节点'));
-        
-        // 设置为新节点模式
-        $('#editingNodeArrayIndex').val('-1'); // -1 表示新建节点
-          // 显示节点ID输入框（仅在添加新节点时需要）
-        $('.node-id-input-group').show();
-        $('.existing-node-id-group').hide(); // 隐藏现有节点ID显示组
-        
-        // 生成一个默认节点ID
-        const timestamp = new Date().getTime();
-        const defaultNodeId = 'node_' + timestamp.toString().substring(timestamp.toString().length - 6);
-        $('#editNodeId').val(defaultNodeId);
-        
-        // 清空名称和参数
-        $('#editNodeName').val('');
-        $('#editNodeParams').val('{}');
-        
-        // 设置显示节点ID
-        $('#displayNodeId').text(i18n.translate('tasksPage.nodeModal.newNode', '新节点'));
-        
-        // 隐藏删除节点按钮
-        $('#deleteNodeBtn').hide();
-        
-        // 先清空任务配置选择框，再添加一个初始选项
-        const selectElement = $('#editTaskConfigId');
-        selectElement.empty();
-        selectElement.append(
-            $('<option></option>')
-                .attr('value', '')
-                .text(i18n.translate('tasksPage.nodeModal.selectTaskConfig', '- 选择任务配置 -'))
-        );
-        
-        // 加载可用的任务配置选项
-        loadTaskConfigOptions();
-        
-        // 打开模态窗口
-        $('#workflowNodeEditModal').modal('show');
-        
-        console.log('已打开添加节点对话框');
-    } catch (e) {
-        console.error('打开添加节点对话框时出错:', e);
-        showFeedback(i18n.translate('tasksPage.feedback.errorOpeningNodeDialog', '打开添加节点对话框时出错: ') + e.message, true);
-    }
-};
-
-// 使用上方定义的加载任务配置选项函数
 
 /**
  * 打开添加工作流节点对话框

@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 
 /**
  * Data Transfer Object for {@link com.example.taskscheduler.entity.TaskUser}.
- * Used for transferring user data between the client/API layer and the service layer.
+ * Used for transferring user data between the client/embed-api layer and the service layer.
  * The password field is used for request input (creating/updating passwords) and should be null in responses.
  */
 @Data

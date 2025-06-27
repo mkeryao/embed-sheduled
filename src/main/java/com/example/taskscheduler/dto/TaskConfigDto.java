@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * Data Transfer Object for {@link com.example.taskscheduler.entity.TaskConfig}.
- * Used for transferring task configuration data between the client/API layer
+ * Used for transferring task configuration data between the client/embed-api layer
  * and the service layer. It includes all fields from the entity, plus parsed
  * representations of JSON-based workflow definitions.
  */
