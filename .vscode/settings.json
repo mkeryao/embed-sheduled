@@ -1,5 +1,10 @@
 {
     "maven.view": "flat",
     "commentTranslate.targetLanguage": "zh-CN",
-    "java.debug.settings.onBuildFailureProceed": true
+    "java.debug.settings.onBuildFailureProceed": true,
+    
+    "java.import.gradle.enabled": true,
+    "java.import.maven.enabled": true,
+    "java.configuration.updateBuildConfiguration": "automatic"
+
 }

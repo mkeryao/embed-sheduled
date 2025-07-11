@@ -1,10 +1,12 @@
-package com.github.embed.scheduler.service;
+package com.github.embed.scheduler.sample;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.Map;
 
 @Component("mySampleTask") // Bean name as referenced in schema.sql
 public class MySampleTask {
@@ -24,19 +26,46 @@ public class MySampleTask {
     }
 
     public void executeFailed(String error) {
+
         logger.info("MySampleTask.executeFailed called with error: '{}'", error);
         // Simulate a failure
         throw new RuntimeException("Simulated failure: " + error);
     }
 
-    public void executeWithMap(Map<String, Object> params) {
+    public Map<String, Object> executeException(Map<String, Object> params) {
+
+        logger.info("MySampleTask.executeFailed called with error: '{}'", params);
+        // Simulate a failure
+        int id = (int) params.getOrDefault("id", 10);
+        if (id % 5 == 0) {
+            throw new RuntimeException("Simulated failure: " + id);
+        }
+        return params;
+
+    }
+
+    public Map<String, Object> executeWithMap(Map<String, Object> params) {
         logger.info("MySampleTask.executeWithMap called with parameters: {}", params);
         params.forEach((key, value) -> logger.info("Param: {} = {}", key, value));
         logger.info("MySampleTask.executeWithMap completed.");
+        return params;
     }
 
     public void simpleExecute() {
         logger.info("MySampleTask.simpleExecute called. No parameters.");
         logger.info("MySampleTask.simpleExecute completed.");
     }
+
+    public Map<String, Object> executeTimeout(Map<String, Object> params) throws InterruptedException {
+        logger.info("MySampleTask.executeTimeout called. with parameters {}", params);
+
+        Object timeout = params.get("timeout");
+        if (Objects.nonNull(timeout)) {
+            TimeUnit.SECONDS.sleep((long) timeout);
+        }
+        logger.info("MySampleTask.simpleExecute completed.");
+
+        return params;
+    }
+
 }
