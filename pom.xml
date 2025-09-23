@@ -114,6 +114,7 @@
     </dependencies>
 
     <build>
+        <finalName>embed-scheduled</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
