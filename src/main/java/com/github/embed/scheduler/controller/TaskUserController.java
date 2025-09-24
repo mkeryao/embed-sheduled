@@ -1,5 +1,6 @@
 package com.github.embed.scheduler.controller;
 
+import com.github.embed.scheduler.annotation.JwtAuth;
 import com.github.embed.scheduler.dao.TaskUserDao;
 import com.github.embed.scheduler.dto.UserDto; // Will create this DTO
 import com.github.embed.scheduler.entity.TaskUser;
@@ -16,13 +17,12 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/embed-api/users")
+@JwtAuth
 public class TaskUserController {
 
     @Autowired
     private TaskUserDao taskUserDao;
 
-    @Autowired
-    private PasswordUtil passwordUtil;
 
     // --- DTO Mappers ---
     // --- DTO Mappers ---
@@ -59,7 +59,7 @@ public class TaskUserController {
         TaskUser user = convertToEntity(userDto);
         user.setUserId(null); // Ensure it's a new user
         // Hash the password before saving
-        user.setPasswordHash(passwordUtil.hashPassword(userDto.getPassword(), userDto.getUsername()));
+        user.setPasswordHash(PasswordUtil.hashPassword(userDto.getPassword(), userDto.getUsername()));
 
         TaskUser savedUser = taskUserDao.save(user);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(savedUser));
@@ -115,7 +115,7 @@ public class TaskUserController {
 
         // Update password if provided
         if (userDto.getPassword() != null && !userDto.getPassword().isEmpty()) {
-            existingUser.setPasswordHash(passwordUtil.hashPassword(userDto.getPassword(), existingUser.getUsername()));
+            existingUser.setPasswordHash(PasswordUtil.hashPassword(userDto.getPassword(), existingUser.getUsername()));
         }
 
         int updatedRows = taskUserDao.update(existingUser);

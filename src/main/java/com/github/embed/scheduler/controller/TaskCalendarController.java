@@ -1,5 +1,6 @@
 package com.github.embed.scheduler.controller;
 
+import com.github.embed.scheduler.annotation.JwtAuth;
 import com.github.embed.scheduler.dao.TaskCalendarDao;
 import com.github.embed.scheduler.dto.TaskCalendarDto;
 import com.github.embed.scheduler.dto.TaskCalendarDayDto;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/embed-api/calendars")
+@JwtAuth
 public class TaskCalendarController {
 
     @Autowired

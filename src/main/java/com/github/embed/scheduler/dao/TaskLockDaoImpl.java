@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.annotation.Resource;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
@@ -27,7 +28,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskLockDaoImpl.class);
 
-    @Autowired
+    @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
 
     private static final String SELECT_BY_LOCK_NAME_SQL = "SELECT lock_name, owner_instance_id, lock_acquired_time, lease_duration_ms, version FROM task_lock WHERE lock_name = ?";
@@ -101,7 +102,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(transactionManager = "schedulerTransactionManager" , isolation = Isolation.SERIALIZABLE)
     public boolean tryAcquireOrRefreshLock(String lockName, String ownerInstanceId, int leaseDurationMsEffective) {
         ensureLockRecordExists(lockName);
 
@@ -144,7 +145,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
 
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public boolean releaseLock(String lockName, String ownerInstanceId) {
         int rowsAffected = jdbcTemplate.update(RELEASE_LOCK_SQL, lockName, ownerInstanceId);
         if (rowsAffected > 0) {

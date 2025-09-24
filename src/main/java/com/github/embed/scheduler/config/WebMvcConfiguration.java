@@ -4,16 +4,24 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.alibaba.fastjson.support.config.FastJsonConfig;
 import com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter;
+
+import javax.annotation.Resource;
 
 /**
  * Configures Fastjson as the primary JSON message converter for Spring MVC.
@@ -21,8 +29,14 @@ import com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter;
  * features such as date formatting and handling of null values.
  */
 @Configuration
-public class FastjsonConfig implements WebMvcConfigurer {
+@ConditionalOnWebApplication
+@Order(10)
+//@ConditionalOnMissingBean({WebMvcConfigurationSupport.class})
+public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
+
+    @Resource
+    private JwtAuthHandlerInterceptor jwtAuthArgumentResolver;
     /**
      * Configures and registers the FastJsonHttpMessageConverter. This converter
      * will be used by Spring MVC for handling JSON request/response bodies.
@@ -82,9 +96,27 @@ public class FastjsonConfig implements WebMvcConfigurer {
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**")
                 .addResourceLocations(
-                    "file:/apps/staging/embed-scheduled/static/",
+                "file:/apps/staging/embed-scheduled/static/",
                 "file:E:/Workspace3/embed-sheduled/src/main/resources/static/" ,
                 "file:E:/WorkspaceVscode/embed-sheduled/src/main/resources/static/");
+    }
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(jwtAuthArgumentResolver)
+                .addPathPatterns("/embed-api/**")
+                .excludePathPatterns(
+                        "/webjars/**",
+                        "/swagger-ui.html",
+                        "/swagger-resources/**",
+                        "/v3/api-docs/**",
+                        "/v2/api-docs-ext/**",
+                        "/actuator/**",
+                        "/druid/**" ,
+                        "/static/**" ,
+                        "/embed-api/auth/login"
+                );
+        super.addInterceptors(registry);
     }
 
 }

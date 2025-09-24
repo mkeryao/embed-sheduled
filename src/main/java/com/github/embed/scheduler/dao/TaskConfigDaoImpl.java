@@ -17,6 +17,8 @@ import org.springframework.stereotype.Repository;
 import com.github.embed.scheduler.entity.TaskConfig;
 import com.github.embed.scheduler.enums.ExecutionMode;
 
+import javax.annotation.Resource;
+
 /**
  * JDBC implementation of the {@link TaskConfigDao} interface.
  * Handles database operations for
@@ -26,7 +28,7 @@ import com.github.embed.scheduler.enums.ExecutionMode;
 @Repository
 public class TaskConfigDaoImpl implements TaskConfigDao {
 
-    @Autowired
+    @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
 
     // BASE_COLUMNS: added max_retry_attempts, retry_interval_seconds,

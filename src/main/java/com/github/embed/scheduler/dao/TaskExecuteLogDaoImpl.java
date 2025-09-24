@@ -11,6 +11,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import javax.annotation.Resource;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -29,7 +30,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskExecuteLogDaoImpl.class);
 
-    @Autowired
+    @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
 
     // Added workflow_node_id to LOG_COLUMNS

@@ -13,6 +13,7 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import javax.annotation.Resource;
 import java.sql.PreparedStatement;
 // ResultSet and SQLException are used by RowMapper lambda, but not directly in the main class body now
 // import java.sql.ResultSet;
@@ -33,7 +34,7 @@ public class TaskUserDaoImpl implements TaskUserDao {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskUserDaoImpl.class);
 
-    @Autowired
+    @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
 
     /** Cache for {@link TaskUser} objects by their Integer ID. Configured for max 100 users, 1-hour expiry. */

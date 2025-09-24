@@ -23,6 +23,8 @@ import com.github.embed.scheduler.entity.TaskCalendarDay;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 
+import javax.annotation.Resource;
+
 /**
  * JDBC implementation of the {@link TaskCalendarDao} interface.
  * Handles database operations for {@link TaskCalendar} and
@@ -35,7 +37,7 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskCalendarDaoImpl.class);
 
-    @Autowired
+    @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
 
     // --- Caches ---

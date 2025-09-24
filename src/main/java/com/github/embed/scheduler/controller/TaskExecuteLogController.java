@@ -1,5 +1,6 @@
 package com.github.embed.scheduler.controller;
 
+import com.github.embed.scheduler.annotation.JwtAuth;
 import com.github.embed.scheduler.dao.TaskExecuteLogDao;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ import org.slf4j.LoggerFactory; // Added
 
 @RestController
 @RequestMapping("/embed-api/logs")
+@JwtAuth
 public class TaskExecuteLogController {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskExecuteLogController.class); // Added

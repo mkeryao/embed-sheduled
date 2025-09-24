@@ -1,9 +1,10 @@
-package com.github.embed.scheduler.util;
+package com.github.embed.scheduler.service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +16,13 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Component
-public class JwtUtil {
+@Slf4j
+public class JwtAuthService {
 
-    @Value("${jwt.secret:DefaultSecretKeyNeedsToBeLongEnoughForHS256}") // Default for testing, replace in properties
+    @Value("${jwt.secret.jwt.secret:DefaultSecretKeyNeedsToBeLongEnoughForHS256}") // Default for testing, replace in properties
     private String secret;
 
-    @Value("${jwt.expirationMs:3600000}") // 1 hour by default
+    @Value("${jwt.secret.jwt.expirationMs:3600000}") // 1 hour by default
     private long expirationMs;
 
     private Key key;
@@ -31,7 +33,7 @@ public class JwtUtil {
             // In a real app, throw an error or ensure a strong default if not configured
             this.secret = "FallbackSecretKeyThatIsDefinitelyLongEnoughForHS256Algorithm";
             // Log a warning that a default, potentially insecure key is being used.
-            System.err.println("Warning: JWT secret key is not configured or too short. Using a default insecure key.");
+            log.error("[Warning: JWT secret key is not configured or too short. Using a default insecure key.]");
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }

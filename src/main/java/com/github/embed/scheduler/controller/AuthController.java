@@ -4,7 +4,7 @@ import com.github.embed.scheduler.dao.TaskUserDao;
 import com.github.embed.scheduler.dto.LoginRequest;
 import com.github.embed.scheduler.dto.AuthResponse;
 import com.github.embed.scheduler.entity.TaskUser;
-import com.github.embed.scheduler.util.JwtUtil;
+import com.github.embed.scheduler.service.JwtAuthService;
 import com.github.embed.scheduler.util.PasswordUtil; // Will create this next
 
 import lombok.extern.slf4j.Slf4j;
@@ -27,16 +27,13 @@ public class AuthController {
     private TaskUserDao taskUserDao;
 
     @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private PasswordUtil passwordUtil;
+    private JwtAuthService jwtAuthService;
 
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         if (loginRequest.getUsername() == null || loginRequest.getUsername().isEmpty() ||
-            loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
+                loginRequest.getPassword() == null || loginRequest.getPassword().isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Username and password are required.");
         }
 
@@ -47,11 +44,12 @@ public class AuthController {
         }
 
         TaskUser user = userOptional.get();
-        String hashedPassword = passwordUtil.hashPassword(loginRequest.getPassword(), loginRequest.getUsername());
+        String hashedPassword = PasswordUtil.hashPassword(loginRequest.getPassword(),
+                loginRequest.getUsername());
 
-        log.info("hashedPassword {}", hashedPassword);
         if (!hashedPassword.equals(user.getPasswordHash())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid username or password.");
         }
 
         // If password matches (Note: this is a simplified check as hashing is not fully implemented yet)
@@ -60,7 +58,7 @@ public class AuthController {
         //     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         // }
 
-        final String token = jwtUtil.generateToken(user.getUsername());
+        final String token = jwtAuthService.generateToken(user.getUsername());
         return ResponseEntity.ok(new AuthResponse(token, user.getUsername()));
     }
 }

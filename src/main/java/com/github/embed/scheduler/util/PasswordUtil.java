@@ -8,12 +8,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-@Component
+
 public class PasswordUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(PasswordUtil.class);
 
-    public String hashPassword(String password, String salt) {
+    public static String hashPassword(String password, String salt) {
         if (password == null || password.isEmpty()) {
             throw new IllegalArgumentException("Password cannot be null or empty.");
         }
@@ -47,7 +47,8 @@ public class PasswordUtil {
     }
 
     // Optional: A method to verify password if needed, though direct hash comparison is done in AuthController
-    public boolean verifyPassword(String providedPassword, String storedHashedPassword, String salt) {
+    public static  boolean verifyPassword(String providedPassword,
+                                          String storedHashedPassword, String salt) {
         if (providedPassword == null || providedPassword.isEmpty() ||
             storedHashedPassword == null || storedHashedPassword.isEmpty()) {
             return false;

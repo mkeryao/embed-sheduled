@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors; // Fastjson import
 
+import com.github.embed.scheduler.annotation.JwtAuth;
 import org.slf4j.Logger; // Fastjson TypeReference
 import org.slf4j.LoggerFactory; // Added for beanParameters validation
 import org.springframework.beans.BeanUtils; // Added
@@ -40,6 +41,7 @@ import com.github.embed.scheduler.util.DagCycleDetector;
 
 @RestController
 @RequestMapping("/embed-api/tasks")
+@JwtAuth
 public class TaskConfigController {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskConfigController.class); // Added logger

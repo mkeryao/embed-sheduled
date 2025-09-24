@@ -13,7 +13,7 @@
 
 
 	<Appenders>
-		<Console name="debug" target="SYSTEM_OUT">
+		<Console name="console" target="SYSTEM_OUT">
 			<!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
 			<ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY"/>
 			<PatternLayout pattern="${LOG_PATTERN}" />
@@ -153,11 +153,9 @@
 			<AppenderRef ref="file-info" />
 			<AppenderRef ref="console" />
 		</AsyncLogger>
-		<AsyncLogger name="com.example.taskscheduler" level="debug" additivity="false">
+		<AsyncLogger name="com.github.embed" level="debug" additivity="false">
 			<AppenderRef ref="file-job" />
-<!-- 			<AppenderRef ref="console" />
- -->		
-</AsyncLogger>
+         </AsyncLogger>
 
 	</Loggers>
 

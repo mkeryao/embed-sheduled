@@ -14,8 +14,5 @@ public class TaskSchedulerApplication {
         SpringApplication.run(TaskSchedulerApplication.class, args);
     }
 
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
+
 }
