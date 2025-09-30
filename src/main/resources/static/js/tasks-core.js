@@ -10,7 +10,6 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
     window.loadTasks = function() {
         const filters = {
             taskName: $('#filterTaskName').val().trim(),
-            taskGroup: $('#filterTaskGroup').val(),
             taskType: $('#filterTaskType').val() ? parseInt($('#filterTaskType').val()) : null,
             isActive: $('#filterIsActive').val() ? ($('#filterIsActive').val() === 'true') : null
         };
@@ -24,14 +23,6 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                 const tableBody = $('#tasks-table-body');
                 tableBody.empty();
 
-                if (!window.initialGroupPopulationDone && Object.keys(filters).length === 0) { // 只在首次全量加载时填充分组
-                    makeApiCall('GET', '/tasks', null, function (allTasks) {
-                        populateGroupFilter(allTasks);
-                    }, function (jqXHR) {
-                        console.error("Error fetching all tasks for group population:", jqXHR);
-                    });
-                }
-
                 tasks.forEach(function (task) {
                     const status = task.active ? `<span class="badge badge-success">${i18n.translate('tasksPage.table.statusActive', 'Active')}</span>` : `<span class="badge badge-secondary">${i18n.translate('tasksPage.table.statusInactive', 'Inactive')}</span>`;
                     const historyBtnText = i18n.translate('tasksPage.table.historyBtnShort', 'History');
@@ -43,9 +34,8 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
 
                     const row = `<tr>
                         <td>${task.taskId}</td>
-                        <td>${task.taskGroup || ''}</td>
                         <td>${task.taskName || ''}</td>
-                        <td>${task.cronExpression || ''}</td>
+                        <td>${task.cronExpression || i18n.translate('tasksPage.table.notScheduled', 'Not Scheduled')}</td>
                         <td>${getTaskTypeString(task.taskType)}</td>
                         <td>${status}</td>
                         <td>${task.executionMode || 'BROADCAST'}</td>
@@ -81,23 +71,6 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                 showFeedback(i18n.translate('tasksPage.feedback.errorLoadingTasks', 'Error loading tasks: {{error}}').replace('{{error}}', (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText)), true);
             }
         );
-    };
-
-    // 填充任务分组过滤器的函数
-    window.populateGroupFilter = function(allTasks) {
-        const groupSelect = $('#filterTaskGroup');
-        groupSelect.find('option:gt(0)').remove(); // 清除除"All Groups"以外的现有分组
-        const uniqueGroups = new Set();
-        allTasks.forEach(task => {
-            if (task.taskGroup && task.taskGroup.trim() !== '') {
-                uniqueGroups.add(task.taskGroup.trim());
-            }
-        });
-        // 按字母顺序对分组进行排序，以保持一致的顺序
-        Array.from(uniqueGroups).sort().forEach(group => {
-            groupSelect.append(`<option value="${group}">${group}</option>`);
-        });
-        window.initialGroupPopulationDone = true;
     };
 
     // 获取任务类型字符串
@@ -256,7 +229,7 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                     tasks.forEach(function (task) {
                         // 确保不选择工作流任务（类型为10）作为节点
                         if ((task.taskType != 10) && task.active) {
-                            const optionText = `${task.taskName} (ID: ${task.taskId}, Group: ${task.taskGroup || 'N/A'}, Type: ${getTaskTypeShortString(task.taskType)})`;
+                            const optionText = `${task.taskName} (ID: ${task.taskId}, Type: ${getTaskTypeShortString(task.taskType)})`;
                             select.append(`<option value='${task.taskId}'>${optionText}</option>`);
                             optionsAdded++;
                         } else if (task.taskType == 10) {
@@ -357,7 +330,7 @@ if (typeof window.tasksCoreInitialized === 'undefined') {
                     tasks.forEach(function (task) {
                         // 确保不选择工作流任务（类型为10）作为节点
                         if ((task.taskType != 10) && task.active) {
-                            const optionText = `${task.taskName} (ID: ${task.taskId}, Group: ${task.taskGroup || 'N/A'}, Type: ${task.taskType})`;
+                            const optionText = `${task.taskName} (ID: ${task.taskId}, Type: ${task.taskType})`;
                             select.append(`<option value='${task.taskId}'>${optionText}</option>`);
                             optionsAdded++;
                         }

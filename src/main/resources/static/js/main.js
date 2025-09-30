@@ -59,7 +59,7 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
         contentType: method !== 'GET' ? 'application/json' : undefined,
         data: ajaxData,
         headers: {
-            'Authorization': 'Bearer' + token
+            'Authorization': 'Bearer ' + token
         },
         success: onSuccess,
         error: function(jqXHR, textStatus, errorThrown) {

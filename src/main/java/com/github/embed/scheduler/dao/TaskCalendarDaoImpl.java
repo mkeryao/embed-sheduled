@@ -36,6 +36,7 @@ import javax.annotation.Resource;
 public class TaskCalendarDaoImpl implements TaskCalendarDao {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskCalendarDaoImpl.class);
+    private static final TaskCalendarDay NULL_CALENDAR_DAY = new TaskCalendarDay();
 
     @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
@@ -306,7 +307,8 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
         TaskCalendarDay cachedDay = specificCalendarDayCache.getIfPresent(cacheKey);
         if (cachedDay != null) {
             logger.debug("Cache hit for specific calendar day: {}", cacheKey);
-            return Optional.of(cachedDay);
+            // Check if the cached object is the null sentinel
+            return cachedDay == NULL_CALENDAR_DAY ? Optional.empty() : Optional.of(cachedDay);
         }
         logger.debug("Cache miss for specific calendar day: {}", cacheKey);
         try {
@@ -318,7 +320,9 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
             }
             return Optional.ofNullable(dayFromDb);
         } catch (EmptyResultDataAccessException e) {
-            logger.debug("Specific calendar day not found in DB: {}", cacheKey);
+            logger.debug("Specific calendar day not found in DB: {}. Caching null result.", cacheKey);
+            // Cache the "null" result to prevent repeated DB queries for non-existent data
+            specificCalendarDayCache.put(cacheKey, NULL_CALENDAR_DAY);
             return Optional.empty();
         }
     }

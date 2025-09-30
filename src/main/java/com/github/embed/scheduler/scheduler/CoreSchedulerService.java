@@ -9,10 +9,11 @@ import java.util.concurrent.ScheduledFuture;
 import javax.annotation.PreDestroy;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory; // Import ExecutionMode
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Autowired; // Added
-import org.springframework.context.ApplicationContext; // Added
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
@@ -47,6 +48,9 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     private static final Logger logger = LoggerFactory.getLogger(CoreSchedulerService.class);
     // private final String instanceId = UUID.randomUUID().toString(); // Instance
     // ID now comes from DistributedLockService
+
+    @Value("${scheduler.group.name:defaultGroup}")
+    private String schedulerGroupName;
 
     @Autowired
     private TaskConfigDao taskConfigDao;
@@ -110,11 +114,11 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      * typically called on application startup.
      */
     public void loadAndScheduleInitialTasks() {
-        logger.info("Loading and scheduling initial tasks...");
-        List<TaskConfig> activeTasks = taskConfigDao.findAllActiveTasks();
+        logger.info("Loading and scheduling initial tasks for group: {}...", schedulerGroupName);
+        List<TaskConfig> activeTasks = taskConfigDao.findAllActiveTasks(schedulerGroupName);
         activeTasks.forEach(this::scheduleTask); // `this::scheduleTask` implicitly uses the class's taskScheduler
-        logger.info("Scheduled {} initial tasks from a list of {} active tasks found.", scheduledTasks.size(),
-                activeTasks.size());
+        logger.info("Scheduled {} initial tasks from a list of {} active tasks found for group '{}'.", scheduledTasks.size(),
+                activeTasks.size(), schedulerGroupName);
     }
 
     /**
@@ -126,8 +130,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
      *         {@code false} otherwise (e.g., inactive, invalid cron).
      */
     public boolean scheduleTask(TaskConfig taskConfig) {
-        if (taskConfig == null || !taskConfig.isActive()) {
-            logger.warn("Task config is null or inactive, cannot schedule: Task ID {}",
+        if (taskConfig == null || !taskConfig.isActive() || !StringUtils.hasText(taskConfig.getCronExpression())) {
+            logger.warn("Task config is null, inactive, or has no CRON expression, cannot schedule: Task ID {}",
                     taskConfig != null ? taskConfig.getTaskId() : "null");
             return false;
         }

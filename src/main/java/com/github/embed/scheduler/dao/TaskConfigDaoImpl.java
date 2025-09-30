@@ -62,7 +62,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     private static final String SELECT_BY_ID_SQL = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE task_id=?";
     // SELECT_ALL_SQL will be replaced by findByFilters logic
     private static final String SELECT_ALL_ACTIVE_SQL = "SELECT " + FULL_COLUMN_LIST
-            + " FROM task_config WHERE is_active=TRUE";
+            + " FROM task_config WHERE is_active=TRUE AND task_group=?";
     private static final String SELECT_BY_GROUP_AND_NAME_SQL = "SELECT " + FULL_COLUMN_LIST
             + " FROM task_config WHERE task_group=? AND task_name=?";
     private static final String DELETE_BY_ID_SQL = "DELETE FROM task_config WHERE task_id=?";
@@ -198,8 +198,8 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     }
 
     @Override
-    public List<TaskConfig> findAllActiveTasks() {
-        return jdbcTemplate.query(SELECT_ALL_ACTIVE_SQL, rowMapper);
+    public List<TaskConfig> findAllActiveTasks(String taskGroup) {
+        return jdbcTemplate.query(SELECT_ALL_ACTIVE_SQL, new Object[]{taskGroup}, rowMapper);
     }
 
     @Override

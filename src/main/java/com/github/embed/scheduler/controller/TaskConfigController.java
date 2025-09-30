@@ -8,27 +8,28 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors; // Fastjson import
 
-import com.github.embed.scheduler.annotation.JwtAuth;
-import org.slf4j.Logger; // Fastjson TypeReference
-import org.slf4j.LoggerFactory; // Added for beanParameters validation
-import org.springframework.beans.BeanUtils; // Added
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory; // Fastjson TypeReference
+import org.springframework.beans.BeanUtils; // Added for beanParameters validation
 import org.springframework.beans.factory.annotation.Autowired; // Added
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus; // Added
 import org.springframework.http.ResponseEntity; // Added
-import org.springframework.scheduling.support.CronExpression; // Added for new endpoint
-import org.springframework.util.StringUtils; // Added
-import org.springframework.web.bind.annotation.DeleteMapping; // Added for new endpoint
+import org.springframework.scheduling.support.CronExpression; // Added
+import org.springframework.util.StringUtils; // Added for new endpoint
+import org.springframework.web.bind.annotation.DeleteMapping; // Added
 import org.springframework.web.bind.annotation.GetMapping; // Added for new endpoint
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PathVariable; // Added for new endpoint
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping; // Added for CRON validation
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController; // Added for DAG cycle detection
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam; // Added for CRON validation
+import org.springframework.web.bind.annotation.RestController;
 
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSON; // Added for DAG cycle detection
 import com.alibaba.fastjson.TypeReference;
+import com.github.embed.scheduler.annotation.JwtAuth;
 import com.github.embed.scheduler.dao.TaskCalendarDao;
 import com.github.embed.scheduler.dao.TaskConfigDao;
 import com.github.embed.scheduler.dto.TaskConfigDto;
@@ -45,6 +46,9 @@ import com.github.embed.scheduler.util.DagCycleDetector;
 public class TaskConfigController {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskConfigController.class); // Added logger
+
+    @Value("${scheduler.group.name}")
+    private String schedulerGroupName;
 
     @Autowired
     private TaskConfigDao taskConfigDao;
@@ -120,14 +124,23 @@ public class TaskConfigController {
     // --- API Endpoints ---
     @PostMapping
     public ResponseEntity<?> createTask(@RequestBody TaskConfigDto taskConfigDto) {
-        if (taskConfigDto == null || !StringUtils.hasText(taskConfigDto.getTaskName())
-                || !StringUtils.hasText(taskConfigDto.getCronExpression())) {
+        if (taskConfigDto == null || !StringUtils.hasText(taskConfigDto.getTaskName())) {
             return ResponseEntity.badRequest().body("Task name and CRON expression must not be empty.");
         }
 
-        // CRON Validation
-        if (!CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
-            return ResponseEntity.badRequest().body("Invalid CRON expression format.");
+        // For non-workflow tasks, if cron is provided, it must be valid. If not provided, it's allowed.
+        // For workflow tasks (type 10), cron is mandatory.
+        if (taskConfigDto.getTaskType() != 10) {
+            if (StringUtils.hasText(taskConfigDto.getCronExpression()) && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+                return ResponseEntity.badRequest().body("Invalid CRON expression format.");
+            }
+        } else { // Workflow task
+            if (!StringUtils.hasText(taskConfigDto.getCronExpression())) {
+                return ResponseEntity.badRequest().body("CRON expression is required for workflow tasks.");
+            }
+            if (!CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+                return ResponseEntity.badRequest().body("Invalid CRON expression format for workflow.");
+            }
         }
 
         // beanParameters JSON Validation
@@ -159,10 +172,12 @@ public class TaskConfigController {
             }
         }
 
+        taskConfigDto.setTaskGroup(schedulerGroupName); // Force set task group
+
         TaskConfig taskConfig = convertToEntity(taskConfigDto);
         taskConfig.setTaskId(null); // Ensure it's a new task
         TaskConfig savedTask = taskConfigDao.save(taskConfig);
-        if (savedTask.isActive()) {
+        if (savedTask.isActive() && StringUtils.hasText(savedTask.getCronExpression())) {
             coreSchedulerService.scheduleTask(savedTask);
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToDto(savedTask));
@@ -171,7 +186,6 @@ public class TaskConfigController {
     @GetMapping
     public ResponseEntity<List<TaskConfigDto>> getTasksByFilters(
             @RequestParam(required = false) String taskName,
-            @RequestParam(required = false) String taskGroup,
             @RequestParam(required = false) Integer taskType,
             @RequestParam(required = false) Boolean isActive) {
 
@@ -179,9 +193,9 @@ public class TaskConfigController {
         if (StringUtils.hasText(taskName)) {
             filters.put("taskName", taskName.trim());
         }
-        if (StringUtils.hasText(taskGroup)) {
-            filters.put("taskGroup", taskGroup.trim());
-        }
+        
+        filters.put("taskGroup", schedulerGroupName.trim()); // Always filter by configured group name
+
         if (taskType != null) {
             filters.put("taskType", taskType);
         }
@@ -209,10 +223,19 @@ public class TaskConfigController {
             return ResponseEntity.badRequest().body("Request body cannot be null.");
         }
 
-        // CRON Validation (if cron expression is part of the update)
-        if (StringUtils.hasText(taskConfigDto.getCronExpression())
-                && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
-            return ResponseEntity.badRequest().body("Invalid CRON expression format.");
+        // For non-workflow tasks, if cron is provided, it must be valid.
+        // For workflow tasks (type 10), cron is mandatory.
+        if (taskConfigDto.getTaskType() != 10) {
+            if (StringUtils.hasText(taskConfigDto.getCronExpression()) && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+                return ResponseEntity.badRequest().body("Invalid CRON expression format.");
+            }
+        } else { // Workflow task
+            if (!StringUtils.hasText(taskConfigDto.getCronExpression())) {
+                return ResponseEntity.badRequest().body("CRON expression is required for workflow tasks.");
+            }
+            if (!CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+                return ResponseEntity.badRequest().body("Invalid CRON expression format for workflow.");
+            }
         }
 
         // beanParameters JSON Validation
@@ -283,6 +306,8 @@ public class TaskConfigController {
             // If workflowNodes or workflowEdges are cleared (e.g. to empty lists or null),
             // that's a valid state (no cycle).
         }
+
+        taskConfigDto.setTaskGroup(schedulerGroupName); // Force set task group
 
         Optional<TaskConfig> existingTaskOptional = taskConfigDao.findById(id);
         if (!existingTaskOptional.isPresent()) {

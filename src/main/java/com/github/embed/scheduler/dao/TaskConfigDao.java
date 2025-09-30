@@ -1,9 +1,10 @@
 package com.github.embed.scheduler.dao;
 
-import com.github.embed.scheduler.entity.TaskConfig;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import com.github.embed.scheduler.entity.TaskConfig;
 
 /**
  * Data Access Object interface for {@link TaskConfig} entities.
@@ -34,10 +35,11 @@ public interface TaskConfigDao {
     List<TaskConfig> findByFilters(Map<String, Object> filters);
 
     /**
-     * Retrieves all active task configurations (where {@code isActive} is true).
+     * Retrieves all active task configurations (where {@code isActive} is true) for a specific group.
+     * @param taskGroup The group of the tasks to retrieve.
      * @return A list of active task configurations.
      */
-    List<TaskConfig> findAllActiveTasks();
+    List<TaskConfig> findAllActiveTasks(String taskGroup);
 
     /**
      * Finds a task configuration by its group and name.

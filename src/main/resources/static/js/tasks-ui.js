@@ -13,7 +13,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
      */
     window.populateTaskTypeFilter = function() {
         const taskTypes = [
-            { id: '', name: i18n.translate('tasksPage.filter.allTypes', '所有类型') },
+            { id: '', name: i18n.translate('tasksPage.filters.allTypes', '所有类型') },
             { id: '0', name: i18n.translate('tasksPage.taskType.bean', 'Bean任务') },
             { id: '2', name: i18n.translate('tasksPage.taskType.http', 'HTTP任务') },
             { id: '4', name: i18n.translate('tasksPage.taskType.shell', 'Shell任务') },
@@ -465,7 +465,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     logout();
                 });
                 if (typeof i18n !== 'undefined') {
-                    i18n.applyTranslations(); // For the navbar
+                    i18n.applyTranslations(this); // For the navbar
                 }
             });
         }
@@ -481,7 +481,6 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             
             const taskData = {
                 taskName: $('#taskName').val(),
-                taskGroup: $('#taskGroup').val(),
                 cronExpression: $('#cronExpression').val(),
                 description: $('#description').val(),
                 executionMode: $('#executionMode').val(),
@@ -658,6 +657,43 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             );
         });
 
+        // 保存任务
+        $('#saveTaskBtn').click(function() {
+            const taskId = $('#taskId').val();
+            const taskType = parseInt($('#taskType').val(), 10);
+            const cronExpression = $('#cronExpression').val();
+
+            // For non-workflow tasks, cron is optional. For workflows (type 10), it's required.
+            if (taskType === 10 && !cronExpression) {
+                showFeedback('CRON expression is required for workflow tasks.', true);
+                return;
+            }
+            
+            // If cron is provided for any task type, it must be valid.
+            if (cronExpression && !isValidCron(cronExpression)) {
+                showFeedback('Invalid CRON expression format.', true);
+                return;
+            }
+
+            // 收集表单数据
+            const taskData = collectTaskData();
+            if (!taskData) return; // 如果数据收集失败，则中止
+
+            const method = taskId ? 'PUT' : 'POST';
+            const url = taskId ? `/tasks/${taskId}` : '/tasks';
+
+            makeApiCall(method, url, taskData, 
+                function(response) {
+                    $('#taskFormModal').modal('hide');
+                    showFeedback('Task saved successfully!', false);
+                    loadTasks();
+                }, 
+                function(jqXHR, textStatus, errorThrown) {
+                    handleApiError(jqXHR, textStatus, errorThrown, 'saving task');
+                }
+            );
+        });
+
         // 任务类型变更处理
         $('#taskType').change(function () {
             const type = $(this).val();
@@ -704,7 +740,6 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             makeApiCall('GET', `/tasks/${taskId}`, null,
                 function (task) {
                     $('#taskName').val(task.taskName);
-                    $('#taskGroup').val(task.taskGroup);
                     $('#taskType').val(task.taskType.toString()).trigger('change');
                     $('#cronExpression').val(task.cronExpression);
                     $('#description').val(task.description);
@@ -827,7 +862,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         // 删除按钮点击事件，显示确认模态框
         $('#tasks-table-body').on('click', '.delete-btn', function () {
             var $row = $(this).closest('tr');
-            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskName = $row.find('td').eq(1).text().trim(); // 任务名称在第2列（索引为1）
             var taskId = $(this).data('id');
        
 
@@ -896,7 +931,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         // 触发按钮点击事件，显示确认模态框
         $('#tasks-table-body').on('click', '.trigger-btn', function () {
             var $row = $(this).closest('tr');
-            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskName = $row.find('td').eq(1).text().trim(); // 任务名称在第2列（索引为1）
             var taskId = $(this).data('id');
             $('#manualTriggerTaskId').val(taskId);
             $('#manualTriggerTaskNameInput').val('');
@@ -963,9 +998,8 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         // 启用按钮点击事件
         $('#tasks-table-body').on('click', '.enable-btn', function () {
             var $row = $(this).closest('tr');
-            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskName = $row.find('td').eq(1).text().trim(); // 任务名称在第2列（索引为1）
             var taskId = $(this).data('id');
-            
             $('#enableTaskId').val(taskId);
             $('#enableTaskNameInput').val('');
             $('#confirmEnableBtn').prop('disabled', true);
@@ -1029,9 +1063,8 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         // 禁用按钮点击事件
         $('#tasks-table-body').on('click', '.disable-btn', function () {
             var $row = $(this).closest('tr');
-            var taskName = $row.find('td').eq(2).text().trim(); // 任务名称在第3列（索引为2）
+            var taskName = $row.find('td').eq(1).text().trim(); // 任务名称在第2列（索引为1）
             var taskId = $(this).data('id');
-            
             $('#disableTaskId').val(taskId);
             $('#disableTaskNameInput').val('');
             $('#confirmDisableBtn').prop('disabled', true);
@@ -1243,7 +1276,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                         // 其他错误情况
                         modalBody.html(`
                             <div class="alert alert-warning">
-                                <i class="bi bi-exclamation-triangle"></i> ${i18n.translate('tasksPage.modal.noExecutionTimes', 'No execution times could be calculated')}
+                                <i class="bi bi-exclamation-triangle"></i> ${i18n.translate('tasksPage.modal.noExecutionTimes', 'No noExecutionTimes')}
                             </div>
                         `);
                     }
@@ -1582,6 +1615,9 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 let nodesArray = [];
                 try {
                     nodesArray = JSON.parse(currentNodesJson || '[]');
+                    if (!Array.isArray(nodesArray)) {
+                        // 处理非数组情况
+                    }
                 } catch (e) {
                     showFeedback(i18n.translate('tasksPage.feedback.errorParsingNodes', '解析工作流节点时出错: ') + e.message, true);
                     return;
@@ -1703,6 +1739,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 {
                     text: i18n.translate('tasksPage.dagContextMenu.refreshView', '刷新视图'),
                     icon: 'bi-arrow-repeat',
+                   
                     action: function() {
                         safeRedrawDAG();
                     }
@@ -2117,6 +2154,10 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     // 结束节点放在现有节点下方
                     posX = (containerWidth / 2) - 75;
                     posY = Math.max(...nodesArray.map(n => (n.position?.y || 0) + 100));
+                } else if (nodeType === 'decision' || nodeType === 'parallel') {
+                    // 决策和并行节点倾向于放在中间
+                    posX = (containerWidth / 2) - 75 + Math.floor(Math.random() * 50);
+                    posY = Math.max(...nodesArray.map(n => (n.position?.y || 0) + 100)) + 40;
                 } else {
                     // 对于其他节点，根据类型添加到适当位置
                     const existingPositions = nodesArray.map(n => n.position || {x: 0, y: 0});
@@ -2129,10 +2170,10 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     const randomOffsetX = Math.floor(Math.random() * 50);
                     const randomOffsetY = Math.floor(Math.random() * 50);
                     
-                    if (nodeType === 'decision' || nodeType === 'parallel') {
-                        // 决策和并行节点倾向于放在中间
-                        posX = (containerWidth / 2) - 75 + randomOffsetX;
-                        posY = maxY + 40 + randomOffsetY;
+                    if (nodeType === 'process') {
+                        // 处理节点放在右侧
+                        posX = maxX + 50 + randomOffsetX;
+                        posY = 100 + randomOffsetY;
                     } else {
                         // 其他节点放在右侧
                         posX = maxX + 50 + randomOffsetX;

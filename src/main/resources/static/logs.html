@@ -42,9 +42,9 @@
                 <th data-i18n-key="logsPage.logTable.logId">Log ID</th>
                 <th data-i18n-key="logsPage.logTable.taskId">Task ID</th>
                 <th data-i18n-key="logsPage.logTable.taskName">Task Name</th>
-                <th data-i18n-key="logsPage.table.executionMode">执行模式</th>
-                <th data-i18n-key="logsPage.logTable.status">State</th>
-                <th data-i18n-key="logsPage.logTable.instanceId">Executed By</th>
+                <th data-i18n-key="logsPage.logTable.executionMode">Execution Mode</th>
+                <th data-i18n-key="logsPage.logTable.status">Status</th>
+                <th data-i18n-key="logsPage.logTable.instanceId">Instance ID</th>
                 <th data-i18n-key="logsPage.logTable.startTime">Start Time</th>
                 <th data-i18n-key="logsPage.logTable.endTime">End Time</th>
                 <th data-i18n-key="logsPage.logTable.duration">Duration</th>
@@ -91,16 +91,16 @@
       <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="logDetailModalLabel" data-i18n-key="logsPage.logDetailModal.title">Log Entry Details</h5>
+            <h5 class="modal-title" id="logDetailModalLabel" data-i18n-key="logsPage.logDetails.title">Log Entry Details</h5>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
           <div class="modal-body">
-            <p><strong>Log ID:</strong> <span id="modalLogId"></span></p>
-            <p><strong>Task ID:</strong> <span id="modalTaskId"></span></p>
-            <p><strong>Task Name:</strong> <span id="modalTaskName"></span></p>
-            <p><strong>Status:</strong> <span id="modalLogStatus"></span></p>
+            <p><strong data-i18n-key="logsPage.logDetails.logId">Log ID:</strong> <span id="modalLogId"></span></p>
+            <p><strong data-i18n-key="logsPage.logDetails.taskId">Task ID:</strong> <span id="modalTaskId"></span></p>
+            <p><strong data-i18n-key="logsPage.logDetails.taskName">Task Name:</strong> <span id="modalTaskName"></span></p>
+            <p><strong data-i18n-key="logsPage.logDetails.status">Status:</strong> <span id="modalLogStatus"></span></p>
             <div class="form-group">
                 <label for="modalLogMessage" data-i18n-key="logsPage.logDetailModal.messageLabel">Message:</label>
                 <textarea readonly class="form-control" id="modalLogMessage" rows="5"></textarea>
@@ -146,8 +146,8 @@
                <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeId">Node ID:</strong> <span id="visNodeId"></span></p>
                <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeStatusLabel">Status:</strong> <span id="visNodeStatus"></span></p>
                <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastLogId">Last Log ID:</strong> <span id="visNodeLastLogId"></span></p>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastStartTime">Last Start:</strong> <span id="visNodeLastStartTime"></span></p>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastEndTime">Last End:</strong> <span id="visNodeLastEndTime"></span></p>
+               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastStartTime">Last Start Time:</strong> <span id="visNodeLastStartTime"></span></p>
+               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastEndTime">Last End Time:</strong> <span id="visNodeLastEndTime"></span></p>
                <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastMessage">Last Message:</strong></p>
                <pre id="visNodeLastMessage" style="white-space: pre-wrap; word-break: break-all; background-color: #fff; padding: 5px; border-radius: 3px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto;"></pre>
             </div>

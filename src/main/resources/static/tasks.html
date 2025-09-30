@@ -45,13 +45,6 @@
                         <input type="text" id="filterTaskName" class="form-control" data-i18n-key-placeholder="tasksPage.filters.taskNamePlaceholder" placeholder="Enter task name...">
                     </div>
                     <div class="form-group col-md-3">
-                        <label for="filterTaskGroup" data-i18n-key="tasksPage.filters.taskGroupLabel">Task Group</label>
-                        <select id="filterTaskGroup" class="form-control">
-                            <option value="" data-i18n-key="tasksPage.filters.allGroupsOption">All Groups</option>
-                            <!-- Options will be populated by JS -->
-                        </select>
-                    </div>
-                    <div class="form-group col-md-3">
                         <label for="filterTaskType" data-i18n-key="tasksPage.filters.taskTypeLabel">Task Type</label>
                         <select id="filterTaskType" class="form-control">
                             <option value="" data-i18n-key="tasksPage.filters.allTypesOption">All Types</option>
@@ -76,7 +69,6 @@
             <thead class="thead-dark">
                 <tr>
                     <th data-i18n-key="tasksPage.table.id">ID</th>
-                    <th data-i18n-key="tasksPage.table.group">Group</th>
                     <th data-i18n-key="tasksPage.table.name">Name</th>
                     <th data-i18n-key="tasksPage.table.cron">CRON</th>
                     <th data-i18n-key="tasksPage.table.type">Type</th>
@@ -106,19 +98,15 @@
               <input type="hidden" id="taskId" name="taskId" value="">
               <div class="form-row">
                 <div class="form-group col-md-6">
-                  <label for="taskName" data-i18n-key="tasksPage.modal.taskName">Task Name</label>
-                  <input type="text" class="form-control" id="taskName" name="taskName" required>
+                  <label for="taskName" data-i18n-key="tasksPage.modal.taskNameLabel">Task Name</label>
+                  <input type="text" class="form-control" id="taskName" name="taskName" required data-i18n-key-placeholder="tasksPage.modal.taskNamePlaceholder">
                 </div>
                 <div class="form-group col-md-6">
-                  <label for="taskGroup" data-i18n-key="tasksPage.modal.taskGroup">Task Group</label>
-                  <input type="text" class="form-control" id="taskGroup" name="taskGroup">
+                  <label for="cronExpression" data-i18n-key="tasksPage.modal.cronExpressionLabel">CRON Expression</label>
+                  <input type="text" class="form-control" id="cronExpression" name="cronExpression" data-i18n-key-placeholder="tasksPage.modal.cronExpressionPlaceholder">
                 </div>
               </div>
               <div class="form-row">
-                <div class="form-group col-md-6">
-                  <label for="cronExpression" data-i18n-key="tasksPage.modal.cronExpression">CRON Expression</label>
-                  <input type="text" class="form-control" id="cronExpression" name="cronExpression" required>
-                </div>
                 <div class="form-group col-md-6">
                   <label for="executionMode" data-i18n-key="tasksPage.modal.executionModeLabel">Execution Mode</label>
                   <select class="form-control" id="executionMode" name="executionMode">
@@ -128,11 +116,11 @@
                 </div>
               </div>
               <div class="form-group">
-                <label for="description" data-i18n-key="tasksPage.modal.description">Description</label>
-                <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                <label for="description" data-i18n-key="tasksPage.modal.descriptionLabel">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="2" data-i18n-key-placeholder="tasksPage.modal.descriptionPlaceholder"></textarea>
               </div>
               <div class="form-group">
-                <label for="taskType" data-i18n-key="tasksPage.modal.taskType">Task Type</label>
+                <label for="taskType" data-i18n-key="tasksPage.modal.taskTypeLabel">Task Type</label>
                 <select class="form-control" id="taskType" name="taskType" required>
                   <option value="0" data-i18n-key="tasksPage.modal.taskTypes.bean">Bean Task</option>
                   <option value="2" data-i18n-key="tasksPage.modal.taskTypes.http">HTTP Task</option>
@@ -180,20 +168,20 @@
                 </div>
                 <div class="form-row">
                   <div class="form-group col-md-4">
-                    <label for="httpConnectTimeout" data-i18n-key="tasksPage.modal.httpConnectTimeout">Connect Timeout (ms)</label>
+                    <label for="httpConnectTimeout" data-i18n-key="tasksPage.modal.httpConnectTimeoutLabel">Connect Timeout (ms)</label>
                     <input type="number" class="form-control" id="httpConnectTimeout" name="httpConnectTimeout" value="5000">
                   </div>
                   <div class="form-group col-md-4">
-                    <label for="httpReadTimeout" data-i18n-key="tasksPage.modal.httpReadTimeout">Read Timeout (ms)</label>
+                    <label for="httpReadTimeout" data-i18n-key="tasksPage.modal.httpReadTimeoutLabel">Read Timeout (ms)</label>
                     <input type="number" class="form-control" id="httpReadTimeout" name="httpReadTimeout" value="30000">
                   </div>
                   <div class="form-group col-md-4">
-                    <label for="httpRetryCount" data-i18n-key="tasksPage.modal.httpRetryCount">Retry Count</label>
+                    <label for="httpRetryCount" data-i18n-key="tasksPage.modal.httpRetryCountLabel">Retry Count</label>
                     <input type="number" class="form-control" id="httpRetryCount" name="httpRetryCount" value="0">
                   </div>
                 </div>
                 <div class="form-group">
-                  <label for="httpSuccessCode" data-i18n-key="tasksPage.modal.httpSuccessCode">Success Code</label>
+                  <label for="httpSuccessCode" data-i18n-key="tasksPage.modal.httpSuccessCodeLabel">Success Code</label>
                   <input type="text" class="form-control" id="httpSuccessCode" name="httpSuccessCode" value="200">
                 </div>
               </div>

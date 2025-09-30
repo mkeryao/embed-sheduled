@@ -59,7 +59,8 @@ const i18n = {
         return typeof result === 'string' ? result : (fallback || key);
     },
 
-    applyTranslations() {
+    applyTranslations(container) {
+        const rootElement = container || document;
         if (!this.translations[this.currentLang] || Object.keys(this.translations[this.currentLang]).length === 0) {
             console.error(`Translations for '${this.currentLang}' are not loaded or empty. UI elements will show keys or fallback text.`);
             // Do not attempt to reload here; init should handle initial load failures.
@@ -67,7 +68,7 @@ const i18n = {
         }
         console.log(`Applying translations for ${this.currentLang}. Translation data available:`, !!(this.translations[this.currentLang] && Object.keys(this.translations[this.currentLang]).length > 0));
 
-        document.querySelectorAll('[data-i18n-key], [data-i18n-key-placeholder], [data-i18n-key-title]').forEach(element => {
+        rootElement.querySelectorAll('[data-i18n-key], [data-i18n-key-placeholder], [data-i18n-key-title]').forEach(element => {
             const mainKey = element.getAttribute('data-i18n-key');
             const placeholderKey = element.getAttribute('data-i18n-key-placeholder');
             const titleKey = element.getAttribute('data-i18n-key-title');
@@ -103,7 +104,7 @@ const i18n = {
 
     async init(initialLang = null) {
         const preferredLang = initialLang || localStorage.getItem('preferredLang') || navigator.language.split('-')[0] || this.defaultLang;
-        let langToLoad = (preferredLang === 'zh') ? 'zh' : this.defaultLang; // Default to 'en' if not 'zh'
+        let langToLoad = (preferredLang === 'zh') ? 'zh' : 'en'; // Default to 'en' if not 'zh'
 
         // currentLang will be updated by loadTranslations upon successful load of a file
         // or will remain the initial this.currentLang (e.g. 'en') if all loads fail.
