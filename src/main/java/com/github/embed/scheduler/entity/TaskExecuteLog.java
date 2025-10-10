@@ -1,10 +1,10 @@
 package com.github.embed.scheduler.entity;
 
+import java.sql.Timestamp;
+
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-
-import java.sql.Timestamp;
 
 /**
  * Entity representing a log entry for a specific execution of a task.
@@ -62,4 +62,24 @@ public class TaskExecuteLog {
      * Null for other types of tasks or if not applicable.
      */
     private String workflowNodeId;
+
+    /** ID of the parent workflow configuration. */
+    private Integer workflowId;
+
+    /** ID of the specific workflow instance this log belongs to. */
+    private Integer workflowInstanceId;
+    
+    /** The attempt number for this execution (e.g., 1 for the first try, 2 for the first retry, etc.). */
+    private int attempt;
+
+    /** The parameters used for this specific execution, captured at runtime. */
+    private String parameters;
+
+    public Long getId() {
+        return logId;
+    }
+
+    public String getStatus() {
+        return state;
+    }
 }

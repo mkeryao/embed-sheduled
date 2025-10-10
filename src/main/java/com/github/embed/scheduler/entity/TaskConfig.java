@@ -96,6 +96,21 @@ public class TaskConfig {
 
     // --- Advanced Scheduling Features ---
     /**
+     * Maximum number of retries for the task if it fails.
+     */
+    private int maxRetries = 3;
+
+    /**
+     * Retry policy, e.g., "fixed:30000" (fixed 30s) or "exponential:10000" (exponential backoff starting at 10s).
+     */
+    private String retryPolicy = "fixed:30000";
+
+    /**
+     * If this task is a node in a workflow, this is its unique ID within that workflow.
+     */
+    private String workflowNodeId;
+
+    /**
      * Name of a {@link TaskCalendar#calendarName} to check for non-working
      * days. If the current day is a non-working day in this calendar, the task
      * will be skipped.

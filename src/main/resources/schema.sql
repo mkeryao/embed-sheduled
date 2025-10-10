@@ -33,16 +33,21 @@ CREATE TABLE IF NOT EXISTS task_config (
 CREATE TABLE IF NOT EXISTS task_execute_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id INT NOT NULL,
-    task_name VARCHAR(255),
-    task_group VARCHAR(255),
-    execute_time TIMESTAMP NOT NULL,
-    complete_time TIMESTAMP,
-    status VARCHAR(50),
-    result TEXT,
-    error_message TEXT,
-    retry_count INT DEFAULT 0,
+    workflow_id INT,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP,
+    state VARCHAR(50),
+    rtn_msg VARCHAR(2000),
+    ex_msg TEXT,
+    instance_id VARCHAR(255),
+    parent_execute_no INT,
+    task_pattern VARCHAR(50),
+    workflow_node_id VARCHAR(255),
+    parameters VARCHAR(4000) NULL,
     INDEX idx_task_id (task_id),
-    INDEX idx_execute_time (execute_time)
+    INDEX idx_start_time (start_time),
+    INDEX idx_instance_id (instance_id),
+    INDEX idx_parent_execute_no (parent_execute_no)
 );
 
 -- Task lock table for distributed execution
@@ -82,3 +87,24 @@ CREATE TABLE IF NOT EXISTS task_user (
 INSERT INTO task_user (username, password, email, is_active) 
 VALUES ('admin', '$2a$10$X/uMNuiis.fyO47cxbta.OC8YOfPCBPT4rYLKJveq7rIqMacDqGOe', 'admin@example.com', TRUE)
 ON DUPLICATE KEY UPDATE username=username;
+
+-- Workflow instance table
+CREATE TABLE IF NOT EXISTS task_workflow_instance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    workflow_id INT NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    rtn_msg TEXT,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+
+-- Add retry_interval_multiplier column to task_config table
+ALTER TABLE task_config 
+ADD COLUMN retry_interval_multiplier FLOAT DEFAULT 1.0 
+COMMENT 'Multiplier for retry interval (for exponential backoff)';
+
+-- Update existing records to have default value
+UPDATE task_config 
+SET retry_interval_multiplier = 1.0 
+WHERE retry_interval_multiplier IS NULL;

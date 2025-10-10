@@ -46,7 +46,7 @@ public class BeanTaskExecutor {
         }
     }
 
-    public void execute(TaskConfig taskConfig) throws Exception {
+    public String execute(TaskConfig taskConfig) throws Exception {
         final String beanName = taskConfig.getBeanName();
         final String methodName = taskConfig.getMethodName();
         final String beanParametersJson = taskConfig.getBeanParameters();
@@ -86,47 +86,32 @@ public class BeanTaskExecutor {
 
         final Object[] finalArgs = convertParameters(methodToExecute, parametersMap);
 
-        Runnable taskLogic = () -> {
-            try {
-                logger.info("Executing method '{}' on bean '{}' for task '{}' (Task ID: {}) with parameters: {}",
-                        methodName, beanName, taskConfig.getTaskName(), taskConfig.getTaskId(),
-                        parametersMap != null && !parametersMap.isEmpty() ? beanParametersJson : "none");
-                methodToExecute.invoke(beanInstance, finalArgs);
-                logger.info("Successfully executed method '{}' on bean '{}' for task '{}' (Task ID: {})",
-                        methodName, beanName, taskConfig.getTaskName(), taskConfig.getTaskId());
-            } catch (Exception e) {
-                logger.error("Error during method execution for task ID {}: {}", taskConfig.getTaskId(), e.getMessage(), e);
-                // Ensure the original cause is propagated if it's a RuntimeException from the method itself
-                if (e instanceof java.lang.reflect.InvocationTargetException && e.getCause() instanceof RuntimeException) {
-                    throw (RuntimeException) e.getCause();
-                }
-                throw new RuntimeException("Execution failed for task " + taskConfig.getTaskName() + ": " + e.getMessage(), e);
-            }
-        };
+        Future<Object> future = taskExecutorService.submit(() -> {
+            logger.info("Executing method '{}' on bean '{}' for task '{}' (Task ID: {}) with parameters: {}",
+                    methodName, beanName, taskConfig.getTaskName(), taskConfig.getTaskId(),
+                    parametersMap != null && !parametersMap.isEmpty() ? beanParametersJson : "none");
+            Object result = methodToExecute.invoke(beanInstance, finalArgs);
+            logger.info("Successfully executed method '{}' on bean '{}' for task '{}' (Task ID: {})",
+                    methodName, beanName, taskConfig.getTaskName(), taskConfig.getTaskId());
+            return result;
+        });
 
-        if (timeoutSeconds != null && timeoutSeconds > 0) {
-            Future<?> future = taskExecutorService.submit(taskLogic);
-            try {
-                future.get(timeoutSeconds, TimeUnit.SECONDS);
-            } catch (TimeoutException e) {
-                future.cancel(true);
-                logger.warn("Task {} (ID: {}) timed out after {} seconds.", taskConfig.getTaskName(), taskConfig.getTaskId(), timeoutSeconds);
-                throw new TaskTimeoutException("Task " + taskConfig.getTaskName() + " timed out after " + timeoutSeconds + " seconds.");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.warn("Task {} (ID: {}) execution was interrupted.", taskConfig.getTaskName(), taskConfig.getTaskId(), e);
-                throw e;
-            } catch (Exception e) {
-                logger.error("Task {} (ID: {}) failed with exception during future.get(): {}", taskConfig.getTaskName(), taskConfig.getTaskId(), e.getMessage(), e);
-                throw e;
-            }
-        } else {
-            taskLogic.run();
+        try {
+            Object result = (timeoutSeconds != null && timeoutSeconds > 0)
+                    ? future.get(timeoutSeconds, TimeUnit.SECONDS)
+                    : future.get();
+            return result != null ? result.toString() : null;
+        } catch (TimeoutException e) {
+            future.cancel(true); // Interrupt the task
+            throw new TaskTimeoutException("Task " + taskConfig.getTaskName() + " timed out after " + timeoutSeconds + " seconds.");
+        } catch (Exception e) {
+            // This will catch exceptions from the method invocation itself
+            throw new Exception("Error executing task method: " + e.getMessage(), e.getCause() != null ? e.getCause() : e);
         }
     }
 
     /**
-     * Finds a suitable method on the bean's class that matches the given method name and
+     * Finds a method in the given class that matches the provided method name and
      * is compatible with the provided parameters.
      *
      * Strategy:

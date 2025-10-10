@@ -143,7 +143,7 @@
 	</Appenders>
 
 	<Loggers>
-		<Root level="debug">
+		<Root level="info">
 			<AppenderRef ref="file-info" />
 			<AppenderRef ref="file-error" />
 			<AppenderRef ref="file-debug" />
@@ -153,9 +153,10 @@
 			<AppenderRef ref="file-info" />
 			<AppenderRef ref="console" />
 		</AsyncLogger>
-		<AsyncLogger name="com.github.embed" level="debug" additivity="false">
+<!-- 		<AsyncLogger name="com.github.embed" level="debug" additivity="false">
 			<AppenderRef ref="file-job" />
-         </AsyncLogger>
+			<AppenderRef ref="console" />
+         </AsyncLogger> -->
 
 	</Loggers>
 

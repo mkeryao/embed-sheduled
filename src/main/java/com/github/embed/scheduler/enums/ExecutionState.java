@@ -7,7 +7,9 @@ public enum ExecutionState {
     RUNNING,
     TIMED_OUT,
     SKIPPED,
-    CANCELLED;
+    CANCELLED,
+    PENDING,
+    COMPLETED;
 
     public String getState() {
         return this.name();

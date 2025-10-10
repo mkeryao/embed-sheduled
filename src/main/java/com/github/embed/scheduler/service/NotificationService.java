@@ -152,4 +152,28 @@ public class NotificationService {
                 }
             });
     }
+
+    /**
+     * A convenience method to specifically send failure notifications.
+     * It internally calls {@link #sendNotification(TaskConfig, TaskExecuteLog)}.
+     *
+     * @param taskConfig The configuration of the task that failed.
+     * @param logEntry The execution log entry for the failed task.
+     */
+    public void sendFailureNotification(TaskConfig taskConfig, TaskExecuteLog logEntry) {
+        logger.debug("Dispatching failure notification for task: {}", taskConfig.getTaskName());
+        sendNotification(taskConfig, logEntry);
+    }
+
+    /**
+     * A convenience method to specifically send success notifications.
+     * It internally calls {@link #sendNotification(TaskConfig, TaskExecuteLog)}.
+     *
+     * @param taskConfig The configuration of the task that succeeded.
+     * @param logEntry The execution log entry for the successful task.
+     */
+    public void sendSuccessNotification(TaskConfig taskConfig, TaskExecuteLog logEntry) {
+        logger.debug("Dispatching success notification for task: {}", taskConfig.getTaskName());
+        sendNotification(taskConfig, logEntry);
+    }
 }

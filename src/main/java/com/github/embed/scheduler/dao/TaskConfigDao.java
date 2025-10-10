@@ -69,5 +69,25 @@ public interface TaskConfigDao {
      * @param isActive The new active status (true for active, false for inactive).
      */
     void updateTaskStatus(Integer taskId, boolean isActive);
+
+    /**
+     * Finds all task configurations belonging to a specific workflow.
+     * @param workflowId The ID of the workflow.
+     * @return A list of task configurations.
+     */
+    List<TaskConfig> findByWorkflowId(int workflowId);
+
+    /**
+     * Finds all upstream (parent) tasks for a given task.
+     * @param taskId The ID of the task.
+     * @return A list of upstream task configurations.
+     */
+    List<TaskConfig> findUpstreamTasks(int taskId);
+
+    /**
+     * Finds all downstream (child) tasks for a given task.
+     * @param taskId The ID of the task.
+     * @return A list of downstream task configurations.
+     */
+    List<TaskConfig> findDownstreamTasks(int taskId);
 }
-// Added import for Map

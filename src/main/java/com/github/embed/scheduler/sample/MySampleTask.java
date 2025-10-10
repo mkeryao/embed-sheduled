@@ -13,16 +13,19 @@ public class MySampleTask {
 
     private static final Logger logger = LoggerFactory.getLogger(MySampleTask.class);
 
-    public void executeSuccess(String message, int value) {
-        logger.info("MySampleTask.executeSuccess called with message: '{}' and value: {}", message, value);
+    public Map<String,Object> executeSuccess(Map<String,Object> params) {
+        logger.info("MySampleTask.executeSuccess  with Params : {} ", params );
         // Simulate some work
         try {
-            Thread.sleep(1000);
+            long sleep = (long) params.getOrDefault("sleep" , 1000L) ;
+            Thread.sleep(sleep);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.warn("Task interrupted during sleep");
         }
         logger.info("MySampleTask.executeSuccess completed.");
+        params.put("status", "success");
+        return  params ;
     }
 
     public void executeFailed(String error) {
@@ -51,9 +54,12 @@ public class MySampleTask {
         return params;
     }
 
-    public void simpleExecute() {
+    public Map<String,Object> simpleExecute(Map<String,Object> params) {
         logger.info("MySampleTask.simpleExecute called. No parameters.");
         logger.info("MySampleTask.simpleExecute completed.");
+        params.put("status", "success");
+        params.put("name" , "simpleExecute");
+        return  params ;
     }
 
     public Map<String, Object> executeTimeout(Map<String, Object> params) throws InterruptedException {

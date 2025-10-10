@@ -5,7 +5,7 @@ public enum ExecutionPattern {
     NORMAL,
     RETRY,
     RETRY_ATTEMPT,
-    MANAUL,
+    MANUAL,
     WORKFLOW_STEP;
 
 }

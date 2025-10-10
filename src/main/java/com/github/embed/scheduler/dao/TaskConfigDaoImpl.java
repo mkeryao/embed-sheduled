@@ -249,4 +249,26 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     public void updateTaskStatus(Integer taskId, boolean isActive) {
         jdbcTemplate.update(UPDATE_STATUS_SQL, isActive, taskId);
     }
+
+    @Override
+    public List<TaskConfig> findByWorkflowId(int workflowId) {
+        String sql = "SELECT " + FULL_COLUMN_LIST + " FROM task_config WHERE JSON_CONTAINS(workflow_nodes, JSON_OBJECT('workflowId', ?))";
+        return jdbcTemplate.query(sql, new Object[]{workflowId}, rowMapper);
+    }
+
+    @Override
+    public List<TaskConfig> findUpstreamTasks(int taskId) {
+        String sql = "SELECT tc.* FROM task_config tc " +
+                     "JOIN task_config_edge tce ON tc.task_id = tce.source_task_id " +
+                     "WHERE tce.target_task_id = ?";
+        return jdbcTemplate.query(sql, new Object[]{taskId}, rowMapper);
+    }
+
+    @Override
+    public List<TaskConfig> findDownstreamTasks(int taskId) {
+        String sql = "SELECT tc.* FROM task_config tc " +
+                     "JOIN task_config_edge tce ON tc.task_id = tce.target_task_id " +
+                     "WHERE tce.source_task_id = ?";
+        return jdbcTemplate.query(sql, new Object[]{taskId}, rowMapper);
+    }
 }

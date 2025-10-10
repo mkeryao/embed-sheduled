@@ -1,9 +1,10 @@
 package com.github.embed.scheduler.dao;
 
-import com.github.embed.scheduler.entity.TaskExecuteLog;
 import java.util.List;
-import java.util.Map; // Added import for Map
-import java.util.Optional;
+import java.util.Map;
+import java.util.Optional; // Added import for Map
+
+import com.github.embed.scheduler.entity.TaskExecuteLog;
 
 /**
  * Data Access Object interface for {@link TaskExecuteLog} entities.
@@ -65,6 +66,13 @@ public interface TaskExecuteLogDao {
      * @param exMsg An optional exception message if the task failed or timed out.
      */
     void updateLogStatus(Long logId, String state, String rtnMsg, String exMsg);
+
+    /**
+     * Updates only the state of a log entry.
+     * @param logId The ID of the log entry to update.
+     * @param state The new state.
+     */
+    void updateState(Long logId, String state);
 
     /**
      * Updates only the return message (rtn_msg) of a specific log entry.
@@ -143,4 +151,19 @@ public interface TaskExecuteLogDao {
      * @return An {@link Optional} containing the {@link TaskExecuteLog} if found, or empty otherwise.
      */
     Optional<TaskExecuteLog> findLatestTerminalLogForWorkflowNode(Long parentWorkflowLogId, String workflowNodeId);
+
+    /**
+     * Counts the number of successful executions for a given set of node IDs within a workflow instance.
+     * @param workflowInstanceId The ID of the workflow instance.
+     * @param nodeIds The list of node IDs to check.
+     * @return The count of successfully executed nodes.
+     */
+    long countSuccessfulExecutionsByNodeId(int workflowInstanceId, List<String> nodeIds);
+
+    /**
+     * Counts the number of currently running tasks for a given workflow instance.
+     * @param workflowInstanceId The ID of the workflow instance.
+     * @return The count of running tasks.
+     */
+    long countRunningTasksByInstanceId(int workflowInstanceId);
 }
