@@ -66,9 +66,9 @@ public class TaskConfig {
      * dir). - Workflow task (10): Not directly used by parent, but nodes have
      * their own parameters.
      */
-    private String beanParameters;
+    private String parameters;
 
-    // HTTP and Shell specific fields below are deprecated in favor of storing structured JSON in beanParameters.
+    // HTTP and Shell specific fields below are deprecated in favor of storing structured JSON in parameters.
     // These fields are no longer mapped in DAO and will be removed in a future schema update.
     // private String httpUrl;
     // private String httpMethod;

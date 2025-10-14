@@ -61,47 +61,47 @@ public class TaskConfigDto {
      * globally.</li>
      * </ul>
      */
-    private String beanParameters;
+    private String parameters;
 
-    // Fields for HTTP task_type (taskType=2) are effectively covered by beanParameters storing HttpTaskParameters JSON.
+    // Fields for HTTP task_type (taskType=2) are effectively covered by parameters storing HttpTaskParameters JSON.
     // These direct fields can be considered deprecated or for very simple HTTP tasks if not using HttpTaskParameters DTO.
-    // For consistency, using beanParameters for complex types like HTTP and Shell is preferred.
+    // For consistency, using parameters for complex types like HTTP and Shell is preferred.
     /**
      * @deprecated Prefer storing HTTP URL within the JSON of
-     * {@code beanParameters} (as part of HttpTaskParameters).
+     * {@code parameters} (as part of HttpTaskParameters).
      */
     @Deprecated
     private String httpUrl;
     /**
      * @deprecated Prefer storing HTTP Method within the JSON of
-     * {@code beanParameters}.
+     * {@code parameters}.
      */
     @Deprecated
     private String httpMethod;
     /**
      * @deprecated Prefer storing HTTP Headers within the JSON of
-     * {@code beanParameters}.
+     * {@code parameters}.
      */
     @Deprecated
     private String httpHeaders;
     /**
      * @deprecated Prefer storing HTTP Body within the JSON of
-     * {@code beanParameters}.
+     * {@code parameters}.
      */
     @Deprecated
     private String httpBody;
 
-    // Fields for SHELL task_type (taskType=4, formerly 1) are covered by beanParameters storing ShellTaskParameters JSON.
+    // Fields for SHELL task_type (taskType=4, formerly 1) are covered by parameters storing ShellTaskParameters JSON.
     // These direct fields can be considered deprecated.
     /**
      * @deprecated Prefer storing script path within the JSON of
-     * {@code beanParameters} (as part of ShellTaskParameters).
+     * {@code parameters} (as part of ShellTaskParameters).
      */
     @Deprecated
     private String scriptPath;
     /**
      * @deprecated Prefer storing script arguments within the JSON of
-     * {@code beanParameters}.
+     * {@code parameters}.
      */
     @Deprecated
     private String scriptParameters;

@@ -32,28 +32,12 @@ public class WorkflowAsyncExecutor {
      * without causing a rollback on a caught DuplicateKeyException.
      */
     @Async
-    public void tryAcquireLockAndExecuteNode(WorkflowNode node, int workflowId, int instanceId, Long parentWorkflowLogId) {
+    public void tryAcquireLockAndExecuteNode(WorkflowNode node, int workflowId, Long instanceId, Long parentWorkflowLogId) {
         logger.debug("Attempting to acquire lock for node '{}' in instance {}", node.getNodeId(), instanceId);
         try {
-            // Create a PENDING log entry. This will be saved by the transactional executeNode method.
-            TaskExecuteLog nodeLog = new TaskExecuteLog();
-            nodeLog.setTaskId(node.getTaskConfigId());
-            nodeLog.setWorkflowId(workflowId);
-            nodeLog.setWorkflowInstanceId(instanceId);
-            nodeLog.setWorkflowNodeId(node.getNodeId());
-            nodeLog.setState(ExecutionState.PENDING.name());
-            nodeLog.setTaskPattern(ExecutionPattern.WORKFLOW_STEP.name());
-            nodeLog.setParentLogId(parentWorkflowLogId != null ? parentWorkflowLogId.intValue() : null);
-            nodeLog.setInstanceId(String.valueOf(instanceId));
-
-            // 使用 FastJSON 将节点参数序列化并存入日志
-            if (node.getParameters() != null && !node.getParameters().isEmpty()) {
-                nodeLog.setParameters(JSON.toJSONString(node.getParameters()));
-            }
-
             // This call is to a @Transactional method. It will attempt to insert the record and run the node.
             // If it throws DuplicateKeyException, we catch it below.
-            workflowExecutionService.executeNode(nodeLog);
+            workflowExecutionService.executeNode(node, workflowId, instanceId, parentWorkflowLogId);
             logger.info("Successfully acquired lock and initiated execution for node '{}'.", node.getNodeId());
 
         } catch (DuplicateKeyException e) {

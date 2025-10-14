@@ -49,7 +49,7 @@ public class BeanTaskExecutor {
     public String execute(TaskConfig taskConfig) throws Exception {
         final String beanName = taskConfig.getBeanName();
         final String methodName = taskConfig.getMethodName();
-        final String beanParametersJson = taskConfig.getBeanParameters();
+        final String beanParametersJson = taskConfig.getParameters();
         final Integer timeoutSeconds = taskConfig.getExecuteTimeoutSeconds();
 
         if (!StringUtils.hasText(beanName) || !StringUtils.hasText(methodName)) {
@@ -68,9 +68,9 @@ public class BeanTaskExecutor {
         if (StringUtils.hasText(beanParametersJson)) {
             try {
                 parametersMap = JSON.parseObject(beanParametersJson, new TypeReference<Map<String, Object>>() {});
-            } catch (JSONException e) {
-                logger.error("Failed to parse bean parameters JSON (Fastjson) for task '{}': {}. Error: {}", taskConfig.getTaskName(), beanParametersJson, e.getMessage(), e);
-                throw new Exception("Failed to parse bean parameters (Fastjson): " + e.getMessage(), e);
+            } catch (Exception e) {
+                logger.error("Failed to parse parameters JSON (Fastjson) for task '{}': {}. Error: {}", taskConfig.getTaskName(), beanParametersJson, e.getMessage(), e);
+                throw new IllegalArgumentException("Invalid JSON format in parameters field.");
             }
         } else {
             parametersMap = Collections.emptyMap();
@@ -87,8 +87,7 @@ public class BeanTaskExecutor {
         final Object[] finalArgs = convertParameters(methodToExecute, parametersMap);
 
         Future<Object> future = taskExecutorService.submit(() -> {
-            logger.info("Executing method '{}' on bean '{}' for task '{}' (Task ID: {}) with parameters: {}",
-                    methodName, beanName, taskConfig.getTaskName(), taskConfig.getTaskId(),
+            logger.info("Executing bean task '{}': bean='{}', method='{}', params={}", taskConfig.getTaskName(), beanName, methodName,
                     parametersMap != null && !parametersMap.isEmpty() ? beanParametersJson : "none");
             Object result = methodToExecute.invoke(beanInstance, finalArgs);
             logger.info("Successfully executed method '{}' on bean '{}' for task '{}' (Task ID: {})",

@@ -30,6 +30,7 @@ import com.github.embed.scheduler.dao.TaskExecuteLogDao;
 import com.github.embed.scheduler.entity.TaskConfig;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
 import com.github.embed.scheduler.enums.ExecutionPattern;
+import com.github.embed.scheduler.enums.ExecutionState;
 import com.github.embed.scheduler.service.DistributedLockService;
 import com.github.embed.scheduler.service.NotificationService;
 import com.github.embed.scheduler.service.WorkflowExecutionService;
@@ -114,7 +115,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             cancelTask(taskConfig.getTaskId());
         }
 
-        Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL.name(), null);
+        Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL, null);
         
         try {
             CustomTaskTrigger customTaskTrigger = new CustomTaskTrigger(taskConfig, taskCalendarDao);
@@ -149,7 +150,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
 
         logger.info("Manually triggering task '{}' (ID: {})", taskConfig.getTaskName(), taskId);
         ExecutionPattern pattern = (taskConfig.getTaskType() == 10) ? ExecutionPattern.WORKFLOW_PARENT : ExecutionPattern.MANUAL;
-        Runnable taskRunnable = createTaskRunnable(taskConfig, pattern.name(), null);
+        Runnable taskRunnable = createTaskRunnable(taskConfig, pattern, null);
         taskScheduler.execute(taskRunnable);
     }
     
@@ -170,7 +171,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         if (log.getParameters() != null && !log.getParameters().isEmpty()) {
             configForNodeRun = new TaskConfig();
             org.springframework.beans.BeanUtils.copyProperties(taskConfig, configForNodeRun);
-            configForNodeRun.setBeanParameters(log.getParameters());
+            configForNodeRun.setParameters(log.getParameters());
         }
 
         logger.info("Asynchronously triggering execution for workflow node '{}' (Task ID: {}, Log ID: {})",
@@ -185,7 +186,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 this.notificationService,
                 this.distributedLockService.getSchedulerInstanceId(),
                 log.getAttempt() > 0 ? log.getAttempt() : 1, // Use attempt from log if it's a retry
-                ExecutionPattern.WORKFLOW_STEP.name(),
+                ExecutionPattern.WORKFLOW_STEP,
                 log.getParentLogId() != null ? log.getParentLogId().longValue() : null,
                 log.getParameters(), // Keep passing for logging/retry purposes
                 log.getWorkflowNodeId(), // Correctly use the node ID from the log
@@ -202,21 +203,28 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         TaskConfig taskConfig = taskConfigDao.findById(executionLog.getTaskId())
                 .orElseThrow(() -> new IllegalStateException("Task config not found for ID: " + executionLog.getTaskId()));
 
-        boolean isSuccess = "SUCCESS".equals(executionLog.getStatus());
-        boolean isWorkflowStep = ExecutionPattern.WORKFLOW_STEP.name().equals(executionLog.getTaskPattern());
+        boolean isSuccess = executionLog.getState() == ExecutionState.SUCCESS;
+        boolean isWorkflowStep = executionLog.getTaskPattern() == ExecutionPattern.WORKFLOW_STEP;
 
         if (isSuccess) {
             if (isWorkflowStep) {
                 workflowExecutionService.handleNodeCompletion(executionLog.getId());
             }
-        } else { // FAILED
+            // Send success notification for regular tasks
+            if (taskConfig.isSuccessNotification()) {
+                notificationService.sendSuccessNotification(taskConfig, executionLog);
+            }
+        } else { // FAILED, TIMED_OUT, etc.
             int maxRetries = taskConfig.getMaxRetries();
             int currentAttempt = executionLog.getAttempt();
             if (currentAttempt < maxRetries) {
                 scheduleRetry(taskConfig, executionLog);
             } else {
                 logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries);
-                notificationService.sendFailureNotification(taskConfig, executionLog);
+                // Failure notification is sent for all failures after retries are exhausted
+                if (taskConfig.isFailureNotification()) {
+                    notificationService.sendFailureNotification(taskConfig, executionLog);
+                }
                 if (isWorkflowStep) {
                     workflowExecutionService.handleNodeFailure(executionLog.getId());
                 }
@@ -266,7 +274,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         }
     }
 
-    private TaskExecutionJob createTaskRunnable(TaskConfig taskConfig, String executionPattern, Long parentLogId) {
+    private TaskExecutionJob createTaskRunnable(TaskConfig taskConfig, ExecutionPattern executionPattern, Long parentLogId) {
         return new TaskExecutionJob(
                 taskConfig,
                 applicationContext,
@@ -278,8 +286,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 1,
                 executionPattern,
                 parentLogId,
-                taskConfig.getBeanParameters(),
-                ExecutionPattern.WORKFLOW_STEP.name().equals(executionPattern) ? taskConfig.getWorkflowNodeId() : null,
+                taskConfig.getParameters(),
+                executionPattern == ExecutionPattern.WORKFLOW_STEP ? taskConfig.getWorkflowNodeId() : null,
                 null // A new log will be created, so no initial log id
         );
     }

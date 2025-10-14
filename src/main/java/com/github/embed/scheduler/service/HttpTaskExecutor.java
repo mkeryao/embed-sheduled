@@ -4,6 +4,7 @@ import com.github.embed.scheduler.dao.TaskExecuteLogDao;
 import com.github.embed.scheduler.dto.taskparams.HttpTaskParameters;
 import com.github.embed.scheduler.entity.TaskConfig;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
+import com.github.embed.scheduler.enums.ExecutionState;
 import com.alibaba.fastjson.JSON; // Fastjson import
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,7 @@ public class HttpTaskExecutor {
 
     /**
      * Executes an HTTP task based on the provided TaskConfig.
-     * The TaskConfig's beanParameters field is expected to contain a JSON string
+     * The TaskConfig's parameters field is expected to contain a JSON string
      * representing HttpTaskParameters.
      *
      * @param taskConfig The configuration of the HTTP task.
@@ -56,11 +57,11 @@ public class HttpTaskExecutor {
         int httpStatusCode = -1;
 
         try {
-            if (!StringUtils.hasText(taskConfig.getBeanParameters())) {
-                throw new IllegalArgumentException("HTTP task parameters (beanParameters) are missing or empty.");
+            if (!StringUtils.hasText(taskConfig.getParameters())) {
+                throw new IllegalArgumentException("HTTP task parameters (parameters) are missing or empty.");
             }
             // Replace with Fastjson parsing
-            params = JSON.parseObject(taskConfig.getBeanParameters(), HttpTaskParameters.class);
+            params = JSON.parseObject(taskConfig.getParameters(), HttpTaskParameters.class);
 
 
             if (!StringUtils.hasText(params.getUrl()) || !StringUtils.hasText(params.getMethod())) {
@@ -100,40 +101,42 @@ public class HttpTaskExecutor {
             // Consider HTTP status codes: 2xx are success. Others might be failures depending on requirements.
             // For now, any 2xx is considered SUCCESS for the task step.
             if (responseEntity.getStatusCode().is2xxSuccessful()) {
-                logEntry.setState("SUCCESS");
+                logEntry.setState(ExecutionState.SUCCESS);
+                if (responseEntity.getBody() != null) {
+                    responseSummary += ", Body: " + responseEntity.getBody().substring(0, Math.min(responseEntity.getBody().length(), 200));
+                }
             } else {
-                logEntry.setState("FAILED");
+                logEntry.setState(ExecutionState.FAILED);
                 logEntry.setExMsg("HTTP Error: " + httpStatusCode + ". " + responseSummary);
             }
             logger.info("HTTP Task ID {} completed. {}", taskConfig.getTaskId(), responseSummary);
 
         } catch (IllegalArgumentException e) { // JSON parsing exceptions from Fastjson are typically runtime (e.g., JSONException)
             logger.error("HTTP Task ID {} failed: Invalid parameters. {}", taskConfig.getTaskId(), e.getMessage(), e);
-            logEntry.setState("FAILED");
+            logEntry.setState(ExecutionState.FAILED);
             logEntry.setExMsg("Invalid task parameters: " + e.getMessage());
-        } catch (com.alibaba.fastjson.JSONException e) { // Catch Fastjson specific parsing exception
-            logger.error("HTTP Task ID {} failed: JSON parsing error. {}", taskConfig.getTaskId(), e.getMessage(), e);
-            logEntry.setState("FAILED");
-            logEntry.setExMsg("Invalid task parameters JSON format: " + e.getMessage());
+        } catch (HttpStatusCodeException e) {
+            responseSummary = "HTTP Error: " + e.getStatusCode() + " " + e.getResponseBodyAsString();
+            logger.warn("HTTP Task ID {} failed with status code {}. Response: {}", taskConfig.getTaskId(), e.getStatusCode(), e.getResponseBodyAsString());
+            logEntry.setState(ExecutionState.FAILED);
+            logEntry.setExMsg(responseSummary.substring(0, Math.min(responseSummary.length(), 2000)));
         } catch (ResourceAccessException e) { // Catches connect/read timeouts, DNS resolution issues etc.
             logger.error("HTTP Task ID {} failed: Resource access error (e.g., timeout, DNS). {}", taskConfig.getTaskId(), e.getMessage(), e);
-            logEntry.setState("FAILED"); // Or "TIMED_OUT" if specifically identifiable
+            logEntry.setState(ExecutionState.FAILED); // Or "TIMED_OUT" if specifically identifiable
             logEntry.setExMsg("Resource access error: " + e.getMessage());
-        } catch (HttpStatusCodeException e) { // Catches 4xx/5xx client/server errors
-            httpStatusCode = e.getStatusCode().value();
-            responseSummary = "Status: " + httpStatusCode + ". Error: " + e.getResponseBodyAsString();
-            logger.error("HTTP Task ID {} failed: HTTP Error {}. Response: {}", taskConfig.getTaskId(), httpStatusCode, e.getResponseBodyAsString(), e);
-            logEntry.setState("FAILED");
-            logEntry.setExMsg(responseSummary.substring(0, Math.min(responseSummary.length(), 2000)));
+        } catch (com.alibaba.fastjson.JSONException e) { // Catch Fastjson specific parsing exception
+            logger.error("HTTP Task ID {} failed: JSON parsing error. {}", taskConfig.getTaskId(), e.getMessage(), e);
+            logEntry.setState(ExecutionState.FAILED);
+            logEntry.setExMsg("Invalid task parameters JSON format: " + e.getMessage());
         } catch (Exception e) {
             logger.error("HTTP Task ID {} failed: Unexpected error. {}", taskConfig.getTaskId(), e.getMessage(), e);
-            logEntry.setState("FAILED");
+            logEntry.setState(ExecutionState.FAILED);
             logEntry.setExMsg("Unexpected error: " + e.getMessage());
         } finally {
             // Update the log entry in the database
             // Log message (rtnMsg) can be used for success details or brief error summary
             logEntry.setRtnMsg(responseSummary != null ? responseSummary : (logEntry.getExMsg() != null ? logEntry.getExMsg().substring(0, Math.min(logEntry.getExMsg().length(), 500)) : "Execution finished."));
-            taskExecuteLogDao.updateLogStatus(logEntry.getLogId(), logEntry.getState(), null , logEntry.getExMsg());
+            taskExecuteLogDao.update(logEntry);
         }
     }
 

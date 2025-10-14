@@ -1,7 +1,7 @@
 package com.github.embed.scheduler.service;
 
 import com.github.embed.scheduler.dao.TaskExecuteLogDao;
-import com.github.embed.scheduler.dao.TaskConfigDao; // Assuming this is needed for task names if not in log DAO results
+import com.github.embed.scheduler.enums.ExecutionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,9 +19,6 @@ public class TaskStatisticsService {
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
 
-    @Autowired
-    private TaskConfigDao taskConfigDao; // To fetch task names if not directly available
-
     /**
      * Gets global execution state counts (SUCCESS, FAILED, RUNNING, etc.).
      * Transforms DAO result: List<Map<String, Object>> [{state: "SUCCESS", count: 10}]
@@ -29,7 +26,7 @@ public class TaskStatisticsService {
      * @return A map where keys are states and values are their counts.
      */
     public Map<String, Long> getGlobalExecutionStateCounts() {
-        List<Map<String, Object>> rawCounts = taskExecuteLogDao.getOverallStatusCounts(); // Reusing existing DAO method
+        List<Map<String, Object>> rawCounts = taskExecuteLogDao.getGlobalExecutionStateCounts(); // Reusing existing DAO method
         Map<String, Long> counts = new HashMap<>();
         for (Map<String, Object> row : rawCounts) {
             String state = (String) row.get("state");
@@ -48,9 +45,9 @@ public class TaskStatisticsService {
         }
         // Ensure all typical states are present, even if count is 0
         // Add other states if relevant: "RUNNING", "TIMED_OUT", "CANCELLED"
-        counts.putIfAbsent("SUCCESS", 0L);
-        counts.putIfAbsent("FAILED", 0L);
-        counts.putIfAbsent("RUNNING", 0L); // Assuming "RUNNING" is a possible state in logs
+        counts.putIfAbsent(ExecutionState.SUCCESS.name(), 0L);
+        counts.putIfAbsent(ExecutionState.FAILED.name(), 0L);
+        counts.putIfAbsent(ExecutionState.RUNNING.name(), 0L); // Assuming "RUNNING" is a possible state in logs
 
         return counts;
     }

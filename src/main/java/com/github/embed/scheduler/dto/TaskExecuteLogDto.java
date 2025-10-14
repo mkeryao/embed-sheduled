@@ -3,6 +3,9 @@ package com.github.embed.scheduler.dto;
 import java.sql.Timestamp;
 
 import com.github.embed.scheduler.entity.TaskExecuteLog;
+import com.github.embed.scheduler.enums.ExecutionMode;
+import com.github.embed.scheduler.enums.ExecutionPattern;
+import com.github.embed.scheduler.enums.ExecutionState;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,17 +17,18 @@ public class TaskExecuteLogDto {
     private Integer taskId;
     private Timestamp startTime;
     private Timestamp endTime;
-    private String state;
+    private ExecutionState state;
     private String rtnMsg;
     private String exMsg;
     private String instanceId;
     private Integer parentLogId;
-    private String taskPattern;
+    private ExecutionPattern taskPattern;
     private String workflowNodeId;
     private Integer taskType; // Added field from TaskConfig
     private String taskName; // Added field from TaskConfig
+    private ExecutionMode executionMode;
 
-    public static TaskExecuteLogDto fromEntity(TaskExecuteLog log, Integer taskType, String taskName) {
+    public static TaskExecuteLogDto fromEntity(TaskExecuteLog log, Integer taskType, String taskName, ExecutionMode executionMode) {
         TaskExecuteLogDto dto = new TaskExecuteLogDto();
         dto.setLogId(log.getLogId());
         dto.setTaskId(log.getTaskId());
@@ -39,6 +43,7 @@ public class TaskExecuteLogDto {
         dto.setWorkflowNodeId(log.getWorkflowNodeId());
         dto.setTaskType(taskType);
         dto.setTaskName(taskName);
+        dto.setExecutionMode(executionMode);
         return dto;
     }
 }

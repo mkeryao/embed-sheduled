@@ -145,14 +145,14 @@ public class TaskConfigController {
 
         // beanParameters JSON Validation
         Integer taskType = taskConfigDto.getTaskType();
-        String beanParams = taskConfigDto.getBeanParameters();
+        String beanParams = taskConfigDto.getParameters();
         if (beanParams != null && StringUtils.hasText(beanParams)) {
             if (taskType != null && (taskType == 2 || taskType == 4)) { // 2 for HTTP, 4 for Shell
                 try {
                     JSON.parse(beanParams); // Try to parse to check validity
                 } catch (com.alibaba.fastjson.JSONException e) {
                     return ResponseEntity.badRequest()
-                            .body("beanParameters is not valid JSON for HTTP/Shell task type.");
+                            .body("parameters is not valid JSON for HTTP/Shell task type.");
                 }
             }
         }
@@ -240,7 +240,7 @@ public class TaskConfigController {
 
         // beanParameters JSON Validation
         Integer taskType = taskConfigDto.getTaskType();
-        String beanParams = taskConfigDto.getBeanParameters();
+        String beanParams = taskConfigDto.getParameters();
 
         // If taskType is not provided in DTO for update, we might need to fetch
         // existing entity to check its type.
@@ -263,7 +263,7 @@ public class TaskConfigController {
                     JSON.parse(beanParams); // Try to parse to check validity
                 } catch (com.alibaba.fastjson.JSONException e) {
                     return ResponseEntity.badRequest()
-                            .body("beanParameters is not valid JSON for HTTP/Shell task type.");
+                            .body("parameters is not valid JSON for HTTP/Shell task type.");
                 }
             }
         }

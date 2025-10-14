@@ -1,6 +1,8 @@
 package com.github.embed.scheduler.dao;
 
 import com.github.embed.scheduler.entity.TaskExecuteLog;
+import com.github.embed.scheduler.enums.ExecutionPattern;
+import com.github.embed.scheduler.enums.ExecutionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -32,9 +34,9 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
 
-    private static final String LOG_COLUMNS = "log_id, task_id, workflow_id, start_time, end_time, state, rtn_msg, ex_msg, instance_id, parent_execute_no, task_pattern, workflow_node_id, parameters";
-    private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, workflow_id, start_time, state, instance_id, parent_execute_no, task_pattern, rtn_msg, ex_msg, workflow_node_id, parameters) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, workflow_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, instance_id=?, parent_execute_no=?, task_pattern=?, workflow_node_id=?, parameters=? WHERE log_id=?";
+    private static final String LOG_COLUMNS = "log_id, task_id, workflow_id, start_time, end_time, state, rtn_msg, ex_msg, workflow_instance_id, parent_log_id, task_pattern, workflow_node_id, parameters, instance_id";
+    private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, workflow_id, start_time, state, workflow_instance_id, parent_log_id, task_pattern, rtn_msg, ex_msg, workflow_node_id, parameters, instance_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, workflow_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, workflow_instance_id=?, parent_log_id=?, task_pattern=?, workflow_node_id=?, parameters=?, instance_id=? WHERE log_id=?";
     private static final String SELECT_BY_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE log_id=?";
     private static final String SELECT_ALL_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log ORDER BY start_time DESC";
     private static final String SELECT_BY_TASK_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE task_id=? ORDER BY start_time DESC";
@@ -45,27 +47,19 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         TaskExecuteLog log = new TaskExecuteLog();
         log.setLogId(rs.getLong("log_id"));
         log.setTaskId(rs.getInt("task_id"));
-        log.setWorkflowId(rs.getObject("workflow_id", Integer.class)); // Fix: Add missing mapping
+        log.setWorkflowId(rs.getObject("workflow_id", Integer.class));
         log.setStartTime(rs.getTimestamp("start_time"));
         log.setEndTime(rs.getTimestamp("end_time"));
-        log.setState(rs.getString("state"));
+        log.setState(ExecutionState.valueOf(rs.getString("state")));
         log.setRtnMsg(rs.getString("rtn_msg"));
         log.setExMsg(rs.getString("ex_msg"));
         log.setParameters(rs.getString("parameters"));
-        
-        // Correctly parse the instance_id from String to int for workflowInstanceId
-        String instanceIdStr = rs.getString("instance_id");
-        if (instanceIdStr != null && !instanceIdStr.isEmpty()) {
-            try {
-                log.setWorkflowInstanceId(Integer.parseInt(instanceIdStr));
-            } catch (NumberFormatException e) {
-                //logger.error("Could not parse instance_id '{}' to an integer for log_id {}", instanceIdStr, log.getLogId(), e);
-            }
-        }
-        log.setInstanceId(instanceIdStr);
+        log.setInstanceId(rs.getString("instance_id"));
 
-        log.setParentLogId(rs.getObject("parent_execute_no", Integer.class));
-        log.setTaskPattern(rs.getString("task_pattern"));
+        log.setWorkflowInstanceId(rs.getObject("workflow_instance_id", Long.class));
+
+        log.setParentLogId(rs.getObject("parent_log_id", Integer.class));
+        log.setTaskPattern(ExecutionPattern.valueOf(rs.getString("task_pattern")));
         log.setWorkflowNodeId(rs.getString("workflow_node_id"));
         return log;
     };
@@ -74,32 +68,22 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     public TaskExecuteLog save(TaskExecuteLog log) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(INSERT_SQL, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = connection.prepareStatement(INSERT_SQL, new String[]{"log_id"});
             ps.setInt(1, log.getTaskId());
-            if (log.getWorkflowId() != null) {
-                ps.setInt(2, log.getWorkflowId());
-            } else {
-                ps.setNull(2, java.sql.Types.INTEGER);
-            }
-            ps.setTimestamp(3, log.getStartTime() != null ? log.getStartTime() : new Timestamp(System.currentTimeMillis()));
-            ps.setString(4, log.getState());
-            ps.setString(5, log.getInstanceId());
-            if (log.getParentLogId() != null) {
-                ps.setInt(6, log.getParentLogId());
-            } else {
-                ps.setNull(6, java.sql.Types.INTEGER);
-            }
-            ps.setString(7, log.getTaskPattern());
+            ps.setObject(2, log.getWorkflowId());
+            ps.setTimestamp(3, log.getStartTime());
+            ps.setString(4, log.getState().name());
+            ps.setObject(5, log.getWorkflowInstanceId());
+            ps.setObject(6, log.getParentLogId());
+            ps.setString(7, log.getTaskPattern() != null ? log.getTaskPattern().name() : null);
             ps.setString(8, log.getRtnMsg());
             ps.setString(9, log.getExMsg());
             ps.setString(10, log.getWorkflowNodeId());
             ps.setString(11, log.getParameters());
+            ps.setString(12, log.getInstanceId());
             return ps;
         }, keyHolder);
-
-        if (keyHolder.getKey() != null) {
-            log.setLogId(keyHolder.getKey().longValue());
-        }
+        log.setLogId(keyHolder.getKey().longValue());
         return log;
     }
 
@@ -126,14 +110,14 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     public int update(TaskExecuteLog log) {
         return jdbcTemplate.update(UPDATE_SQL,
                 log.getTaskId(), log.getWorkflowId(), log.getStartTime(), log.getEndTime(),
-                log.getState(), log.getRtnMsg(), log.getExMsg(), log.getInstanceId(),
-                log.getParentLogId(), log.getTaskPattern(), log.getWorkflowNodeId(),
-                log.getParameters(),
+                log.getState().name(), log.getRtnMsg(), log.getExMsg(), log.getWorkflowInstanceId(),
+                log.getParentLogId(), log.getTaskPattern().name(), log.getWorkflowNodeId(),
+                log.getParameters(), log.getInstanceId(),
                 log.getLogId());
     }
 
     @Override
-    public void updateLogStatus(Long logId, String state, String rtnMsg, String exMsg) {
+    public void updateLogStatus(Long logId, ExecutionState state, String rtnMsg, String exMsg) {
         String finalRtnMsg = rtnMsg;
         String finalExMsg = exMsg;
 
@@ -147,7 +131,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         }
 
         try {
-            jdbcTemplate.update(UPDATE_LOG_STATUS_SQL, state, finalRtnMsg, finalExMsg, logId);
+            jdbcTemplate.update(UPDATE_LOG_STATUS_SQL, state.name(), finalRtnMsg, finalExMsg, logId);
         } catch (Exception e) {
             logger.error("Error updating log status for log_id {}: {}", logId, e.getMessage(), e);
         }
@@ -168,10 +152,10 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public void updateState(Long logId, String state) {
+    public void updateState(Long logId, ExecutionState state) {
         String sql = "UPDATE task_execute_log SET state = ? WHERE log_id = ?";
         try {
-            jdbcTemplate.update(sql, state, logId);
+            jdbcTemplate.update(sql, state.name(), logId);
         } catch (Exception e) {
             logger.error("Error updating state for log_id {}: {}", logId, e.getMessage(), e);
         }
@@ -192,33 +176,33 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Override
     public List<Map<String, Object>> getTopNExecutedTasks(int n) {
         String sql = "SELECT tel.task_id, tc.task_name, COUNT(tel.log_id) as execution_count " +
-                     "FROM task_execute_log tel " +
-                     "JOIN task_config tc ON tel.task_id = tc.task_id " +
-                     "GROUP BY tel.task_id, tc.task_name " +
-                     "ORDER BY execution_count DESC " +
-                     "LIMIT ?";
+                "FROM task_execute_log tel " +
+                "JOIN task_config tc ON tel.task_id = tc.task_id " +
+                "GROUP BY tel.task_id, tc.task_name " +
+                "ORDER BY execution_count DESC " +
+                "LIMIT ?";
         return jdbcTemplate.queryForList(sql, n);
     }
 
     @Override
     public Double getAverageExecutionTime(Integer taskId) {
         String sql = "SELECT AVG(CAST(TIMESTAMPDIFF(MILLISECOND, start_time, end_time) AS DOUBLE)) " +
-                     "FROM task_execute_log " +
-                     "WHERE task_id = ? AND state = 'SUCCESS' AND start_time IS NOT NULL AND end_time IS NOT NULL";
+                "FROM task_execute_log " +
+                "WHERE task_id = ? AND state = 'SUCCESS' AND start_time IS NOT NULL AND end_time IS NOT NULL";
         try {
             return jdbcTemplate.queryForObject(sql, Double.class, taskId);
         } catch (EmptyResultDataAccessException e) {
             return null;
         } catch (Exception e) {
             logger.error("Error calculating average execution time for task ID {}: {}. SQL: {}", taskId, e.getMessage(), sql, e);
-             String h2Sql = "SELECT AVG(DATEDIFF('MILLISECOND', start_time, end_time)) " +
-                           "FROM task_execute_log " +
-                           "WHERE task_id = ? AND state = 'SUCCESS' AND start_time IS NOT NULL AND end_time IS NOT NULL";
+            String h2Sql = "SELECT AVG(DATEDIFF('MILLISECOND', start_time, end_time)) " +
+                    "FROM task_execute_log " +
+                    "WHERE task_id = ? AND state = 'SUCCESS' AND start_time IS NOT NULL AND end_time IS NOT NULL";
             try {
-                 return jdbcTemplate.queryForObject(h2Sql, Double.class, taskId);
+                return jdbcTemplate.queryForObject(h2Sql, Double.class, taskId);
             } catch (Exception e2) {
-                 logger.error("Error calculating average execution time for task ID {} with H2 SQL: {}. SQL: {}", taskId, e2.getMessage(), h2Sql, e);
-                 return null;
+                logger.error("Error calculating average execution time for task ID {} with H2 SQL: {}. SQL: {}", taskId, e2.getMessage(), h2Sql, e);
+                return null;
             }
         }
     }
@@ -240,12 +224,12 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Override
     public List<Map<String, Object>> getPerTaskSuccessFailureCounts() {
         String sql = "SELECT l.task_id, tc.task_name, " +
-                     "SUM(CASE WHEN l.state = 'SUCCESS' THEN 1 ELSE 0 END) as success_count, " +
-                     "SUM(CASE WHEN l.state = 'FAILED' THEN 1 ELSE 0 END) as failed_count " +
-                     "FROM task_execute_log l " +
-                     "JOIN task_config tc ON l.task_id = tc.task_id " +
-                     "GROUP BY l.task_id, tc.task_name " +
-                     "ORDER BY tc.task_name ASC";
+                "SUM(CASE WHEN l.state = 'SUCCESS' THEN 1 ELSE 0 END) as success_count, " +
+                "SUM(CASE WHEN l.state = 'FAILED' THEN 1 ELSE 0 END) as failed_count " +
+                "FROM task_execute_log l " +
+                "JOIN task_config tc ON l.task_id = tc.task_id " +
+                "GROUP BY l.task_id, tc.task_name " +
+                "ORDER BY tc.task_name ASC";
         try {
             return jdbcTemplate.queryForList(sql);
         } catch (Exception e) {
@@ -257,25 +241,25 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Override
     public List<Map<String, Object>> getTopNAverageExecutionTimes(int limit) {
         String sql = "SELECT l.task_id, tc.task_name, " +
-                     "AVG(TIMESTAMPDIFF(MILLISECOND, l.start_time, l.end_time)) as avg_duration_ms " +
-                     "FROM task_execute_log l " +
-                     "JOIN task_config tc ON l.task_id = tc.task_id " +
-                     "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
-                     "GROUP BY l.task_id, tc.task_name " +
-                     "ORDER BY avg_duration_ms DESC " +
-                     "LIMIT ?";
+                "AVG(TIMESTAMPDIFF(MILLISECOND, l.start_time, l.end_time)) as avg_duration_ms " +
+                "FROM task_execute_log l " +
+                "JOIN task_config tc ON l.task_id = tc.task_id " +
+                "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
+                "GROUP BY l.task_id, tc.task_name " +
+                "ORDER BY avg_duration_ms DESC " +
+                "LIMIT ?";
         try {
             return jdbcTemplate.queryForList(sql, limit);
         } catch (Exception e) {
             logger.error("Error fetching top N average execution times with primary SQL: {}. Trying H2 specific.", e.getMessage());
             String h2Sql = "SELECT l.task_id, tc.task_name, " +
-                           "AVG(CAST(DATEDIFF('MILLISECOND', l.start_time, l.end_time) AS DOUBLE)) as avg_duration_ms " +
-                           "FROM task_execute_log l " +
-                           "JOIN task_config tc ON l.task_id = tc.task_id " +
-                           "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
-                           "GROUP BY l.task_id, tc.task_name " +
-                           "ORDER BY avg_duration_ms DESC " +
-                           "LIMIT ?";
+                    "AVG(CAST(DATEDIFF('MILLISECOND', l.start_time, l.end_time) AS DOUBLE)) as avg_duration_ms " +
+                    "FROM task_execute_log l " +
+                    "JOIN task_config tc ON l.task_id = tc.task_id " +
+                    "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
+                    "GROUP BY l.task_id, tc.task_name " +
+                    "ORDER BY avg_duration_ms DESC " +
+                    "LIMIT ?";
             try {
                 logger.info("Attempting H2-specific SQL for getTopNAverageExecutionTimes.");
                 return jdbcTemplate.queryForList(h2Sql, limit);
@@ -288,11 +272,11 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
 
     @Override
     public List<TaskExecuteLog> findByParentExecuteNo(Long parentExecuteNo) {
-        String sql = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE parent_execute_no = ? ORDER BY log_id ASC";
+        String sql = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE parent_log_id = ? ORDER BY log_id ASC";
         try {
             return jdbcTemplate.query(sql, rowMapper, parentExecuteNo);
         } catch (Exception e) {
-            logger.error("Error fetching logs by parent_execute_no {}: {}", parentExecuteNo, e.getMessage(), e);
+            logger.error("Error fetching logs by parent_log_id {}: {}", parentExecuteNo, e.getMessage(), e);
             return new ArrayList<>();
         }
     }
@@ -300,9 +284,9 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Override
     public List<TaskExecuteLog> findByParentExecuteNoAndTaskId(Long parentExecuteNo, int taskId) {
         String sql = "SELECT " + LOG_COLUMNS +
-                     " FROM task_execute_log " +
-                     "WHERE parent_execute_no = ? AND task_id = ? " +
-                     "ORDER BY log_id ASC";
+                " FROM task_execute_log " +
+                "WHERE parent_log_id = ? AND task_id = ? " +
+                "ORDER BY log_id ASC";
         try {
             return jdbcTemplate.query(sql, rowMapper, parentExecuteNo, taskId);
         } catch (EmptyResultDataAccessException e) {
@@ -317,11 +301,11 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Override
     public Optional<TaskExecuteLog> findLatestTerminalLogForWorkflowNode(Long parentWorkflowLogId, String workflowNodeId) {
         String sql = "SELECT " + LOG_COLUMNS + " FROM task_execute_log " +
-                     "WHERE parent_execute_no = ? " +
-                     "  AND workflow_node_id = ? " +
-                     "  AND state IN ('SUCCESS', 'FAILED', 'TIMED_OUT', 'CANCELLED') " +
-                     "ORDER BY log_id DESC " +
-                     "LIMIT 1";
+                "WHERE parent_log_id = ? " +
+                "  AND workflow_node_id = ? " +
+                "  AND state IN ('SUCCESS', 'FAILED', 'TIMED_OUT', 'CANCELLED') " +
+                "ORDER BY log_id DESC " +
+                "LIMIT 1";
         try {
             TaskExecuteLog log = jdbcTemplate.queryForObject(sql, rowMapper, parentWorkflowLogId, workflowNodeId);
             return Optional.ofNullable(log);
@@ -329,21 +313,21 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
             return Optional.empty();
         } catch (Exception e) {
             logger.error("Error in findLatestTerminalLogForWorkflowNode for parentWorkflowLogId {} and workflowNodeId {}: {}",
-                         parentWorkflowLogId, workflowNodeId, e.getMessage(), e);
+                    parentWorkflowLogId, workflowNodeId, e.getMessage(), e);
             return Optional.empty();
         }
     }
 
     @Override
-    public long countSuccessfulExecutionsByNodeId(int workflowInstanceId, List<String> nodeIds) {
+    public long countSuccessfulExecutionsByNodeId(Long workflowInstanceId, List<String> nodeIds) {
         if (nodeIds == null || nodeIds.isEmpty()) {
             return 0;
         }
         String inSql = String.join(",", java.util.Collections.nCopies(nodeIds.size(), "?"));
-        String sql = String.format("SELECT COUNT(DISTINCT workflow_node_id) FROM task_execute_log WHERE instance_id = ? AND state = 'SUCCESS' AND workflow_node_id IN (%s)", inSql);
-        
+        String sql = String.format("SELECT COUNT(DISTINCT workflow_node_id) FROM task_execute_log WHERE workflow_instance_id = ? AND state = 'SUCCESS' AND workflow_node_id IN (%s)", inSql);
+
         List<Object> params = new ArrayList<>();
-        params.add(String.valueOf(workflowInstanceId));
+        params.add(workflowInstanceId);
         params.addAll(nodeIds);
 
         Long count = jdbcTemplate.queryForObject(sql, Long.class, params.toArray());
@@ -351,9 +335,9 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public long countRunningTasksByInstanceId(int workflowInstanceId) {
-        String sql = "SELECT COUNT(*) FROM task_execute_log WHERE instance_id = ? AND state = 'Running'";
-        Long count = jdbcTemplate.queryForObject(sql, Long.class, String.valueOf(workflowInstanceId));
+    public long countRunningTasksByInstanceId(Long workflowInstanceId) {
+        String sql = "SELECT COUNT(*) FROM task_execute_log WHERE workflow_instance_id = ? AND state = 'RUNNING'";
+        Long count = jdbcTemplate.queryForObject(sql, Long.class, workflowInstanceId);
         return count != null ? count : 0;
     }
 }

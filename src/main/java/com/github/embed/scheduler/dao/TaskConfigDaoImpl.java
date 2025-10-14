@@ -33,7 +33,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
 
     // BASE_COLUMNS: added max_retry_attempts, retry_interval_seconds,
     // retry_interval_multiplier
-    private static final String BASE_COLUMNS = "task_id, task_name, task_group, cron_expression, task_type, bean_name, method_name, bean_parameters, description, is_active, execution_mode, max_retry_attempts, retry_interval_seconds, retry_interval_multiplier, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
+    private static final String BASE_COLUMNS = "task_id, task_name, task_group, cron_expression, task_type, bean_name, method_name, parameters, description, is_active, execution_mode, max_retry_attempts, retry_interval_seconds, retry_interval_multiplier, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
     private static final String WORKFLOW_JSON_COLUMNS = ", workflow_nodes, workflow_edges, global_parameters";
     private static final String TIMESTAMP_COLUMNS = ", create_time, update_time";
     private static final String FULL_COLUMN_LIST = BASE_COLUMNS + WORKFLOW_JSON_COLUMNS + TIMESTAMP_COLUMNS;
@@ -41,7 +41,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
     // INSERT_BASE_COLUMNS: removed http/shell direct fields.
     // INSERT_BASE_COLUMNS: added max_retry_attempts, retry_interval_seconds,
     // retry_interval_multiplier (17 + 3 = 20 fields)
-    private static final String INSERT_BASE_COLUMNS = "task_name, task_group, cron_expression, task_type, bean_name, method_name, bean_parameters, description, is_active, execution_mode, max_retry_attempts, retry_interval_seconds, retry_interval_multiplier, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
+    private static final String INSERT_BASE_COLUMNS = "task_name, task_group, cron_expression, task_type, bean_name, method_name, parameters, description, is_active, execution_mode, max_retry_attempts, retry_interval_seconds, retry_interval_multiplier, task_calendar_group, task_exclude_times, start_date, end_date, execute_timeout_seconds, notify_success_user_ids, notify_failed_user_ids";
     private static final String INSERT_WORKFLOW_JSON_COLUMNS = ", workflow_nodes, workflow_edges, global_parameters";
     private static final String INSERT_COLUMNS = INSERT_BASE_COLUMNS + INSERT_WORKFLOW_JSON_COLUMNS
             + ", create_time, update_time";
@@ -53,7 +53,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
 
     // UPDATE_BASE_SETTERS: added max_retry_attempts=?, retry_interval_seconds=?,
     // retry_interval_multiplier=?
-    private static final String UPDATE_BASE_SETTERS = "task_name=?, task_group=?, cron_expression=?, task_type=?, bean_name=?, method_name=?, bean_parameters=?, description=?, is_active=?, execution_mode=?, max_retry_attempts=?, retry_interval_seconds=?, retry_interval_multiplier=?, task_calendar_group=?, task_exclude_times=?, start_date=?, end_date=?, execute_timeout_seconds=?, notify_success_user_ids=?, notify_failed_user_ids=?";
+    private static final String UPDATE_BASE_SETTERS = "task_name=?, task_group=?, cron_expression=?, task_type=?, bean_name=?, method_name=?, parameters=?, description=?, is_active=?, execution_mode=?, max_retry_attempts=?, retry_interval_seconds=?, retry_interval_multiplier=?, task_calendar_group=?, task_exclude_times=?, start_date=?, end_date=?, execute_timeout_seconds=?, notify_success_user_ids=?, notify_failed_user_ids=?";
     private static final String UPDATE_WORKFLOW_JSON_SETTERS = ", workflow_nodes=?, workflow_edges=?, global_parameters=?";
     private static final String UPDATE_SETTERS = UPDATE_BASE_SETTERS + UPDATE_WORKFLOW_JSON_SETTERS
             + ", update_time=CURRENT_TIMESTAMP";
@@ -77,7 +77,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
         task.setTaskType(rs.getInt("task_type"));
         task.setBeanName(rs.getString("bean_name"));
         task.setMethodName(rs.getString("method_name"));
-        task.setBeanParameters(rs.getString("bean_parameters"));
+        task.setParameters(rs.getString("parameters"));
         // httpUrl, httpMethod, httpHeaders, httpBody, scriptPath, scriptParameters are
         // removed
         task.setDescription(rs.getString("description"));
@@ -122,7 +122,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
             ps.setInt(4, taskConfig.getTaskType());
             ps.setString(5, taskConfig.getBeanName());
             ps.setString(6, taskConfig.getMethodName());
-            ps.setString(7, taskConfig.getBeanParameters());
+            ps.setString(7, taskConfig.getParameters());
             // Indices shift here: http/shell fields removed (were 8-13)
             ps.setString(8, taskConfig.getDescription());
             ps.setBoolean(9, taskConfig.isActive());
@@ -217,7 +217,7 @@ public class TaskConfigDaoImpl implements TaskConfigDao {
         return jdbcTemplate.update(UPDATE_SQL,
                 taskConfig.getTaskName(), taskConfig.getTaskGroup(), taskConfig.getCronExpression(),
                 taskConfig.getTaskType(), taskConfig.getBeanName(), taskConfig.getMethodName(),
-                taskConfig.getBeanParameters(),
+                taskConfig.getParameters(),
                 taskConfig.getDescription(), taskConfig.isActive(),
                 taskConfig.getExecutionMode() != null ? taskConfig.getExecutionMode().name()
                         : ExecutionMode.BROADCAST.name(),

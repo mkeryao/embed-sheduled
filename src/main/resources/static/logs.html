@@ -8,52 +8,52 @@
     <script src="js/i18n-init.js"></script>
 </head>
 <body>
-    <div id="navbar-container"></div>
+<div id="navbar-container"></div>
 
-    <div class="container">
-        <h2 class="my-3" data-i18n-key="logsPage.mainHeader">Detailed Execution Logs</h2>
-       
-        
-        <div class="form-row mb-3">
-            <div class="form-group col-md-4">
-                <label for="taskIdFilter" data-i18n-key="logsPage.filters.taskIdLabel">Filter by Task ID:</label>
-                <input type="number" class="form-control" id="taskIdFilter" data-i18n-key-placeholder="logsPage.filters.taskIdPlaceholder" placeholder="Enter Task ID">
-            </div>
-            <div class="form-group col-md-4">
-                <label for="statusFilter" data-i18n-key="logsPage.filters.statusLabel">Filter by Status:</label>
-                <select id="statusFilter" class="form-control">
-                    <option value="" data-i18n-key="logsPage.filters.allStatuses">All Statuses</option>
-                    <option value="SUCCESS" data-i18n-key="logsPage.logStatuses.success">SUCCESS</option>
-                    <option value="FAILED" data-i18n-key="logsPage.logStatuses.failed">FAILED</option>
-                    <option value="RUNNING" data-i18n-key="logsPage.logStatuses.running">RUNNING</option>
-                    <option value="TIMED_OUT" data-i18n-key="logsPage.logStatuses.timed_out">TIMED_OUT</option>
-                    <option value="SKIPPED" data-i18n-key="logsPage.logStatuses.skipped">SKIPPED</option>
-                    <option value="CANCELLED" data-i18n-key="logsPage.logStatuses.cancelled">CANCELLED</option>
-                </select>
-            </div>
-            <div class="form-group col-md-4 align-self-end">
-                <button type="button" class="btn btn-primary btn-block" id="applyFiltersBtn" data-i18n-key="logsPage.filters.applyBtn">Apply Filters</button>
-                <button type="button" class="btn btn-secondary btn-block mt-2" id="resetFiltersBtn" data-i18n-key="logsPage.filters.resetBtn">Reset Filters</button>
-            </div>
+<div class="container">
+    <h2 class="my-3" data-i18n-key="logsPage.mainHeader">Detailed Execution Logs</h2>
+
+
+    <div class="form-row mb-3">
+        <div class="form-group col-md-4">
+            <label for="taskIdFilter" data-i18n-key="logsPage.filters.taskIdLabel">Filter by Task ID:</label>
+            <input type="number" class="form-control" id="taskIdFilter" data-i18n-key-placeholder="logsPage.filters.taskIdPlaceholder" placeholder="Enter Task ID">
         </div>
-        <table class="table table-striped table-hover table-sm">
-            <thead class="thead-dark">
-                <tr>
-                <th data-i18n-key="logsPage.logTable.logId">Log ID</th>
-                <th data-i18n-key="logsPage.logTable.taskId">Task ID</th>
-                <th data-i18n-key="logsPage.logTable.taskName">Task Name</th>
-                <th data-i18n-key="logsPage.logTable.executionMode">Execution Mode</th>
-                <th data-i18n-key="logsPage.logTable.status">Status</th>
-                <th data-i18n-key="logsPage.logTable.instanceId">Instance ID</th>
-                <th data-i18n-key="logsPage.logTable.startTime">Start Time</th>
-                <th data-i18n-key="logsPage.logTable.endTime">End Time</th>
-                <th data-i18n-key="logsPage.logTable.duration">Duration</th>
-                <th data-i18n-key="logsPage.logTable.message">Message</th>
+        <div class="form-group col-md-4">
+            <label for="statusFilter" data-i18n-key="logsPage.filters.statusLabel">Filter by Status:</label>
+            <select id="statusFilter" class="form-control">
+                <option value="" data-i18n-key="logsPage.filters.allStatuses">All Statuses</option>
+                <option value="SUCCESS" data-i18n-key="logsPage.logStatuses.success">SUCCESS</option>
+                <option value="FAILED" data-i18n-key="logsPage.logStatuses.failed">FAILED</option>
+                <option value="RUNNING" data-i18n-key="logsPage.logStatuses.running">RUNNING</option>
+                <option value="TIMED_OUT" data-i18n-key="logsPage.logStatuses.timed_out">TIMED_OUT</option>
+                <option value="SKIPPED" data-i18n-key="logsPage.logStatuses.skipped">SKIPPED</option>
+                <option value="CANCELLED" data-i18n-key="logsPage.logStatuses.cancelled">CANCELLED</option>
+            </select>
+        </div>
+        <div class="form-group col-md-4 align-self-end">
+            <button type="button" class="btn btn-primary btn-block" id="applyFiltersBtn" data-i18n-key="logsPage.filters.applyBtn">Apply Filters</button>
+            <button type="button" class="btn btn-secondary btn-block mt-2" id="resetFiltersBtn" data-i18n-key="logsPage.filters.resetBtn">Reset Filters</button>
+        </div>
+    </div>
+    <table class="table table-striped table-hover table-sm">
+        <thead class="thead-dark">
+        <tr>
+            <th data-i18n-key="logsPage.logTable.logId">Log ID</th>
+            <th data-i18n-key="logsPage.logTable.taskId">Task ID</th>
+            <th data-i18n-key="logsPage.logTable.taskName">Task Name</th>
+            <th data-i18n-key="logsPage.logTable.executionMode">Execution Mode</th>
+            <th data-i18n-key="logsPage.logTable.status">Status</th>
+            <th data-i18n-key="logsPage.logTable.instanceId">Instance ID</th>
+            <th data-i18n-key="logsPage.logTable.startTime">Start Time</th>
+            <th data-i18n-key="logsPage.logTable.endTime">End Time</th>
+            <th data-i18n-key="logsPage.logTable.duration">Duration</th>
+            <th data-i18n-key="logsPage.logTable.message">Message</th>
 
-                </tr>
-            </thead>
+        </tr>
+        </thead>
         <tbody id="logs-table-body">
-            <!-- Log rows will be inserted here -->
+        <!-- Log rows will be inserted here -->
         </tbody>
 
         <script>
@@ -78,197 +78,198 @@
             });
         </script>
 
-        </table>
-        <nav aria-label="Page navigation">
-            <ul class="pagination" id="pagination-controls">
-                <!-- Pagination controls will be inserted here -->
-            </ul>
-        </nav>
-    </div>
+    </table>
+    <nav aria-label="Page navigation">
+        <ul class="pagination" id="pagination-controls">
+            <!-- Pagination controls will be inserted here -->
+        </ul>
+    </nav>
+</div>
 
-    <!-- Log Detail Modal -->
-    <div class="modal fade" id="logDetailModal" tabindex="-1" role="dialog" aria-labelledby="logDetailModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg" role="document">
+<!-- Log Detail Modal -->
+<div class="modal fade" id="logDetailModal" tabindex="-1" role="dialog" aria-labelledby="logDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="logDetailModalLabel" data-i18n-key="logsPage.logDetails.title">Log Entry Details</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
-              <span aria-hidden="true">&times;</span>
-            </button>
-          </div>
-          <div class="modal-body">
-            <p><strong data-i18n-key="logsPage.logDetails.logId">Log ID:</strong> <span id="modalLogId"></span></p>
-            <p><strong data-i18n-key="logsPage.logDetails.taskId">Task ID:</strong> <span id="modalTaskId"></span></p>
-            <p><strong data-i18n-key="logsPage.logDetails.taskName">Task Name:</strong> <span id="modalTaskName"></span></p>
-            <p><strong data-i18n-key="logsPage.logDetails.status">Status:</strong> <span id="modalLogStatus"></span></p>
-            <div class="form-group">
-                <label for="modalLogMessage" data-i18n-key="logsPage.logDetailModal.messageLabel">Message:</label>
-                <textarea readonly class="form-control" id="modalLogMessage" rows="5"></textarea>
+            <div class="modal-header">
+                <h5 class="modal-title" id="logDetailModalLabel" data-i18n-key="logsPage.logDetails.title">Log Entry Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-            <div class="form-group">
-                <label for="modalLogException" data-i18n-key="logsPage.logDetailModal.exceptionLabel">Exception:</label>
-                <textarea readonly class="form-control" id="modalLogException" rows="10"></textarea>
+            <div class="modal-body">
+                <p><strong data-i18n-key="logsPage.logDetails.logId">Log ID:</strong> <span id="modalLogId"></span></p>
+                <p><strong data-i18n-key="logsPage.logDetails.taskId">Task ID:</strong> <span id="modalTaskId"></span></p>
+                <p><strong data-i18n-key="logsPage.logDetails.taskName">Task Name:</strong> <span id="modalTaskName"></span></p>
+                <p><strong data-i18n-key="logsPage.logDetails.instanceId">Instance ID:</strong> <span id="modalInstanceId"></span></p>
+                <p><strong data-i18n-key="logsPage.logDetails.status">Status:</strong> <span id="modalLogStatus"></span></p>
+                <div class="form-group">
+                    <label for="modalLogMessage" data-i18n-key="logsPage.logDetailModal.messageLabel">Message:</label>
+                    <textarea readonly class="form-control" id="modalLogMessage" rows="5"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="modalLogException" data-i18n-key="logsPage.logDetailModal.exceptionLabel">Exception:</label>
+                    <textarea readonly class="form-control" id="modalLogException" rows="10"></textarea>
+                </div>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
-          </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
+            </div>
         </div>
-      </div>
     </div>
+</div>
 
 
-    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
-    <script src="libs/popperjs/popper.min.js"></script>
-    <script src="libs/bootstrap/js/bootstrap.min.js"></script>
-    <script src="js/tasks-workflow.js"></script>
-    <script src="js/main.js"></script>
+<script src="libs/jquery/jquery-3.5.1.min.js"></script>
+<script src="libs/popperjs/popper.min.js"></script>
+<script src="libs/bootstrap/js/bootstrap.min.js"></script>
+<script src="js/tasks-workflow.js"></script>
+<script src="js/main.js"></script>
 
 
-    <!-- Workflow Instance Detail Modal -->
-    <div class="modal fade" id="workflowInstanceModal" tabindex="-1" role="dialog" aria-labelledby="workflowInstanceModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-xl" role="document"> <!-- modal-xl for larger DAGs -->
+<!-- Workflow Instance Detail Modal -->
+<div class="modal fade" id="workflowInstanceModal" tabindex="-1" role="dialog" aria-labelledby="workflowInstanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document"> <!-- modal-xl for larger DAGs -->
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="workflowInstanceModalLabel" data-i18n-key="logsPage.workflowInstanceModal.title">Workflow Instance Details</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close"><span aria-hidden="true">&times;</span></button>
-          </div>
-          <div class="modal-body">
-            <p><strong data-i18n-key="logsPage.workflowInstanceModal.workflowName">Workflow Name:</strong> <span id="visWorkflowName"></span></p>
-            <p><strong data-i18n-key="logsPage.workflowInstanceModal.instanceLogId">Instance Log ID:</strong> <span id="visInstanceLogId"></span></p>
+            <div class="modal-header">
+                <h5 class="modal-title" id="workflowInstanceModalLabel" data-i18n-key="logsPage.workflowInstanceModal.title">Workflow Instance Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" data-i18n-key-title="common.close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p><strong data-i18n-key="logsPage.workflowInstanceModal.workflowName">Workflow Name:</strong> <span id="visWorkflowName"></span></p>
+                <p><strong data-i18n-key="logsPage.workflowInstanceModal.instanceLogId">Instance Log ID:</strong> <span id="visInstanceLogId"></span></p>
 
-            <div id="workflowInstanceDagContainer" style="width: 100%; min-height: 300px; background-color: #f8f9fa; border: 1px solid #dee2e6; position: relative; overflow: auto; padding: 10px;">
-              <span data-i18n-key="common.loading">Loading...</span>
+                <div id="workflowInstanceDagContainer" style="width: 100%; min-height: 300px; background-color: #f8f9fa; border: 1px solid #dee2e6; position: relative; overflow: auto; padding: 10px;">
+                    <span data-i18n-key="common.loading">Loading...</span>
+                </div>
+                <!-- Area for selected node details -->
+                <div id="visSelectedNodeDetails" class="mt-3" style="display:none; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9;">
+                    <h6 data-i18n-key="logsPage.workflowInstanceModal.selectedNodeHeader">Selected Node Details:</h6>
+                    <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeId">Node ID:</strong> <span id="visNodeId"></span></p>
+                    <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeStatusLabel">Status:</strong> <span id="visNodeStatus"></span></p>
+                    <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastLogId">Last Log ID:</strong> <span id="visNodeLastLogId"></span></p>
+                    <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastStartTime">Last Start Time:</strong> <span id="visNodeLastStartTime"></span></p>
+                    <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastEndTime">Last End Time:</strong> <span id="visNodeLastEndTime"></span></p>
+                    <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastMessage">Last Message:</strong></p>
+                    <pre id="visNodeLastMessage" style="white-space: pre-wrap; word-break: break-all; background-color: #fff; padding: 5px; border-radius: 3px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto;"></pre>
+                </div>
             </div>
-            <!-- Area for selected node details -->
-            <div id="visSelectedNodeDetails" class="mt-3" style="display:none; padding: 10px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9;">
-               <h6 data-i18n-key="logsPage.workflowInstanceModal.selectedNodeHeader">Selected Node Details:</h6>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeId">Node ID:</strong> <span id="visNodeId"></span></p>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeStatusLabel">Status:</strong> <span id="visNodeStatus"></span></p>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastLogId">Last Log ID:</strong> <span id="visNodeLastLogId"></span></p>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastStartTime">Last Start Time:</strong> <span id="visNodeLastStartTime"></span></p>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastEndTime">Last End Time:</strong> <span id="visNodeLastEndTime"></span></p>
-               <p><strong data-i18n-key="logsPage.workflowInstanceModal.nodeLastMessage">Last Message:</strong></p>
-               <pre id="visNodeLastMessage" style="white-space: pre-wrap; word-break: break-all; background-color: #fff; padding: 5px; border-radius: 3px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto;"></pre>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
             </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal" data-i18n-key="common.close">Close</button>
-          </div>
         </div>
-      </div>
     </div>
+</div>
 
-    <script>
-        $(document).ready(function() {
-            // 使用全局初始化函数
-            if (typeof window.initializeI18n === 'function') {
-                window.initializeI18n().then(() => {
-                    console.log("i18n initialized for logs.html");
+<script>
+    $(document).ready(function() {
+        // 使用全局初始化函数
+        if (typeof window.initializeI18n === 'function') {
+            window.initializeI18n().then(() => {
+                console.log("i18n initialized for logs.html");
 
-                    // Initial log load based on URL or default
-                    if (typeof getUrlParams === 'function') {
-                        const urlParams = getUrlParams();
-                        const taskIdFromUrl = urlParams['taskId'];
-                        if (taskIdFromUrl) {
-                            $('#taskIdFilter').val(taskIdFromUrl);
-                            loadLogs({ taskId: taskIdFromUrl });
-                        } else {
-                            loadLogs();
-                        }
+                // Initial log load based on URL or default
+                if (typeof getUrlParams === 'function') {
+                    const urlParams = getUrlParams();
+                    const taskIdFromUrl = urlParams['taskId'];
+                    if (taskIdFromUrl) {
+                        $('#taskIdFilter').val(taskIdFromUrl);
+                        loadLogs({ taskId: taskIdFromUrl });
                     } else {
-                        console.error("getUrlParams function is not defined. Cannot process URL parameters.");
                         loadLogs();
                     }
-                });
-            } else {
-                console.error("i18n object not defined in logs.html. Content will not be translated.");
-                // Fallback if i18n fails (optional, or just let it show keys)
-                // loadGlobalStats(); // MOVED
-                // loadTopSlowestTasks(); // MOVED
-                // loadTaskBreakdownStats(); // MOVED
-                loadLogs();
-            }
-
-            $("#navbar-container").load("_navbar.html", function() {
-                 const currentUsername = localStorage.getItem('username');
-                 if (currentUsername) {
-                    $('#loggedInUser').text(currentUsername);
-                 }
-                 $('#logout-link').on('click', function(e) {
-                    e.preventDefault();
-                    logout();
-                });
-                if (typeof i18n !== 'undefined') { i18n.applyTranslations(); }
+                } else {
+                    console.error("getUrlParams function is not defined. Cannot process URL parameters.");
+                    loadLogs();
+                }
             });
+        } else {
+            console.error("i18n object not defined in logs.html. Content will not be translated.");
+            // Fallback if i18n fails (optional, or just let it show keys)
+            // loadGlobalStats(); // MOVED
+            // loadTopSlowestTasks(); // MOVED
+            // loadTaskBreakdownStats(); // MOVED
+            loadLogs();
+        }
 
-            let currentLogs = []; // Store the currently displayed set of logs (subset of allLogs if filtered)
-            let allLogsCache = null; // Cache for all logs to avoid re-fetching if not necessary
-            let currentPage = 1;
-            const rowsPerPage = 10;
+        $("#navbar-container").load("_navbar.html", function() {
+            const currentUsername = localStorage.getItem('username');
+            if (currentUsername) {
+                $('#loggedInUser').text(currentUsername);
+            }
+            $('#logout-link').on('click', function(e) {
+                e.preventDefault();
+                logout();
+            });
+            if (typeof i18n !== 'undefined') { i18n.applyTranslations(); }
+        });
 
-            function calculateDuration(startTime, endTime) {
-                if (!startTime || !endTime) return '-';
-                const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
-                if (durationMs < 1000) return durationMs + " ms";
-                if (durationMs < 60000) return (durationMs / 1000).toFixed(2) + " s";
-                return (durationMs / 60000).toFixed(2) + " min";
+        let currentLogs = []; // Store the currently displayed set of logs (subset of allLogs if filtered)
+        let allLogsCache = null; // Cache for all logs to avoid re-fetching if not necessary
+        let currentPage = 1;
+        const rowsPerPage = 10;
+
+        function calculateDuration(startTime, endTime) {
+            if (!startTime || !endTime) return '-';
+            const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+            if (durationMs < 1000) return durationMs + " ms";
+            if (durationMs < 60000) return (durationMs / 1000).toFixed(2) + " s";
+            return (durationMs / 60000).toFixed(2) + " min";
+        }
+
+        function formatStateWithBadge(state) {
+            if (!state) return `<span class="badge ${getBadgeClass(state)}">${i18n.translate('logsPage.logStatuses.unknown', 'Unknown')}</span>`;
+            const badgeClass = getBadgeClass(state);
+            const translatedState = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
+            return `<span class="badge ${badgeClass}">${translatedState}</span>`;
+        }
+
+        function displayLogs(logsToDisplay) {
+            currentLogs = logsToDisplay; // Update currentLogs with the set being displayed
+            const tableBody = $('#logs-table-body');
+            tableBody.empty();
+
+            if (!logsToDisplay || logsToDisplay.length === 0) {
+                tableBody.html(`<tr><td colspan="9" class="text-center">${i18n.translate('logsPage.logTable.noLogsFound', 'No logs found for the current filter.')}</td></tr>`);
+                setupPagination(0);
+                return;
             }
 
-            function formatStateWithBadge(state) {
-                if (!state) return `<span class="badge ${getBadgeClass(state)}">${i18n.translate('logsPage.logStatuses.unknown', 'Unknown')}</span>`;
-                const badgeClass = getBadgeClass(state);
-                const translatedState = i18n.translate(`logsPage.logStatuses.${state.toLowerCase()}`, state);
-                return `<span class="badge ${badgeClass}">${translatedState}</span>`;
-            }
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const paginatedItems = logsToDisplay.slice(startIndex, endIndex);
 
-            function displayLogs(logsToDisplay) {
-                currentLogs = logsToDisplay; // Update currentLogs with the set being displayed
-                const tableBody = $('#logs-table-body');
-                tableBody.empty();
+            paginatedItems.forEach(function(log) {
+                const duration = calculateDuration(log.startTime, log.endTime);
+                let actionsHtml = `<button class="btn btn-xs btn-outline-secondary view-log-details-btn" data-log-id="${log.logId}" title="${i18n.translate('logsPage.viewDetailsBtnTitle', 'View Full Log Details')}">${i18n.translate('logsPage.viewDetailsBtn', 'Details')}</button>`;
 
-                if (!logsToDisplay || logsToDisplay.length === 0) {
-                    tableBody.html(`<tr><td colspan="9" class="text-center">${i18n.translate('logsPage.logTable.noLogsFound', 'No logs found for the current filter.')}</td></tr>`);
-                    setupPagination(0);
-                    return;
+                if (log.taskType === 10) { // Assuming taskType is available in the log object
+                    actionsHtml += `<button class="btn btn-sm btn-outline-primary view-workflow-btn ml-1" data-workflow-log-id="${log.logId}" title="${i18n.translate('logsPage.viewWorkflowBtnTitle', 'View Workflow Details')}">${i18n.translate('logsPage.viewWorkflowBtn', 'View Flow')}</button>`;
                 }
 
-                const startIndex = (currentPage - 1) * rowsPerPage;
-                const endIndex = startIndex + rowsPerPage;
-                const paginatedItems = logsToDisplay.slice(startIndex, endIndex);
+                function formatExecutionMode(mode) {
+                    if (!mode) return `<span class="badge badge-secondary">-</span>`;
+                    const modeMap = {
+                        'BROADCAST': {
+                            text: i18n.translate('tasksPage.executionModes.broadcast', '广播模式'),
+                            class: 'badge-info'
+                        },
+                        'CLUSTER': {
+                            text: i18n.translate('tasksPage.executionModes.cluster', '集群模式'),
+                            class: 'badge-primary'
+                        }
+                    };
+                    const modeInfo = modeMap[mode.toUpperCase()] || {
+                        text: mode,
+                        class: 'badge-secondary'
+                    };
+                    return `<span class="badge ${modeInfo.class}">${modeInfo.text}</span>`;
+                }
 
-                paginatedItems.forEach(function(log) {
-                    const duration = calculateDuration(log.startTime, log.endTime);
-                    let actionsHtml = `<button class="btn btn-xs btn-outline-secondary view-log-details-btn" data-log-id="${log.logId}" title="${i18n.translate('logsPage.viewDetailsBtnTitle', 'View Full Log Details')}">${i18n.translate('logsPage.viewDetailsBtn', 'Details')}</button>`;
-
-                    if (log.taskType === 10) { // Assuming taskType is available in the log object
-                        actionsHtml += `<button class="btn btn-sm btn-outline-primary view-workflow-btn ml-1" data-workflow-log-id="${log.logId}" title="${i18n.translate('logsPage.viewWorkflowBtnTitle', 'View Workflow Details')}">${i18n.translate('logsPage.viewWorkflowBtn', 'View Flow')}</button>`;
-                    }
-
-                    function formatExecutionMode(mode) {
-                        if (!mode) return `<span class="badge badge-secondary">-</span>`;
-                        const modeMap = {
-                            'BROADCAST': {
-                                text: i18n.translate('tasksPage.executionModes.broadcast', '广播模式'),
-                                class: 'badge-info'
-                            },
-                            'CLUSTER': {
-                                text: i18n.translate('tasksPage.executionModes.cluster', '集群模式'),
-                                class: 'badge-primary'
-                            }
-                        };
-                        const modeInfo = modeMap[mode.toUpperCase()] || {
-                            text: mode,
-                            class: 'badge-secondary'
-                        };
-                        return `<span class="badge ${modeInfo.class}">${modeInfo.text}</span>`;
-                    }
-
-                    const row = `<tr class="log-row" data-log-id="${log.logId}">
+                const row = `<tr class="log-row" data-log-id="${log.logId}">
                         <td>${log.logId}</td>
                         <td>${log.taskId}</td>
                         <td>${log.taskName || '-'}</td>
-                        <td>${formatExecutionMode(log.taskPattern)}</td>
+                        <td>${formatExecutionMode(log.executionMode)}</td>
                         <td>${formatStateWithBadge(log.state)}</td>
                         <td>${log.instanceId || ''}</td>
                         <td>${log.startTime ? new Date(log.startTime).toLocaleString() : ''}</td>
@@ -283,233 +284,234 @@
                     </tr>`;
 
 
-                    tableBody.append(row);
-                });
-                setupPagination(logsToDisplay.length);
-            }
-
-            $('#logs-table-body').on('click', '.view-log-details-btn', function() {
-                const logId = $(this).data('log-id');
-                const logEntry = currentLogs.find(log => log.logId === logId); // Find from currently displayed logs
-
-                if (logEntry) {
-                    $('#modalLogId').text(logEntry.logId);
-                    $('#modalTaskId').text(logEntry.taskId);
-                    $('#modalTaskName').text(logEntry.taskName || '-');
-                    $('#modalLogStatus').html(formatStateWithBadge(logEntry.state));
-                    $('#modalLogMessage').val(logEntry.rtnMsg || '');
-                    $('#modalLogException').val(logEntry.exMsg || '');
-                    $('#logDetailModal').modal('show');
-                }
+                tableBody.append(row);
             });
+            setupPagination(logsToDisplay.length);
+        }
 
+        $('#logs-table-body').on('click', '.view-log-details-btn', function() {
+            const logId = $(this).data('log-id');
+            const logEntry = currentLogs.find(log => log.logId === logId); // Find from currently displayed logs
 
-            function getBadgeClass(state) {
-                if (!state) return 'badge-secondary';
-                switch(state.toUpperCase()) {
-                    case 'SUCCESS': return 'badge-success';
-                    case 'FAILED': return 'badge-danger';
-                    case 'RUNNING': return 'badge-info';
-                    case 'SKIPPED': return 'badge-warning';
-                    case 'TIMED_OUT': return 'badge-warning';
-                    case 'CANCELLED': return 'badge-dark';
-                    default: return 'badge-secondary';
-                }
+            if (logEntry) {
+                $('#modalLogId').text(logEntry.logId);
+                $('#modalTaskId').text(logEntry.taskId);
+                $('#modalTaskName').text(logEntry.taskName || '-');
+                $('#modalInstanceId').text(logEntry.instanceId || '-');
+                $('#modalLogStatus').html(formatStateWithBadge(logEntry.state));
+                $('#modalLogMessage').val(logEntry.rtnMsg || '');
+                $('#modalLogException').val(logEntry.exMsg || '');
+                $('#logDetailModal').modal('show');
             }
+        });
 
-            function setupPagination(totalItems) {
-                const pageCount = Math.ceil(totalItems / rowsPerPage);
-                const paginationControls = $('#pagination-controls');
-                paginationControls.empty();
 
-                if (pageCount <= 1) return;
+        function getBadgeClass(state) {
+            if (!state) return 'badge-secondary';
+            switch(state.toUpperCase()) {
+                case 'SUCCESS': return 'badge-success';
+                case 'FAILED': return 'badge-danger';
+                case 'RUNNING': return 'badge-info';
+                case 'SKIPPED': return 'badge-warning';
+                case 'TIMED_OUT': return 'badge-warning';
+                case 'CANCELLED': return 'badge-dark';
+                default: return 'badge-secondary';
+            }
+        }
 
-                const prevText = i18n.translate('common.previous', 'Previous');
-                const nextText = i18n.translate('common.next', 'Next');
+        function setupPagination(totalItems) {
+            const pageCount = Math.ceil(totalItems / rowsPerPage);
+            const paginationControls = $('#pagination-controls');
+            paginationControls.empty();
 
-                paginationControls.append(
-                    `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            if (pageCount <= 1) return;
+
+            const prevText = i18n.translate('common.previous', 'Previous');
+            const nextText = i18n.translate('common.next', 'Next');
+
+            paginationControls.append(
+                `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                         <a class="page-link" href="#" data-page="${currentPage - 1}">${prevText}</a>
                     </li>`
-                );
+            );
 
-                let startPage = Math.max(1, currentPage - 2);
-                let endPage = Math.min(pageCount, currentPage + 2);
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(pageCount, currentPage + 2);
 
-                if (startPage > 1) {
-                    paginationControls.append(`<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`);
-                    if (startPage > 2) {
-                         paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
-                    }
+            if (startPage > 1) {
+                paginationControls.append(`<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`);
+                if (startPage > 2) {
+                    paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
                 }
+            }
 
-                for (let i = startPage; i <= endPage; i++) {
-                    paginationControls.append(
-                        `<li class="page-item ${i === currentPage ? 'active' : ''}">
+            for (let i = startPage; i <= endPage; i++) {
+                paginationControls.append(
+                    `<li class="page-item ${i === currentPage ? 'active' : ''}">
                             <a class="page-link" href="#" data-page="${i}">${i}</a>
                         </li>`
-                    );
-                }
-
-                if (endPage < pageCount) {
-                    if (endPage < pageCount -1) {
-                         paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
-                    }
-                    paginationControls.append(`<li class="page-item"><a class="page-link" href="#" data-page="${pageCount}">${pageCount}</a></li>`);
-                }
-
-                paginationControls.append(
-                    `<li class="page-item ${currentPage === pageCount ? 'disabled' : ''}">
-                        <a class="page-link" href="#" data-page="${currentPage + 1}">${nextText}</a>
-                    </li>`
                 );
             }
 
-            $('#pagination-controls').on('click', '.page-link', function(e) {
-                e.preventDefault();
-                const page = parseInt($(this).data('page'));
-                if (page && page !== currentPage && page > 0 && page <= Math.ceil(currentLogs.length / rowsPerPage)) {
-                    currentPage = page;
-                    displayLogs(currentLogs); // Re-display based on the currently filtered set
+            if (endPage < pageCount) {
+                if (endPage < pageCount -1) {
+                    paginationControls.append(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
                 }
-            });
-
-            function applyAndLoadLogs() {
-                currentPage = 1;
-                const taskId = $('#taskIdFilter').val();
-                const status = $('#statusFilter').val();
-                // Date filters would be added here
-
-                let filters = {};
-                if (taskId) filters.taskId = taskId;
-                if (status) filters.status = status;
-
-                // For now, filtering is client-side after one initial fetch or fetch by TaskID
-                // If allLogsCache is null, it means we haven't fetched the full list yet or it was reset.
-                if (allLogsCache === null && !filters.taskId) { // Fetch all only if no task ID filter from URL and cache is empty
-                     makeApiCall('GET', '/logs', null, // This endpoint fetches ALL logs
-                        function(logs) {
-                            allLogsCache = logs.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-                            filterAndDisplayLogs(filters);
-                        },
-                        function(jqXHR) {
-                            const errorMsg = i18n.translate('logsPage.feedback.errorLoadingLogs', "Error loading logs: {{error}}")
-                                               .replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText));
-                            showFeedback(errorMsg, true);
-                            $('#logs-table-body').html(`<tr><td colspan="9" class="text-center text-danger">${errorMsg}</td></tr>`);
-                        }
-                    );
-                } else if (filters.taskId && (allLogsCache === null || (allLogsCache && !allLogsCache.some(log => log.taskId == filters.taskId)))) {
-                    // If a specific task ID is given and we don't have its logs or the cache is empty, fetch for that task.
-                     makeApiCall('GET', `/logs/task/${filters.taskId}`, null,
-                        function(logs) {
-                            // This response is specific to a task, so it becomes our currentLogs.
-                            // Don't overwrite allLogsCache unless this IS the "all logs" view.
-                            currentLogs = logs.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-                            displayLogs(currentLogs);
-                        },
-                        function(jqXHR) {
-                             const errorMsg = i18n.translate('logsPage.feedback.errorLoadingLogs', "Error loading logs: {{error}}")
-                                               .replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText));
-                            showFeedback(errorMsg, true);
-                            $('#logs-table-body').html(`<tr><td colspan="9" class="text-center text-danger">${errorMsg}</td></tr>`);
-                        }
-                    );
-                }
-                 else { // We have cached logs, filter client-side
-                    filterAndDisplayLogs(filters);
-                }
+                paginationControls.append(`<li class="page-item"><a class="page-link" href="#" data-page="${pageCount}">${pageCount}</a></li>`);
             }
 
-            function filterAndDisplayLogs(filters) {
-                let logsToFilter = allLogsCache || []; // Use cache if available
-                if (filters.taskId) {
-                    logsToFilter = logsToFilter.filter(log => log.taskId == filters.taskId);
-                }
-                if (filters.status) {
-                    logsToFilter = logsToFilter.filter(log => log.state && log.state.toUpperCase() === filters.status.toUpperCase());
-                }
-                // Add date filtering here if implemented
-                displayLogs(logsToFilter);
+            paginationControls.append(
+                `<li class="page-item ${currentPage === pageCount ? 'disabled' : ''}">
+                        <a class="page-link" href="#" data-page="${currentPage + 1}">${nextText}</a>
+                    </li>`
+            );
+        }
+
+        $('#pagination-controls').on('click', '.page-link', function(e) {
+            e.preventDefault();
+            const page = parseInt($(this).data('page'));
+            if (page && page !== currentPage && page > 0 && page <= Math.ceil(currentLogs.length / rowsPerPage)) {
+                currentPage = page;
+                displayLogs(currentLogs); // Re-display based on the currently filtered set
             }
+        });
 
+        function applyAndLoadLogs() {
+            currentPage = 1;
+            const taskId = $('#taskIdFilter').val();
+            const status = $('#statusFilter').val();
+            // Date filters would be added here
 
-            function loadLogs(filters = {}) { // filters can be {taskId: val, status: val}
-                currentPage = 1;
-                let endpoint = '/logs'; // Default to all logs
-                if (filters.taskId) {
-                    endpoint = `/logs/task/${filters.taskId}`;
-                }
-                // Note: The backend /embed-api/logs doesn't currently support status filtering server-side.
-                // The current implementation fetches all (or by task ID) then filters client-side.
-                // For true server-side filtering by status, the API would need to change.
+            let filters = {};
+            if (taskId) filters.taskId = taskId;
+            if (status) filters.status = status;
 
-                makeApiCall('GET', endpoint, null,
+            // For now, filtering is client-side after one initial fetch or fetch by TaskID
+            // If allLogsCache is null, it means we haven't fetched the full list yet or it was reset.
+            if (allLogsCache === null && !filters.taskId) { // Fetch all only if no task ID filter from URL and cache is empty
+                makeApiCall('GET', '/logs', null, // This endpoint fetches ALL logs
                     function(logs) {
                         allLogsCache = logs.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-                        let displayData = allLogsCache;
-                        if (filters.status) { // Client-side filter for status if taskId wasn't the primary filter
-                            displayData = allLogsCache.filter(log => log.state && log.state.toUpperCase() === filters.status.toUpperCase());
-                        }
-                        displayLogs(displayData);
+                        filterAndDisplayLogs(filters);
                     },
                     function(jqXHR) {
                         const errorMsg = i18n.translate('logsPage.feedback.errorLoadingLogs', "Error loading logs: {{error}}")
-                                           .replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText));
+                            .replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText));
+                        showFeedback(errorMsg, true);
+                        $('#logs-table-body').html(`<tr><td colspan="9" class="text-center text-danger">${errorMsg}</td></tr>`);
+                    }
+                );
+            } else if (filters.taskId && (allLogsCache === null || (allLogsCache && !allLogsCache.some(log => log.taskId == filters.taskId)))) {
+                // If a specific task ID is given and we don't have its logs or the cache is empty, fetch for that task.
+                makeApiCall('GET', `/logs/task/${filters.taskId}`, null,
+                    function(logs) {
+                        // This response is specific to a task, so it becomes our currentLogs.
+                        // Don't overwrite allLogsCache unless this IS the "all logs" view.
+                        currentLogs = logs.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+                        displayLogs(currentLogs);
+                    },
+                    function(jqXHR) {
+                        const errorMsg = i18n.translate('logsPage.feedback.errorLoadingLogs', "Error loading logs: {{error}}")
+                            .replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText));
                         showFeedback(errorMsg, true);
                         $('#logs-table-body').html(`<tr><td colspan="9" class="text-center text-danger">${errorMsg}</td></tr>`);
                     }
                 );
             }
+            else { // We have cached logs, filter client-side
+                filterAndDisplayLogs(filters);
+            }
+        }
 
-            $('#applyFiltersBtn').click(function() {
-                const taskId = $('#taskIdFilter').val();
-                const status = $('#statusFilter').val();
-                loadLogs({ taskId: taskId || null, status: status || null });
-            });
+        function filterAndDisplayLogs(filters) {
+            let logsToFilter = allLogsCache || []; // Use cache if available
+            if (filters.taskId) {
+                logsToFilter = logsToFilter.filter(log => log.taskId == filters.taskId);
+            }
+            if (filters.status) {
+                logsToFilter = logsToFilter.filter(log => log.state && log.state.toUpperCase() === filters.status.toUpperCase());
+            }
+            // Add date filtering here if implemented
+            displayLogs(logsToFilter);
+        }
 
-            $('#resetFiltersBtn').click(function() {
-                $('#taskIdFilter').val('');
-                $('#statusFilter').val('');
-                // Reset date filters here if added
-                loadLogs(); // Load all logs
-            });
 
-            // getBadgeClass is kept here as it's also used by displayLogs/formatStateWithBadge
-            // loadGlobalStats, loadTopSlowestTasks, loadTaskBreakdownStats functions are moved to statistics.html
+        function loadLogs(filters = {}) { // filters can be {taskId: val, status: val}
+            currentPage = 1;
+            let endpoint = '/logs'; // Default to all logs
+            if (filters.taskId) {
+                endpoint = `/logs/task/${filters.taskId}`;
+            }
+            // Note: The backend /embed-api/logs doesn't currently support status filtering server-side.
+            // The current implementation fetches all (or by task ID) then filters client-side.
+            // For true server-side filtering by status, the API would need to change.
 
-            $('#logs-table-body').on('click', '.view-workflow-btn', function() {
-                const workflowLogId = $(this).data('workflow-log-id');
-                $('#visInstanceLogId').text(workflowLogId);
-                $('#visWorkflowName').text(''); // Clear previous name
-                $('#workflowInstanceDagContainer').html(`<span data-i18n-key="common.loading">${i18n.translate('common.loading', 'Loading...')}</span>`);
-                $('#visSelectedNodeDetails').hide();
-                i18n.applyTranslations(); // Apply to "Loading..."
-
-                makeApiCall('GET', `/logs/workflow-instance/${workflowLogId}`, null,
-                    function(response) {
-                        $('#visWorkflowName').text(response.workflowTaskName || 'N/A');
-                        // Call the new DAG drawing function
-                        drawWorkflowInstanceStatusDAG(
-                            $('#workflowInstanceDagContainer'), // Pass container jQuery object
-                            response.workflowNodes,
-                            response.workflowEdges,
-                            response.nodeStatuses
-                        );
-                        // After drawing, apply translations if any new static keys were added within DAG
-                        i18n.applyTranslations();
-                    },
-                    function(jqXHR) {
-                        $('#workflowInstanceDagContainer').html(`<p class="text-danger">${i18n.translate('logsPage.feedback.errorLoadingWorkflowInstance', 'Error loading workflow instance details.')}</p>`);
-                        i18n.applyTranslations(); // Apply to error message
-                        console.error("Error fetching workflow instance details:", jqXHR);
+            makeApiCall('GET', endpoint, null,
+                function(logs) {
+                    allLogsCache = logs.sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+                    let displayData = allLogsCache;
+                    if (filters.status) { // Client-side filter for status if taskId wasn't the primary filter
+                        displayData = allLogsCache.filter(log => log.state && log.state.toUpperCase() === filters.status.toUpperCase());
                     }
-                );
-                $('#workflowInstanceModal').modal('show');
-            });
+                    displayLogs(displayData);
+                },
+                function(jqXHR) {
+                    const errorMsg = i18n.translate('logsPage.feedback.errorLoadingLogs', "Error loading logs: {{error}}")
+                        .replace("{{error}}", (jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText));
+                    showFeedback(errorMsg, true);
+                    $('#logs-table-body').html(`<tr><td colspan="9" class="text-center text-danger">${errorMsg}</td></tr>`);
+                }
+            );
+        }
 
+        $('#applyFiltersBtn').click(function() {
+            const taskId = $('#taskIdFilter').val();
+            const status = $('#statusFilter').val();
+            loadLogs({ taskId: taskId || null, status: status || null });
         });
-    </script>
+
+        $('#resetFiltersBtn').click(function() {
+            $('#taskIdFilter').val('');
+            $('#statusFilter').val('');
+            // Reset date filters here if added
+            loadLogs(); // Load all logs
+        });
+
+        // getBadgeClass is kept here as it's also used by displayLogs/formatStateWithBadge
+        // loadGlobalStats, loadTopSlowestTasks, loadTaskBreakdownStats functions are moved to statistics.html
+
+        $('#logs-table-body').on('click', '.view-workflow-btn', function() {
+            const workflowLogId = $(this).data('workflow-log-id');
+            $('#visInstanceLogId').text(workflowLogId);
+            $('#visWorkflowName').text(''); // Clear previous name
+            $('#workflowInstanceDagContainer').html(`<span data-i18n-key="common.loading">${i18n.translate('common.loading', 'Loading...')}</span>`);
+            $('#visSelectedNodeDetails').hide();
+            i18n.applyTranslations(); // Apply to "Loading..."
+
+            makeApiCall('GET', `/logs/workflow-instance/${workflowLogId}`, null,
+                function(response) {
+                    $('#visWorkflowName').text(response.workflowTaskName || 'N/A');
+                    // Call the new DAG drawing function
+                    drawWorkflowInstanceStatusDAG(
+                        $('#workflowInstanceDagContainer'), // Pass container jQuery object
+                        response.workflowNodes,
+                        response.workflowEdges,
+                        response.nodeStatuses
+                    );
+                    // After drawing, apply translations if any new static keys were added within DAG
+                    i18n.applyTranslations();
+                },
+                function(jqXHR) {
+                    $('#workflowInstanceDagContainer').html(`<p class="text-danger">${i18n.translate('logsPage.feedback.errorLoadingWorkflowInstance', 'Error loading workflow instance details.')}</p>`);
+                    i18n.applyTranslations(); // Apply to error message
+                    console.error("Error fetching workflow instance details:", jqXHR);
+                }
+            );
+            $('#workflowInstanceModal').modal('show');
+        });
+
+    });
+</script>
 
 </body>
 </html>

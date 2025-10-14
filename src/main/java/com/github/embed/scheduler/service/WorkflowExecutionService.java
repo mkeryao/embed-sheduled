@@ -3,12 +3,11 @@ package com.github.embed.scheduler.service;
 import com.alibaba.fastjson.JSON;
 import com.github.embed.scheduler.dao.TaskConfigDao;
 import com.github.embed.scheduler.dao.TaskExecuteLogDao;
-import com.github.embed.scheduler.dao.TaskWorkflowInstanceDao;
+import com.github.embed.scheduler.dao.TaskWorkflowNodeStateDao;
 import com.github.embed.scheduler.dto.workflow.WorkflowEdge;
 import com.github.embed.scheduler.dto.workflow.WorkflowNode;
 import com.github.embed.scheduler.entity.TaskConfig;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
-import com.github.embed.scheduler.entity.WorkflowInstance;
 import com.github.embed.scheduler.enums.ExecutionPattern;
 import com.github.embed.scheduler.enums.ExecutionState;
 import com.github.embed.scheduler.scheduler.CoreSchedulerService;
@@ -34,11 +33,10 @@ public class WorkflowExecutionService {
     private TaskConfigDao taskConfigDao;
 
     @Autowired
-    private TaskWorkflowInstanceDao taskWorkflowInstanceDao;
-
+    private TaskExecuteLogDao taskExecuteLogDao;
 
     @Autowired
-    private TaskExecuteLogDao taskExecuteLogDao;
+    private TaskWorkflowNodeStateDao taskWorkflowNodeStateDao;
 
     @Autowired
     private WorkflowAsyncExecutor asyncExecutor;
@@ -46,39 +44,32 @@ public class WorkflowExecutionService {
     @Autowired
     private CoreSchedulerService coreSchedulerService;
 
+    @Autowired
+    private DistributedLockService distributedLockService;
+
     @Transactional
     public void startWorkflow(int workflowId, Long parentLogId) {
         logger.info("Attempting to start workflow with ID: {} for parent log ID: {}", workflowId, parentLogId);
 
-        // 1. Use the provided parent log ID. Do not create a new one.
+        // 1. Use the provided parent log ID as the workflow instance ID.
+        final Long instanceId = parentLogId;
         TaskExecuteLog parentWorkflowLog = taskExecuteLogDao.findById(parentLogId)
                 .orElseThrow(() -> new IllegalArgumentException("Parent log with ID " + parentLogId + " not found."));
-        
+
         // Ensure the parent log is marked as a workflow parent and is running
-        parentWorkflowLog.setTaskPattern(ExecutionPattern.WORKFLOW_PARENT.name());
-        parentWorkflowLog.setState(ExecutionState.RUNNING.name());
+        parentWorkflowLog.setTaskPattern(ExecutionPattern.WORKFLOW_PARENT);
+        parentWorkflowLog.setState(ExecutionState.RUNNING);
+        parentWorkflowLog.setWorkflowInstanceId(instanceId); // Self-reference for consistency
+        parentWorkflowLog.setInstanceId(distributedLockService.getSchedulerInstanceId());
         taskExecuteLogDao.update(parentWorkflowLog);
-        logger.info("Reusing parent workflow log with ID: {}", parentLogId);
-
-        WorkflowInstance instance = new WorkflowInstance();
-        instance.setWorkflowId(workflowId);
-        instance.setStatus(ExecutionState.RUNNING.name());
-        int instanceId = taskWorkflowInstanceDao.create(instance);
-        logger.info("Created workflow instance with ID: {}", instanceId);
-
-        // Associate parent log with instanceId
-        parentWorkflowLog.setInstanceId(String.valueOf(instanceId));
-        taskExecuteLogDao.update(parentWorkflowLog);
-
+        logger.info("Using parent workflow log ID {} as instance ID.", instanceId);
 
         TaskConfig workflowConfig = taskConfigDao.findById(workflowId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow with ID " + workflowId + " not found."));
 
         if (!StringUtils.hasText(workflowConfig.getWorkflowNodesJson())) {
             logger.warn("Workflow {} has no nodes defined. Completing immediately.", workflowId);
-            instance.setStatus(ExecutionState.COMPLETED.name());
-            taskWorkflowInstanceDao.update(instance);
-            parentWorkflowLog.setState(ExecutionState.SUCCESS.name());
+            parentWorkflowLog.setState(ExecutionState.SUCCESS);
             parentWorkflowLog.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
             taskExecuteLogDao.update(parentWorkflowLog);
             return;
@@ -89,19 +80,18 @@ public class WorkflowExecutionService {
                 ? JSON.parseArray(workflowConfig.getWorkflowEdgesJson(), WorkflowEdge.class)
                 : java.util.Collections.emptyList();
 
+        initializeNodeStates(instanceId, nodes, edges);
+
         List<WorkflowNode> startNodes = findStartNodes(nodes, edges);
         logger.info("Found {} start nodes for workflow ID: {}", startNodes.size(), workflowId);
 
         if (startNodes.isEmpty() && !nodes.isEmpty()) {
-             logger.warn("Workflow {} has nodes but no start nodes (potential cycle). Cannot start.", workflowId);
-             instance.setStatus(ExecutionState.FAILED.name());
-             instance.setRtnMsg("Workflow has no start nodes.");
-             taskWorkflowInstanceDao.update(instance);
-             parentWorkflowLog.setState(ExecutionState.FAILED.name());
-             parentWorkflowLog.setRtnMsg("Workflow has no start nodes.");
-             parentWorkflowLog.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
-             taskExecuteLogDao.update(parentWorkflowLog);
-             return;
+            logger.warn("Workflow {} has nodes but no start nodes (potential cycle). Cannot start.", workflowId);
+            parentWorkflowLog.setState(ExecutionState.FAILED);
+            parentWorkflowLog.setRtnMsg("Workflow has no start nodes.");
+            parentWorkflowLog.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
+            taskExecuteLogDao.update(parentWorkflowLog);
+            return;
         }
 
         for (WorkflowNode startNode : startNodes) {
@@ -110,25 +100,36 @@ public class WorkflowExecutionService {
         }
     }
 
+    private void initializeNodeStates(Long instanceId, List<WorkflowNode> nodes, List<WorkflowEdge> edges) {
+        Map<String, Long> inDegrees = nodes.stream()
+                .collect(Collectors.toMap(WorkflowNode::getNodeId, node -> 0L));
+
+        for (WorkflowEdge edge : edges) {
+            inDegrees.computeIfPresent(edge.getToNodeId(), (k, v) -> v + 1);
+        }
+
+        List<com.github.embed.scheduler.entity.TaskWorkflowNodeState> nodeStates = nodes.stream().map(node -> {
+            com.github.embed.scheduler.entity.TaskWorkflowNodeState state = new com.github.embed.scheduler.entity.TaskWorkflowNodeState();
+            state.setWorkflowInstanceId(instanceId);
+            state.setNodeId(node.getNodeId());
+            long pending = inDegrees.get(node.getNodeId());
+            state.setPendingParents((int) pending);
+            state.setStatus(pending == 0 ? ExecutionState.READY.name() : ExecutionState.PENDING.name());
+            return state;
+        }).collect(Collectors.toList());
+
+        taskWorkflowNodeStateDao.batchCreate(nodeStates);
+        logger.info("Initialized {} node states for workflow instance {}", nodeStates.size(), instanceId);
+    }
+
     /**
      * Creates the initial log for a start node and then calls the main execution logic.
      * This is the entry point for nodes that don't have dependencies.
      */
     @Transactional
-    public void executeStartNode(WorkflowNode node, int workflowId, int workflowInstanceId, Long parentWorkflowLogId) {
-        TaskExecuteLog nodeLog = new TaskExecuteLog();
-        nodeLog.setTaskId(node.getTaskConfigId());
-        nodeLog.setWorkflowId(workflowId);
-        nodeLog.setWorkflowInstanceId(workflowInstanceId);
-        nodeLog.setWorkflowNodeId(node.getNodeId());
-        // State is initially PENDING. The executeNode method will change it to RUNNING.
-        nodeLog.setState(ExecutionState.PENDING.name()); 
-        nodeLog.setTaskPattern(ExecutionPattern.WORKFLOW_STEP.name());
-        nodeLog.setParentLogId(parentWorkflowLogId != null ? parentWorkflowLogId.intValue() : null);
-        nodeLog.setInstanceId(String.valueOf(workflowInstanceId));
-        
+    public void executeStartNode(WorkflowNode node, int workflowId, Long workflowInstanceId, Long parentWorkflowLogId) {
         // The save is now part of executeNode's transaction
-        executeNode(nodeLog);
+        executeNode(node, workflowId, workflowInstanceId, parentWorkflowLogId);
     }
 
     @Transactional
@@ -136,27 +137,28 @@ public class WorkflowExecutionService {
         TaskExecuteLog completedLog = taskExecuteLogDao.findById(completedLogId)
                 .orElseThrow(() -> new IllegalStateException("Completed log with ID " + completedLogId + " not found."));
 
-        if (!ExecutionState.SUCCESS.name().equals(completedLog.getState())) {
-            logger.warn("Node with LogId {} did not complete successfully (state: {}). Halting this path.", completedLogId, completedLog.getState());
-            // Mark workflow as failed
-            WorkflowInstance instance = taskWorkflowInstanceDao.findById(completedLog.getWorkflowInstanceId()).orElse(null);
-            if(instance != null && !ExecutionState.FAILED.name().equals(instance.getStatus())) {
-                instance.setStatus(ExecutionState.FAILED.name());
-                instance.setRtnMsg("Node " + completedLog.getWorkflowNodeId() + " failed.");
-                taskWorkflowInstanceDao.update(instance);
-            }
+        Long instanceId = completedLog.getWorkflowInstanceId();
+        String completedNodeId = completedLog.getWorkflowNodeId();
+
+        if (instanceId == null) {
+            logger.warn("Completed log {} is not part of a workflow (workflow_instance_id is null). Aborting completion processing.", completedLogId);
             return;
         }
+
+        if (completedLog.getState() != ExecutionState.SUCCESS) {
+            logger.warn("Node with LogId {} did not complete successfully (state: {}). Halting this path.", completedLogId, completedLog.getState());
+            taskWorkflowNodeStateDao.updateStatus(instanceId, completedNodeId, ExecutionState.FAILED.name());
+            // Mark workflow as failed
+            markWorkflowAsFailed(instanceId, "Node " + completedNodeId + " failed.");
+            return;
+        }
+
+        // Mark the node as successfully completed in the state table
+        taskWorkflowNodeStateDao.updateStatus(instanceId, completedNodeId, ExecutionState.SUCCESS.name());
+        logger.info("Marked node '{}' as SUCCESS in state tracking for instance {}.", completedNodeId, instanceId);
 
         int workflowId = completedLog.getWorkflowId();
-        int instanceId = completedLog.getWorkflowInstanceId();
-        String completedNodeId = completedLog.getWorkflowNodeId();
         Long parentWorkflowLogId = completedLog.getParentLogId() != null ? completedLog.getParentLogId().longValue() : null;
-
-        if (parentWorkflowLogId == null) {
-            logger.warn("Completed log {} is not part of a workflow (parent_execute_no is null). Aborting completion processing.", completedLogId);
-            return;
-        }
 
         TaskConfig workflowConfig = taskConfigDao.findById(workflowId)
                 .orElseThrow(() -> new IllegalArgumentException("Workflow with ID " + workflowId + " not found."));
@@ -173,20 +175,21 @@ public class WorkflowExecutionService {
 
         for (WorkflowEdge edge : outgoingEdges) {
             WorkflowNode downstreamNode = nodeMap.get(edge.getToNodeId());
-            if (downstreamNode != null && isReadyToRun(downstreamNode, instanceId, edges)) {
-                logger.info("Downstream node '{}' is ready to run. Triggering async lock acquisition.", downstreamNode.getNodeId());
-                // Instead of executing directly, attempt to acquire a lock and execute asynchronously
-                asyncExecutor.tryAcquireLockAndExecuteNode(downstreamNode, workflowId, instanceId, parentWorkflowLogId);
-            } else {
-                if (downstreamNode != null) {
-                    logger.info("Downstream node '{}' is not yet ready to run. Waiting for other dependencies.", downstreamNode.getNodeId());
+            if (downstreamNode != null) {
+                int newPendingCount = taskWorkflowNodeStateDao.decrementAndGetPendingParents(instanceId, downstreamNode.getNodeId());
+                if (newPendingCount == 0) {
+                    logger.info("Downstream node '{}' is ready to run. Triggering async lock acquisition.", downstreamNode.getNodeId());
+                    taskWorkflowNodeStateDao.updateStatus(instanceId, downstreamNode.getNodeId(), ExecutionState.READY.name());
+                    asyncExecutor.tryAcquireLockAndExecuteNode(downstreamNode, workflowId, instanceId, parentWorkflowLogId);
+                } else {
+                    logger.info("Downstream node '{}' is not yet ready to run. Waiting for {} more dependencies.", downstreamNode.getNodeId(), newPendingCount);
                 }
             }
         }
 
-        if (isWorkflowComplete(instanceId, nodes, edges)) {
+        if (isWorkflowComplete(instanceId)) {
             logger.info("Workflow instance {} is complete. Updating status.", instanceId);
-            markWorkflowAsComplete(instanceId, parentWorkflowLogId);
+            markWorkflowAsComplete(instanceId);
         }
     }
 
@@ -194,13 +197,21 @@ public class WorkflowExecutionService {
      * Marks a workflow instance and its parent log as failed.
      */
     @Transactional
-    public void markWorkflowAsFailed(int instanceId, String reason) {
-        WorkflowInstance instance = taskWorkflowInstanceDao.findById(instanceId).orElse(null);
-        if (instance != null && !ExecutionState.FAILED.name().equals(instance.getStatus())) {
-            instance.setStatus(ExecutionState.FAILED.name());
-            instance.setRtnMsg(reason);
-            taskWorkflowInstanceDao.update(instance);
-            logger.warn("Marked workflow instance {} as FAILED. Reason: {}", instanceId, reason);
+    public void markWorkflowAsFailed(Long instanceId, String reason) {
+        TaskExecuteLog parentLog = taskExecuteLogDao.findById(instanceId).orElse(null);
+        if (parentLog != null && parentLog.getState() != ExecutionState.FAILED) {
+            parentLog.setState(ExecutionState.FAILED);
+            parentLog.setRtnMsg(reason);
+            parentLog.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
+            taskExecuteLogDao.update(parentLog);
+            logger.warn("Marked workflow instance {} (Parent Log ID) as FAILED. Reason: {}", instanceId, reason);
+
+            // Also send a notification for the parent workflow failure
+            TaskConfig parentTaskConfig = taskConfigDao.findById(parentLog.getTaskId())
+                    .orElse(null);
+            if (parentTaskConfig != null) {
+                notificationService.sendFailureNotification(parentTaskConfig, parentLog);
+            }
         }
     }
 
@@ -208,22 +219,23 @@ public class WorkflowExecutionService {
      * Marks a workflow instance and its parent log as complete.
      */
     @Transactional
-    public void markWorkflowAsComplete(int instanceId, Long parentWorkflowLogId) {
-        WorkflowInstance instance = taskWorkflowInstanceDao.findById(instanceId)
-                .orElseThrow(() -> new IllegalStateException("Workflow instance " + instanceId + " not found."));
-        
-        if (!ExecutionState.COMPLETED.name().equals(instance.getStatus())) {
-            instance.setStatus(ExecutionState.COMPLETED.name());
-            taskWorkflowInstanceDao.update(instance);
+    public void markWorkflowAsComplete(Long instanceId) {
+        TaskExecuteLog parentLog = taskExecuteLogDao.findById(instanceId)
+                .orElseThrow(() -> new IllegalStateException("Parent workflow log " + instanceId + " not found."));
 
-            if (parentWorkflowLogId != null) {
-                TaskExecuteLog parentLog = taskExecuteLogDao.findById(parentWorkflowLogId)
-                    .orElseThrow(() -> new IllegalStateException("Parent workflow log " + parentWorkflowLogId + " not found."));
-                parentLog.setState(ExecutionState.SUCCESS.name());
-                parentLog.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
-                taskExecuteLogDao.update(parentLog);
+        if (parentLog.getState() != ExecutionState.SUCCESS) {
+            parentLog.setState(ExecutionState.SUCCESS);
+            parentLog.setRtnMsg("Workflow completed successfully.");
+            parentLog.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
+            taskExecuteLogDao.update(parentLog);
+            logger.info("Marked workflow instance {} (Parent Log ID) as COMPLETED.", instanceId);
+
+            // Send success notification for the parent workflow
+            TaskConfig parentTaskConfig = taskConfigDao.findById(parentLog.getTaskId())
+                    .orElse(null);
+            if (parentTaskConfig != null) {
+                notificationService.sendSuccessNotification(parentTaskConfig, parentLog);
             }
-            logger.info("Marked workflow instance {} as COMPLETED.", instanceId);
         }
     }
 
@@ -232,18 +244,36 @@ public class WorkflowExecutionService {
      * This method is transactional and will attempt to save the PENDING log first.
      * If the save fails due to a duplicate key, it will throw a DuplicateKeyException,
      * which is caught by the async caller.
-     * @param nodeLog The log entry for the node to execute, expected to be in PENDING state.
+     * @param node The node to execute.
+     * @param workflowId The ID of the workflow definition.
+     * @param instanceId The unique ID for this workflow run.
+     * @param parentWorkflowLogId The log ID of the parent workflow trigger.
      */
     @Transactional
-    public void executeNode(TaskExecuteLog nodeLog) {
-        // 1. Save the initial PENDING log entry to get an ID
+    public void executeNode(WorkflowNode node, int workflowId, Long instanceId, Long parentWorkflowLogId) {
+        // 1. Update state tracking table to RUNNING
+        taskWorkflowNodeStateDao.updateStatus(instanceId, node.getNodeId(), ExecutionState.RUNNING.name());
+        logger.info("Updated node state to RUNNING for node '{}' in state tracking (Instance ID: {}).", node.getNodeId(), instanceId);
+
+        // 2. Create and save the log entry with RUNNING state directly.
+        // The unique constraint on (workflow_instance_id, workflow_node_id) will prevent duplicates.
+        TaskExecuteLog nodeLog = new TaskExecuteLog();
+        nodeLog.setTaskId(node.getTaskConfigId());
+        nodeLog.setWorkflowId(workflowId);
+        nodeLog.setWorkflowInstanceId(instanceId);
+        nodeLog.setWorkflowNodeId(node.getNodeId());
+        nodeLog.setStartTime(new java.sql.Timestamp(System.currentTimeMillis())); // Fix: Set start time
+        nodeLog.setState(ExecutionState.RUNNING); // Set to RUNNING directly
+        nodeLog.setTaskPattern(ExecutionPattern.WORKFLOW_STEP);
+        nodeLog.setParentLogId(parentWorkflowLogId != null ? parentWorkflowLogId.intValue() : null);
+        nodeLog.setInstanceId(distributedLockService.getSchedulerInstanceId());
+        if (node.getParameters() != null && !node.getParameters().isEmpty()) {
+            nodeLog.setParameters(JSON.toJSONString(node.getParameters()));
+        }
+
         TaskExecuteLog savedLog = taskExecuteLogDao.save(nodeLog);
         long logId = savedLog.getId();
-        logger.info("Saved initial log for node '{}' with ID {}. State is PENDING.", savedLog.getWorkflowNodeId(), logId);
-
-        // 2. Immediately update the state to RUNNING in the database
-        taskExecuteLogDao.updateState(logId, ExecutionState.RUNNING.name());
-        logger.info("Updated log state to RUNNING for node '{}' (Log ID: {}).", savedLog.getWorkflowNodeId(), logId);
+        logger.info("Saved RUNNING log for node '{}' with ID {}.", savedLog.getWorkflowNodeId(), logId);
 
         // 3. After the current transaction commits, trigger the actual task execution
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -268,49 +298,23 @@ public class WorkflowExecutionService {
     @Transactional
     public void handleNodeFailure(long failedLogId) {
         TaskExecuteLog failedLog = taskExecuteLogDao.findById(failedLogId)
-            .orElseThrow(() -> new IllegalStateException("Failed log with ID " + failedLogId + " not found."));
-        
-        int instanceId = failedLog.getWorkflowInstanceId();
-        String reason = "Node " + failedLog.getWorkflowNodeId() + " failed execution.";
-        
+                .orElseThrow(() -> new IllegalStateException("Failed log with ID " + failedLogId + " not found."));
+
+        Long instanceId = failedLog.getWorkflowInstanceId();
+        if (instanceId == null) {
+            logger.warn("Failed log {} is not part of a workflow. Cannot process failure.", failedLogId);
+            return;
+        }
+        String nodeId = failedLog.getWorkflowNodeId();
+        String reason = "Node " + nodeId + " failed execution.";
+
+        taskWorkflowNodeStateDao.updateStatus(instanceId, nodeId, ExecutionState.FAILED.name());
         markWorkflowAsFailed(instanceId, reason);
     }
 
-    private boolean isReadyToRun(WorkflowNode node, int instanceId, List<WorkflowEdge> allEdges) {
-        List<String> parentNodeIds = allEdges.stream()
-                .filter(edge -> edge.getToNodeId().equals(node.getNodeId()))
-                .map(WorkflowEdge::getFromNodeId)
-                .collect(Collectors.toList());
-
-        if (parentNodeIds.isEmpty()) {
-            return true; // It's a start node
-        }
-
-        long successfulParents = taskExecuteLogDao.countSuccessfulExecutionsByNodeId(instanceId, parentNodeIds);
-        logger.debug("Node '{}' has {} required parents. Found {} successful parent executions for instance {}.", node.getNodeId(), parentNodeIds.size(), successfulParents, instanceId);
-        return successfulParents == parentNodeIds.size();
-    }
-
-    private boolean isWorkflowComplete(int workflowInstanceId, List<WorkflowNode> allNodes, List<WorkflowEdge> allEdges) {
-        // A more robust way to check for completion:
-        // The workflow is complete if the number of successfully executed nodes
-        // for this instance matches the total number of nodes defined in the workflow.
-        
-        List<String> allNodeIds = allNodes.stream()
-                                          .map(WorkflowNode::getNodeId)
-                                          .collect(Collectors.toList());
-
-        if (allNodeIds.isEmpty()) {
-            logger.info("Workflow instance {} has no nodes, considering it complete.", workflowInstanceId);
-            return true; // A workflow with no nodes is complete by definition.
-        }
-
-        long successfulNodesCount = taskExecuteLogDao.countSuccessfulExecutionsByNodeId(workflowInstanceId, allNodeIds);
-        
-        logger.debug("Checking for workflow completion for instance {}. Total nodes: {}. Successful nodes: {}.", 
-                     workflowInstanceId, allNodes.size(), successfulNodesCount);
-
-        return successfulNodesCount >= allNodes.size();
+    private boolean isWorkflowComplete(Long workflowInstanceId) {
+        // The workflow is complete if there are no nodes in PENDING, READY, or RUNNING state.
+        return taskWorkflowNodeStateDao.isWorkflowComplete(workflowInstanceId);
     }
 
     private List<WorkflowNode> findStartNodes(List<WorkflowNode> nodes, List<WorkflowEdge> edges) {

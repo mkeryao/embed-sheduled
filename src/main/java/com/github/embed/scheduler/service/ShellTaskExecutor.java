@@ -4,6 +4,7 @@ import com.github.embed.scheduler.dao.TaskExecuteLogDao;
 import com.github.embed.scheduler.dto.taskparams.ShellTaskParameters;
 import com.github.embed.scheduler.entity.TaskConfig;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
+import com.github.embed.scheduler.enums.ExecutionState;
 import com.alibaba.fastjson.JSON; // Fastjson import
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,7 @@ public class ShellTaskExecutor {
 
     /**
      * Executes a shell script task based on its configuration.
-     * The {@link TaskConfig#beanParameters} field is expected to contain a JSON string
+     * The {@link TaskConfig#parameters} field is expected to contain a JSON string
      * representing {@link ShellTaskParameters}.
      *
      * @param taskConfig The configuration of the shell task to execute.
@@ -85,11 +86,11 @@ public class ShellTaskExecutor {
         int exitCode = -1; // Default to -1 for cases where exit code might not be retrieved
 
         try {
-            if (!StringUtils.hasText(taskConfig.getBeanParameters())) {
-                throw new IllegalArgumentException("Shell task parameters (beanParameters) are missing or empty for Task ID: " + taskConfig.getTaskId());
+            if (!StringUtils.hasText(taskConfig.getParameters())) {
+                throw new IllegalArgumentException("Shell task parameters (parameters) are missing or empty for Task ID: " + taskConfig.getTaskId());
             }
             // Replace with Fastjson parsing
-            params = JSON.parseObject(taskConfig.getBeanParameters(), ShellTaskParameters.class);
+            params = JSON.parseObject(taskConfig.getParameters(), ShellTaskParameters.class);
 
             if (!StringUtils.hasText(params.getScript())) {
                 throw new IllegalArgumentException("Script content/path is mandatory for shell tasks. Task ID: " + taskConfig.getTaskId());
@@ -134,7 +135,7 @@ public class ShellTaskExecutor {
                     timedOut = true;
                     process.destroyForcibly(); // Ensure subprocess is killed
                     logger.warn("Shell Task ID {} timed out after {} seconds and was forcibly destroyed.", taskConfig.getTaskId(), timeoutSeconds);
-                    logEntry.setState("TIMED_OUT");
+                    logEntry.setState(ExecutionState.TIMED_OUT);
                     logEntry.setExMsg("Task execution timed out after " + timeoutSeconds + " seconds.");
                 } else {
                     exitCode = process.exitValue();
@@ -162,10 +163,10 @@ public class ShellTaskExecutor {
                 logEntry.setRtnMsg("Exit Code: " + exitCode + (StringUtils.hasText(finalStdout) ? "\nSTDOUT:\n" + finalStdout : ""));
 
                 if (exitCode == 0) {
-                    logEntry.setState("SUCCESS");
+                    logEntry.setState(ExecutionState.SUCCESS);
                     logEntry.setExMsg(StringUtils.hasText(finalStderr) ? "STDERR:\n" + finalStderr : null);
                 } else {
-                    logEntry.setState("FAILED");
+                    logEntry.setState(ExecutionState.FAILED);
                     logEntry.setExMsg("Exit Code: " + exitCode + (StringUtils.hasText(finalStderr) ? "\nSTDERR:\n" + finalStderr : ""));
                 }
                 logger.info("Shell Task ID {} finished. Exit Code: {}. STDOUT length: {}, STDERR length: {}",
@@ -173,28 +174,28 @@ public class ShellTaskExecutor {
             }
 
         } catch (IllegalArgumentException e) {
-            logger.error("Shell Task ID {} configuration error: {}. Parameters: {}", taskConfig.getTaskId(), e.getMessage(), taskConfig.getBeanParameters(), e);
-            logEntry.setState("FAILED");
+            logger.error("Shell Task ID {} configuration error: {}. Parameters: {}", taskConfig.getTaskId(), e.getMessage(), taskConfig.getParameters(), e);
+            logEntry.setState(ExecutionState.FAILED);
             logEntry.setExMsg("Invalid task parameters: " + e.getMessage());
         } catch (com.alibaba.fastjson.JSONException e) { // Fastjson parsing exception
-            logger.error("Shell Task ID {} JSON parsing error: {}. Parameters: {}", taskConfig.getTaskId(), e.getMessage(), taskConfig.getBeanParameters(), e);
-            logEntry.setState("FAILED");
+            logger.error("Shell Task ID {} JSON parsing error: {}. Parameters: {}", taskConfig.getTaskId(), e.getMessage(), taskConfig.getParameters(), e);
+            logEntry.setState(ExecutionState.FAILED);
             logEntry.setExMsg("Invalid task parameters JSON format: " + e.getMessage());
         } catch (IOException e) {
             logger.error("Shell Task ID {} failed: IO error during execution (e.g., script not found, permission issue). {}", taskConfig.getTaskId(), e.getMessage(), e);
-            logEntry.setState("FAILED");
+            logEntry.setState(ExecutionState.FAILED);
             logEntry.setExMsg("IO error: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.warn("Shell Task ID {} execution was interrupted.", taskConfig.getTaskId(), e);
-            logEntry.setState("FAILED"); // Or a more specific state like "INTERRUPTED" if desired
+            logEntry.setState(ExecutionState.FAILED); // Or a more specific state like "INTERRUPTED" if desired
             logEntry.setExMsg("Task execution interrupted: " + e.getMessage());
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
             }
         } catch (Exception e) { // Catch-all for other unexpected runtime errors
             logger.error("Shell Task ID {} failed: Unexpected error. {}", taskConfig.getTaskId(), e.getMessage(), e);
-            logEntry.setState("FAILED");
+            logEntry.setState(ExecutionState.FAILED);
             logEntry.setExMsg("Unexpected error: " + e.getMessage());
             if (process != null && process.isAlive()) {
                 process.destroyForcibly();
@@ -246,8 +247,8 @@ public class ShellTaskExecutor {
             } catch (UnsupportedOperationException e) {
                 logger.warn("POSIX file permissions not supported on temp file system for {}. Script may need to be called with an interpreter explicitly (e.g., 'sh {}').", tempFile, e);
             } catch (IOException e) {
-                 logger.error("Failed to set executable permission on temporary script file: {}. Error: {}", tempFile, e.getMessage());
-                 // Depending on system, execution might still work or might need 'sh /path/to/script'
+                logger.error("Failed to set executable permission on temporary script file: {}. Error: {}", tempFile, e.getMessage());
+                // Depending on system, execution might still work or might need 'sh /path/to/script'
             }
         }
         logger.debug("Created temporary script file: {}", tempFile.toAbsolutePath());

@@ -2,6 +2,9 @@ package com.github.embed.scheduler.entity;
 
 import java.sql.Timestamp;
 
+import com.github.embed.scheduler.enums.ExecutionPattern;
+import com.github.embed.scheduler.enums.ExecutionState;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -32,7 +35,7 @@ public class TaskExecuteLog {
      * Current state of the task execution.
      * Examples: "RUNNING", "SUCCESS", "FAILED", "TIMED_OUT", "SKIPPED".
      */
-    private String state;
+    private ExecutionState state;
 
     /** Optional return message or short summary of execution, distinct from exception messages. */
     private String rtnMsg;
@@ -54,7 +57,7 @@ public class TaskExecuteLog {
      * Describes the pattern of execution, e.g., "NORMAL" for regular tasks,
      * "WORKFLOW_PARENT" for the main log of a workflow, or "WORKFLOW_STEP" for individual steps in a workflow.
      */
-    private String taskPattern;
+    private ExecutionPattern taskPattern;
 
     /**
      * If this log entry is for a step within a workflow (i.e., taskPattern is "WORKFLOW_STEP"),
@@ -67,8 +70,8 @@ public class TaskExecuteLog {
     private Integer workflowId;
 
     /** ID of the specific workflow instance this log belongs to. */
-    private Integer workflowInstanceId;
-    
+    private Long workflowInstanceId;
+
     /** The attempt number for this execution (e.g., 1 for the first try, 2 for the first retry, etc.). */
     private int attempt;
 
@@ -79,7 +82,7 @@ public class TaskExecuteLog {
         return logId;
     }
 
-    public String getStatus() {
+    public ExecutionState getStatus() {
         return state;
     }
 }

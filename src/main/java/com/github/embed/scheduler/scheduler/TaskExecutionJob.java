@@ -32,7 +32,7 @@ public class TaskExecutionJob implements Runnable {
     private final NotificationService notificationService;
     private final String instanceId;
     private final int attemptNumber;
-    private final String executionPattern;
+    private final ExecutionPattern executionPattern;
     private final Long parentLogId;
     private final String parameters;
     private final String workflowNodeId;
@@ -48,7 +48,7 @@ public class TaskExecutionJob implements Runnable {
                             NotificationService notificationService,
                             String instanceId,
                             int attemptNumber,
-                            String executionPattern,
+                            ExecutionPattern executionPattern,
                             Long parentLogId,
                             String parameters,
                             String workflowNodeId,
@@ -79,7 +79,7 @@ public class TaskExecutionJob implements Runnable {
             TaskExecuteLog log = new TaskExecuteLog();
             log.setTaskId(taskConfig.getTaskId());
             log.setStartTime(new Timestamp(System.currentTimeMillis()));
-            log.setState(ExecutionState.RUNNING.name());
+            log.setState(ExecutionState.RUNNING);
             log.setInstanceId(this.instanceId);
             log.setAttempt(this.attemptNumber);
             log.setTaskPattern(this.executionPattern);
@@ -99,7 +99,7 @@ public class TaskExecutionJob implements Runnable {
         logger.info("Attempt {} for task: {} (ID: {}, Log ID: {})",
                 this.attemptNumber, taskConfig.getTaskName(), taskConfig.getTaskId(), this.executionLogId);
         
-        String finalStatus = ExecutionState.FAILED.name();
+        ExecutionState finalStatus = ExecutionState.FAILED;
         String returnMessage = null;
         String exceptionMessage = null;
         boolean lockAcquired = false;
@@ -110,7 +110,7 @@ public class TaskExecutionJob implements Runnable {
                 derivedLockName = "task_lock_id_" + taskConfig.getTaskId();
                 lockAcquired = distributedLockService.tryLock(derivedLockName, this.instanceId);
                 if (!lockAcquired) {
-                    finalStatus = ExecutionState.SKIPPED.name();
+                    finalStatus = ExecutionState.SKIPPED;
                     returnMessage = "Skipped: Could not acquire CLUSTER lock '" + derivedLockName + "'";
                     logger.warn("{} for task ID {}", returnMessage, taskConfig.getTaskId());
                     return;
@@ -124,28 +124,38 @@ public class TaskExecutionJob implements Runnable {
                     // The taskConfig passed to this job's constructor already has the correct parameters
                     // (either from the node or the original task), so we can use it directly.
                     returnMessage = beanTaskExecutor.execute(taskConfig);
-                    finalStatus = ExecutionState.SUCCESS.name();
+                    finalStatus = ExecutionState.SUCCESS;
+                    break;
+                case 1: // Shell task
+                    ShellTaskExecutor shellTaskExecutor = applicationContext.getBean(ShellTaskExecutor.class);
+                    returnMessage = shellTaskExecutor.execute(taskConfig);
+                    finalStatus = ExecutionState.SUCCESS;
+                    break;
+                case 2: // Http task
+                    HttpTaskExecutor httpTaskExecutor = applicationContext.getBean(HttpTaskExecutor.class);
+                    returnMessage = httpTaskExecutor.execute(taskConfig);
+                    finalStatus = ExecutionState.SUCCESS;
                     break;
                 case 10: // Workflow task
                     WorkflowExecutionService workflowService = applicationContext.getBean(WorkflowExecutionService.class);
                     workflowService.startWorkflow(taskConfig.getTaskId(), this.executionLogId);
-                    finalStatus = ExecutionState.RUNNING.name(); // Workflow itself is now running
+                    finalStatus = ExecutionState.RUNNING; // Workflow itself is now running
                     break;
                 // Other task types (HTTP, Shell) would go here
                 default:
                     exceptionMessage = "Unknown task type: " + taskConfig.getTaskType();
                     logger.error(exceptionMessage + " for task ID: {}", taskConfig.getTaskId());
-                    finalStatus = ExecutionState.FAILED.name();
+                    finalStatus = ExecutionState.FAILED;
                     break;
             }
 
         } catch (BeanTaskExecutor.TaskTimeoutException e) {
             logger.error("Task {} (ID: {}) timed out on attempt {}.", taskConfig.getTaskName(), taskConfig.getTaskId(), this.attemptNumber, e);
-            finalStatus = ExecutionState.TIMED_OUT.name();
+            finalStatus = ExecutionState.TIMED_OUT;
             exceptionMessage = e.getMessage();
         } catch (Exception e) {
             logger.error("Task {} (ID: {}) failed on attempt {} with an unexpected exception.", taskConfig.getTaskName(), taskConfig.getTaskId(), this.attemptNumber, e);
-            finalStatus = ExecutionState.FAILED.name();
+            finalStatus = ExecutionState.FAILED;
             exceptionMessage = e.getClass().getSimpleName() + ": " + e.getMessage();
         } finally {
             if (lockAcquired && derivedLockName != null) {
@@ -154,12 +164,12 @@ public class TaskExecutionJob implements Runnable {
             }
 
             // Don't update status for parent workflow logs, as their status is managed by the workflow service
-            if (!ExecutionPattern.WORKFLOW_PARENT.name().equals(this.executionPattern)) {
+            if (this.executionPattern != ExecutionPattern.WORKFLOW_PARENT) {
                 taskExecuteLogDao.updateLogStatus(this.executionLogId, finalStatus, returnMessage, exceptionMessage);
             }
 
             // Callback to the scheduler for completion handling (retries, workflow progression)
-            if (!ExecutionState.RUNNING.name().equals(finalStatus)) {
+            if (finalStatus != ExecutionState.RUNNING) {
                  coreSchedulerService.handleTaskCompletion(this.executionLogId);
             }
 

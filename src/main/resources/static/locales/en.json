@@ -75,7 +75,7 @@
         "errors": {
             "taskNameAndCronRequired": "Task name and CRON expression must not be empty.",
             "invalidCronExpression": "Invalid CRON expression format.",
-            "invalidJsonForTaskType": "beanParameters is not valid JSON for HTTP/Shell task type.",
+            "invalidJsonForTaskType": "parameters is not valid JSON for HTTP/Shell task type.",
             "workflowContainsCycle": "Workflow configuration contains a cycle. Please correct the workflow definition.",
             "requestBodyNull": "Request body cannot be null.",
             "cronExpressionEmpty": "CRON expression cannot be empty.",
@@ -555,49 +555,49 @@
         }
     },
     "usersPage": {
-      "title": "User Management - Task Scheduler",
-      "header": "User Management",
-      "addUserBtn": "Add User",
-      "table": {
-      "id": "ID",
-      "username": "Username",
-      "email": "Email",
-      "webhook": "Webhook Address",
-      "role": "Role (Status)",
-      "createdAt": "Created At",
-      "actions": "Actions",
-      "roleAdmin": "Admin",
-      "roleUser": "User"
-    },
-    "modal": {
-      "title": "Add/Edit User",
-      "titleAdd": "Add User",
-      "titleEdit": "Edit User",
-      "usernameLabel": "Username",
-      "usernamePlaceholder": "Enter username",
-      "emailLabel": "Email",
-      "emailPlaceholder": "Enter email",
-      "webhookLabel": "Webhook Address (Optional)",
-      "webhookPlaceholder": "https://example.com/webhook or JSON array of URLs",
-      "notificationPreferencesLabel": "Notification Preferences (JSON - Optional)",
-      "notificationPreferencesPlaceholder": "e.g., {\"EMAIL\": {\"emailAddress\": \"user@example.com\", \"enabled\": true}}",
-      "notificationPreferencesHelp": "Advanced: Configure specific notification channels and details.",
-      "passwordLabel": "Password",
-      "passwordPlaceholder": "Enter new password or leave blank to keep current",
-      "passwordHelpNew": "Required for new users.",
-      "passwordHelpEdit": "For existing users, leave blank to keep current password.",
-      "isAdminLabel": "Is Admin (Role)",
-      "saveBtn": "Save User"
-    },
-    "feedback": {
-      "passwordRequired": "Password is required for new users.",
-      "userSaved": "User saved successfully.",
-      "errorSavingUser": "Error saving user: {{error}}",
-      "errorFetchingUser": "Error fetching user details: {{error}}",
-      "cannotDeleteSelf": "You cannot delete yourself.",
-      "confirmDeleteUser": "Are you sure you want to delete user {{userId}} ({{username}})?",
-      "userDeleted": "User deleted successfully.",
-      "errorDeletingUser": "Error deleting user: {{error}}"
+        "title": "User Management - Task Scheduler",
+        "header": "User Management",
+        "addUserBtn": "Add User",
+        "table": {
+            "id": "ID",
+            "username": "Username",
+            "email": "Email",
+            "webhook": "Webhook Address",
+            "role": "Role (Status)",
+            "createdAt": "Created At",
+            "actions": "Actions",
+            "roleAdmin": "Admin",
+            "roleUser": "User"
+        },
+        "modal": {
+            "title": "Add/Edit User",
+            "titleAdd": "Add User",
+            "titleEdit": "Edit User",
+            "usernameLabel": "Username",
+            "usernamePlaceholder": "Enter username",
+            "emailLabel": "Email",
+            "emailPlaceholder": "Enter email",
+            "webhookLabel": "Webhook Address (Optional)",
+            "webhookPlaceholder": "https://example.com/webhook or JSON array of URLs",
+            "notificationPreferencesLabel": "Notification Preferences (JSON - Optional)",
+            "notificationPreferencesPlaceholder": "e.g., {\"EMAIL\": {\"emailAddress\": \"user@example.com\", \"enabled\": true}}",
+            "notificationPreferencesHelp": "Advanced: Configure specific notification channels and details.",
+            "passwordLabel": "Password",
+            "passwordPlaceholder": "Enter new password or leave blank to keep current",
+            "passwordHelpNew": "Required for new users.",
+            "passwordHelpEdit": "For existing users, leave blank to keep current password.",
+            "isAdminLabel": "Is Admin (Role)",
+            "saveBtn": "Save User"
+        },
+        "feedback": {
+            "passwordRequired": "Password is required for new users.",
+            "userSaved": "User saved successfully.",
+            "errorSavingUser": "Error saving user: {{error}}",
+            "errorFetchingUser": "Error fetching user details: {{error}}",
+            "cannotDeleteSelf": "You cannot delete yourself.",
+            "confirmDeleteUser": "Are you sure you want to delete user {{userId}} ({{username}})?",
+            "userDeleted": "User deleted successfully.",
+            "errorDeletingUser": "Error deleting user: {{error}}"
+        }
     }
-  }
 }

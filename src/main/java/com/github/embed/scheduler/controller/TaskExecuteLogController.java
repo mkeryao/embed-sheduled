@@ -20,7 +20,7 @@ import org.springframework.util.StringUtils; // Added
 import java.util.*;
 import java.util.stream.Collectors;
 import com.github.embed.scheduler.dto.TaskExecuteLogDto;
-
+import com.github.embed.scheduler.enums.ExecutionMode;
 import org.slf4j.Logger; // Added
 import org.slf4j.LoggerFactory; // Added
 
@@ -65,7 +65,8 @@ public class TaskExecuteLogController {
                     return TaskExecuteLogDto.fromEntity(
                             log,
                             config != null ? config.getTaskType() : null,
-                            config != null ? config.getTaskName() : null);
+                            config != null ? config.getTaskName() : null,
+                            config != null ? config.getExecutionMode() : null);
                 })
                 .collect(Collectors.toList());
 
@@ -92,10 +93,11 @@ public class TaskExecuteLogController {
         Optional<TaskConfig> taskConfig = taskConfigDao.findById(taskId);
         Integer taskType = taskConfig.map(TaskConfig::getTaskType).orElse(null);
         String taskName = taskConfig.map(TaskConfig::getTaskName).orElse(null);
+        ExecutionMode executionMode = taskConfig.map(TaskConfig::getExecutionMode).orElse(null);
 
         // Convert entities to DTOs with taskType
         List<TaskExecuteLogDto> dtoLogs = taskLogs.stream()
-                .map(log -> TaskExecuteLogDto.fromEntity(log, taskType, taskName))
+                .map(log -> TaskExecuteLogDto.fromEntity(log, taskType, taskName, executionMode))
                 .collect(Collectors.toList());
 
         int totalLogs = dtoLogs.size();
@@ -221,7 +223,7 @@ public class TaskExecuteLogController {
 
                 WorkflowInstanceNodeStatusDto statusDto = latestNodeStatuses.get(definedNode.getNodeId());
                 if (statusDto != null) { // Should always be true due to pre-population
-                    statusDto.setStatus(latestAttempt.getState());
+                    statusDto.setStatus(latestAttempt.getState().name());
                     statusDto.setLastLogId(latestAttempt.getLogId().longValue());
                     statusDto.setLastStartTime(latestAttempt.getStartTime());
                     statusDto.setLastEndTime(latestAttempt.getEndTime());
