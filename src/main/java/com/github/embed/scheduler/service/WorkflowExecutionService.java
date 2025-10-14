@@ -45,6 +45,9 @@ public class WorkflowExecutionService {
     private CoreSchedulerService coreSchedulerService;
 
     @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
     private DistributedLockService distributedLockService;
 
     @Transactional

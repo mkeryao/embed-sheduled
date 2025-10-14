@@ -26,7 +26,7 @@ public class TaskStatisticsService {
      * @return A map where keys are states and values are their counts.
      */
     public Map<String, Long> getGlobalExecutionStateCounts() {
-        List<Map<String, Object>> rawCounts = taskExecuteLogDao.getGlobalExecutionStateCounts(); // Reusing existing DAO method
+        List<Map<String, Object>> rawCounts = taskExecuteLogDao.getOverallStatusCounts(); // Reusing existing DAO method
         Map<String, Long> counts = new HashMap<>();
         for (Map<String, Object> row : rawCounts) {
             String state = (String) row.get("state");
@@ -76,8 +76,4 @@ public class TaskStatisticsService {
         return taskExecuteLogDao.getTopNAverageExecutionTimes(limit);
     }
 
-    // You can add more service methods here, for example:
-    // - Get most frequently failing tasks
-    // - Get tasks with no recent successful executions
-    // - Get execution time trends for a specific task
 }

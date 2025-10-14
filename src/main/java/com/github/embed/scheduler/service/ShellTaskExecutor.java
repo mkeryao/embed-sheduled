@@ -20,6 +20,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -73,10 +74,15 @@ public class ShellTaskExecutor {
      * representing {@link ShellTaskParameters}.
      *
      * @param taskConfig The configuration of the shell task to execute.
-     * @param logEntry   The execution log entry associated with this task run. Its status,
-     *                   return message (stdout), and exception message (stderr/errors) will be updated.
      */
-    public void execute(TaskConfig taskConfig, TaskExecuteLog logEntry) {
+    public void execute(TaskConfig taskConfig) {
+        TaskExecuteLog logEntry = new TaskExecuteLog();
+        logEntry.setTaskId(taskConfig.getTaskId());
+        logEntry.setStartTime(new Timestamp(System.currentTimeMillis()));
+        logEntry.setStartTime(new Timestamp(System.currentTimeMillis()));
+        logEntry.setState(ExecutionState.RUNNING);
+        taskExecuteLogDao.save(logEntry);
+
         ShellTaskParameters params;
         StringBuilder outputBuilder = new StringBuilder();
         StringBuilder errorBuilder = new StringBuilder();
@@ -216,7 +222,8 @@ public class ShellTaskExecutor {
             if (logEntry.getExMsg() != null && logEntry.getExMsg().length() > 1950) { // Max length for ex_msg
                 logEntry.setExMsg(logEntry.getExMsg().substring(0, 1950) + "...");
             }
-            taskExecuteLogDao.updateLogStatus(logEntry.getLogId(), logEntry.getState(), null , logEntry.getExMsg() );
+            logEntry.setEndTime(new Timestamp(System.currentTimeMillis()));
+            taskExecuteLogDao.update(logEntry);
         }
     }
 

@@ -10,7 +10,8 @@ public enum ExecutionState {
     CANCELLED,
     PENDING,
     COMPLETED,
-    READY;
+    READY,
+    UNKNOWN;
 
     public String getState() {
         return this.name();

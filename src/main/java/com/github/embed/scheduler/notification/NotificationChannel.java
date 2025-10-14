@@ -1,5 +1,7 @@
 package com.github.embed.scheduler.notification;
 
+import com.github.embed.scheduler.entity.TaskUser;
+
 /**
  * Defines the contract for a notification channel.
  * Implementations of this interface are responsible for sending notifications
@@ -24,6 +26,15 @@ public interface NotificationChannel {
      * execution logs, and user information.
      *
      * @param context The {@link NotificationContext} containing data for the notification.
+     * @throws Exception if an error occurs while sending the notification
      */
-    void sendNotification(NotificationContext context);
+    void send(NotificationContext context) throws Exception;
+
+    /**
+     * Checks if the notification channel is enabled for the given user.
+     *
+     * @param user The user for whom the check is to be performed.
+     * @return true if the channel is enabled for the user, false otherwise.
+     */
+    boolean isChannelEnabled(TaskUser user);
 }

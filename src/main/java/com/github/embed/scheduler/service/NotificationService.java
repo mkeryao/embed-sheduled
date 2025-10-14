@@ -3,7 +3,9 @@ package com.github.embed.scheduler.service;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import com.github.embed.scheduler.enums.ExecutionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +68,11 @@ public class NotificationService {
             logger.warn("TaskConfig or TaskExecuteLog is null, cannot send success notification.");
             return;
         }
-        sendNotification(taskConfig, logEntry, taskConfig.getNotifySuccessUserIds(), "SUCCESS");
+        if (!StringUtils.hasText( taskConfig.getNotifySuccessUserIds())) {
+            logger.debug("Success notifications are disabled for task '{}'.", taskConfig.getTaskName());
+            return;
+        }
+        sendNotification(taskConfig, logEntry, taskConfig.getNotifySuccessUserIds(), ExecutionState.SUCCESS.getState());
     }
 
     /**
@@ -80,7 +86,11 @@ public class NotificationService {
             logger.warn("TaskConfig or TaskExecuteLog is null, cannot send failure notification.");
             return;
         }
-        sendNotification(taskConfig, logEntry, taskConfig.getNotifyFailedUserIds(), "FAILURE");
+        if (!StringUtils.hasText(taskConfig.getNotifyFailedUserIds())) {
+            logger.debug("Failure notifications are disabled for task '{}'.", taskConfig.getTaskName());
+            return;
+        }
+        sendNotification(taskConfig, logEntry, taskConfig.getNotifyFailedUserIds(), ExecutionState.FAILED.getState());
     }
 
     private void sendNotification(TaskConfig taskConfig, TaskExecuteLog logEntry, String userIdsToNotifyRaw, String notificationType) {
@@ -100,24 +110,26 @@ public class NotificationService {
         List<Integer> userIds = Arrays.stream(userIdsToNotifyRaw.split(","))
                                       .map(String::trim)
                                       .map(Integer::parseInt)
-                                      .collect(java.util.stream.Collectors.toList());
+                                      .collect(Collectors.toList());
 
         List<TaskUser> usersToNotify = taskUserDao.findByIds(userIds);
 
         for (TaskUser user : usersToNotify) {
             NotificationContext context = new NotificationContext(
-                user,
                 taskConfig,
                 logEntry,
-                "SUCCESS".equals(notificationType)
+                user,
+                ExecutionState.SUCCESS.getState().equalsIgnoreCase(notificationType)
             );
 
             for (NotificationChannel channel : notificationChannels) {
-                try {
-                    channel.send(context);
-                } catch (Exception e) {
-                    logger.error("Failed to send notification via channel {} for user {}. Task: {}, Log: {}",
-                                 channel.getChannelType(), user.getUserId(), taskConfig.getTaskId(), logEntry.getId(), e);
+                if (channel.isChannelEnabled(user)) {
+                    try {
+                        channel.send(context);
+                    } catch (Exception e) {
+                        logger.error("Failed to send notification via channel {} for user {}. Task: {}, Log: {}",
+                                     channel.getChannelType(), user.getUserId(), taskConfig.getTaskId(), logEntry.getId(), e);
+                    }
                 }
             }
         }

@@ -20,6 +20,7 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.sql.Timestamp;
 import java.time.Duration;
 
 /**
@@ -49,9 +50,15 @@ public class HttpTaskExecutor {
      * representing HttpTaskParameters.
      *
      * @param taskConfig The configuration of the HTTP task.
-     * @param logEntry   The execution log entry associated with this task run. Its status and messages will be updated.
      */
-    public void execute(TaskConfig taskConfig, TaskExecuteLog logEntry) {
+    public void execute(TaskConfig taskConfig) {
+        TaskExecuteLog logEntry = new TaskExecuteLog();
+        logEntry.setTaskId(taskConfig.getTaskId());
+        logEntry.setStartTime(new Timestamp(System.currentTimeMillis()));
+        logEntry.setStartTime(new Timestamp(System.currentTimeMillis()));
+        logEntry.setState(ExecutionState.RUNNING);
+        taskExecuteLogDao.save(logEntry);
+
         HttpTaskParameters params = null;
         String responseSummary = null;
         int httpStatusCode = -1;
@@ -136,6 +143,7 @@ public class HttpTaskExecutor {
             // Update the log entry in the database
             // Log message (rtnMsg) can be used for success details or brief error summary
             logEntry.setRtnMsg(responseSummary != null ? responseSummary : (logEntry.getExMsg() != null ? logEntry.getExMsg().substring(0, Math.min(logEntry.getExMsg().length(), 500)) : "Execution finished."));
+            logEntry.setEndTime(new Timestamp(System.currentTimeMillis()));
             taskExecuteLogDao.update(logEntry);
         }
     }

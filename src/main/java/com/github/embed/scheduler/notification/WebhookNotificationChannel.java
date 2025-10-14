@@ -46,7 +46,7 @@ public class WebhookNotificationChannel implements NotificationChannel {
     }
 
     @Override
-    public void sendNotification(NotificationContext context) {
+    public void send(NotificationContext context) {
         TaskUser user = context.getUserToNotify();
         TaskConfig taskConfig = context.getTaskConfig();
         TaskExecuteLog logEntry = context.getTaskExecuteLog();
@@ -71,21 +71,12 @@ public class WebhookNotificationChannel implements NotificationChannel {
         payload.put("user", user.getUsername());
 
 
-        String jsonPayload;
-        try {
-            jsonPayload = JSON.toJSONString(payload);
-        } catch (Exception e) {
-            logger.error("Error creating JSON payload for webhook notification (Task ID: {}): {}", taskConfig.getTaskId(), e.getMessage(), e);
-            return;
-        }
+        String jsonPayload = JSON.toJSONString(payload);
 
-        // Handling webhookAddress:
-        // Current assumption: TaskUser.webhookAddress is a single URL string.
-        // If it's a JSON array of URLs, parsing is needed here.
         String webhookAddresses = user.getWebhookAddress();
-
         // Attempt to parse as JSON list if it starts with [ and ends with ]
-        if (StringUtils.hasText(webhookAddresses) && webhookAddresses.trim().startsWith("[") && webhookAddresses.trim().endsWith("]")) {
+        if (StringUtils.hasText(webhookAddresses) && webhookAddresses.trim().startsWith("[")
+                && webhookAddresses.trim().endsWith("]")) {
             try {
                 List<String> urls = JSON.parseObject(webhookAddresses, new TypeReference<List<String>>() {});
                 if (urls != null) {
@@ -95,24 +86,23 @@ public class WebhookNotificationChannel implements NotificationChannel {
                         }
                     }
                 } else {
-                     logger.warn("Parsed webhook address list is null for user {}.", user.getUsername());
+                    logger.warn("Parsed webhook address list is null for user {}.", user.getUsername());
                 }
             } catch (Exception e) {
                 logger.error("Failed to parse webhook address JSON array for user {}: {}. Assuming it might be a single URL.", user.getUsername(), webhookAddresses, e);
                 // Fallback: treat as a single URL if parsing fails and it's not obviously a list
                 if (!webhookAddresses.trim().startsWith("[")) { // Avoid re-logging if it was clearly intended as a list
-                   sendSingleWebhook(webhookAddresses.trim(), jsonPayload, taskConfig.getTaskName(), user.getUsername());
+                    sendSingleWebhook(webhookAddresses.trim(), jsonPayload, taskConfig.getTaskName(), user.getUsername());
                 }
             }
         } else if (StringUtils.hasText(webhookAddresses)) {
-            // Treat as a single comma-separated list or a single URL
-            // (The original NotificationService used Arrays.stream(userIdsToNotifyRaw.split(",")))
-            // For webhookAddress on TaskUser, it's more likely to be a single URL or a JSON array.
-            // Let's assume if not a JSON array, it's a single URL.
-            // If multiple, comma-separated URLs were intended here (which is unusual for a single field),
-            // this logic might need adjustment. For now, treating non-JSON-array as single URL.
             sendSingleWebhook(webhookAddresses.trim(), jsonPayload, taskConfig.getTaskName(), user.getUsername());
         }
+    }
+
+    @Override
+    public boolean isChannelEnabled(TaskUser user) {
+        return  StringUtils.hasText(user.getWebhookAddress());
     }
 
     private void sendSingleWebhook(String webhookUrl, String jsonPayload, String taskName, String username) {

@@ -31,6 +31,13 @@ public interface TaskUserDao {
     Optional<TaskUser> findByUsername(String username);
 
     /**
+     * Finds users by their IDs.
+     * @param userIds The list of user IDs to search for.
+     * @return A list of users matching the given IDs.
+     */
+    List<TaskUser> findByIds(List<Integer> userIds);
+
+    /**
      * Retrieves all users.
      * @return A list of all users.
      */

@@ -38,13 +38,13 @@ public class TaskUserDaoImpl implements TaskUserDao {
     private JdbcTemplate jdbcTemplate;
 
     /** Cache for {@link TaskUser} objects by their Integer ID. Configured for max 100 users, 1-hour expiry. */
-    private final Cache<Integer, TaskUser> userCacheById = CacheBuilder.newBuilder()
+    private final Cache<Integer, Optional<TaskUser>> userCacheById = CacheBuilder.newBuilder()
             .maximumSize(100)
             .expireAfterWrite(1, TimeUnit.HOURS)
             .build();
 
     /** Cache for {@link TaskUser} objects by their String username. Configured for max 100 users, 1-hour expiry. */
-    private final Cache<String, TaskUser> userCacheByUsername = CacheBuilder.newBuilder()
+    private final Cache<String, Optional<TaskUser>> userCacheByUsername = CacheBuilder.newBuilder()
             .maximumSize(100)
             .expireAfterWrite(1, TimeUnit.HOURS)
             .build();
@@ -75,10 +75,13 @@ public class TaskUserDaoImpl implements TaskUserDao {
         // If user has an ID, it might be an update, which could change the username.
         // Invalidate by ID first to handle potential username changes.
         if (user.getUserId() != null) {
-            TaskUser oldUser = userCacheById.getIfPresent(user.getUserId());
-            if (oldUser != null && !oldUser.getUsername().equals(user.getUsername())) {
-                logger.debug("Username changed for user ID: {}. Invalidating old username cache entry: {}", user.getUserId(), oldUser.getUsername());
-                userCacheByUsername.invalidate(oldUser.getUsername());
+            Optional<TaskUser> oldUserOpt = userCacheById.getIfPresent(user.getUserId());
+            if (oldUserOpt != null && oldUserOpt.isPresent()) {
+                TaskUser oldUser = oldUserOpt.get();
+                if (!oldUser.getUsername().equals(user.getUsername())) {
+                    logger.debug("Username changed for user ID: {}. Invalidating old username cache entry: {}", user.getUserId(), oldUser.getUsername());
+                    userCacheByUsername.invalidate(oldUser.getUsername());
+                }
             }
             userCacheById.invalidate(user.getUserId());
         }
@@ -106,8 +109,8 @@ public class TaskUserDaoImpl implements TaskUserDao {
         // After save (insert or update-like behavior by application logic), cache the potentially updated user.
         if (user.getUserId() != null && user.getUsername() != null) {
             logger.debug("Caching saved user ID: {}, username: {}", user.getUserId(), user.getUsername());
-            userCacheById.put(user.getUserId(), user);
-            userCacheByUsername.put(user.getUsername(), user);
+            userCacheById.put(user.getUserId(), Optional.of(user));
+            userCacheByUsername.put(user.getUsername(), Optional.of(user));
         }
         return user;
     }
@@ -115,24 +118,24 @@ public class TaskUserDaoImpl implements TaskUserDao {
     @Override
     public Optional<TaskUser> findById(Integer userId) {
         if (userId == null) return Optional.empty();
-        TaskUser cachedUser = userCacheById.getIfPresent(userId);
+        Optional<TaskUser> cachedUser = userCacheById.getIfPresent(userId);
         if (cachedUser != null) {
             logger.debug("Cache hit for user ID: {}", userId);
-            return Optional.of(cachedUser);
+            return cachedUser;
         }
         logger.debug("Cache miss for user ID: {}", userId);
         try {
             TaskUser userFromDb = jdbcTemplate.queryForObject(SELECT_BY_ID_SQL, new Object[]{userId}, rowMapper);
-            if (userFromDb != null) {
+            Optional<TaskUser> userOptional = Optional.ofNullable(userFromDb);
+            if (userOptional.isPresent()) {
                 logger.debug("DB hit for user ID: {}. Caching result.", userId);
-                userCacheById.put(userId, userFromDb);
-                if (userFromDb.getUsername() != null) { // Ensure username is not null before caching by username
-                   userCacheByUsername.put(userFromDb.getUsername(), userFromDb);
-                }
+                userCacheById.put(userId, userOptional);
+                userFromDb.getUsername(); // This seems like a mistake, maybe meant to be used in a cache put
             }
-            return Optional.ofNullable(userFromDb);
+            return userOptional;
         } catch (EmptyResultDataAccessException e) {
             logger.debug("User not found in DB for ID: {}", userId);
+            userCacheById.put(userId, Optional.empty()); // Cache the empty result
             return Optional.empty();
         }
     }
@@ -140,24 +143,26 @@ public class TaskUserDaoImpl implements TaskUserDao {
     @Override
     public Optional<TaskUser> findByUsername(String username) {
         if (username == null) return Optional.empty();
-        TaskUser cachedUser = userCacheByUsername.getIfPresent(username);
+        Optional<TaskUser> cachedUser = userCacheByUsername.getIfPresent(username);
         if (cachedUser != null) {
             logger.debug("Cache hit for username: {}", username);
-            return Optional.of(cachedUser);
+            return cachedUser;
         }
         logger.debug("Cache miss for username: {}", username);
         try {
             TaskUser userFromDb = jdbcTemplate.queryForObject(SELECT_BY_USERNAME_SQL, new Object[]{username}, rowMapper);
-            if (userFromDb != null) {
+            Optional<TaskUser> userOptional = Optional.ofNullable(userFromDb);
+            if (userOptional.isPresent()) {
                 logger.debug("DB hit for username: {}. Caching result.", username);
-                userCacheByUsername.put(username, userFromDb);
+                userCacheByUsername.put(username, userOptional);
                 if (userFromDb.getUserId() != null) { // Ensure ID is not null before caching by ID
-                    userCacheById.put(userFromDb.getUserId(), userFromDb);
+                    userCacheById.put(userFromDb.getUserId(), userOptional);
                 }
             }
-            return Optional.ofNullable(userFromDb);
+            return userOptional;
         } catch (EmptyResultDataAccessException e) {
             logger.debug("User not found in DB for username: {}", username);
+            userCacheByUsername.put(username, Optional.empty()); // Cache the empty result
             return Optional.empty();
         }
     }
@@ -184,11 +189,14 @@ public class TaskUserDaoImpl implements TaskUserDao {
 
             // Fetch the user that was actually updated from DB to get potentially old username if it changed.
             // However, simpler to invalidate current known identifiers and re-cache the new state.
-            TaskUser oldUserFromIdCache = userCacheById.getIfPresent(user.getUserId());
-            if(oldUserFromIdCache != null && !oldUserFromIdCache.getUsername().equals(user.getUsername())) {
-                 logger.debug("Username changed during update for user ID: {}. Old username: '{}', New: '{}'. Invalidating old username cache.",
-                              user.getUserId(), oldUserFromIdCache.getUsername(), user.getUsername());
-                 userCacheByUsername.invalidate(oldUserFromIdCache.getUsername());
+            Optional<TaskUser> oldUserFromIdCacheOpt = userCacheById.getIfPresent(user.getUserId());
+            if(oldUserFromIdCacheOpt != null && oldUserFromIdCacheOpt.isPresent()) {
+                TaskUser oldUserFromIdCache = oldUserFromIdCacheOpt.get();
+                 if(!oldUserFromIdCache.getUsername().equals(user.getUsername())) {
+                     logger.debug("Username changed during update for user ID: {}. Old username: '{}', New: '{}'. Invalidating old username cache.",
+                                  user.getUserId(), oldUserFromIdCache.getUsername(), user.getUsername());
+                     userCacheByUsername.invalidate(oldUserFromIdCache.getUsername());
+                 }
             }
 
             userCacheById.invalidate(user.getUserId());
@@ -197,8 +205,8 @@ public class TaskUserDaoImpl implements TaskUserDao {
             // Re-cache the new state. It's important that `user` object is the state after update.
             // If `user` object passed in might not be the full final state, a findById might be better before caching.
             // Assuming 'user' is the new state:
-            userCacheById.put(user.getUserId(), user);
-            userCacheByUsername.put(user.getUsername(), user);
+            userCacheById.put(user.getUserId(), Optional.of(user));
+            userCacheByUsername.put(user.getUsername(), Optional.of(user));
         }
         return affectedRows;
     }
@@ -222,4 +230,19 @@ public class TaskUserDaoImpl implements TaskUserDao {
         }
         return affectedRows;
     }
+
+    @Override
+    public List<TaskUser> findByIds(List<Integer> userIds) {
+        String inSql = String.join(",", java.util.Collections.nCopies(userIds.size(), "?"));
+        return jdbcTemplate.query(
+                String.format("SELECT * FROM task_user WHERE user_id IN (%s)", inSql),
+                userIds.toArray(),
+                rowMapper);
+    }
+
+    /**
+     * RowMapper for converting a JDBC {@link java.sql.ResultSet} row to a {@link TaskUser} object.
+     * This is a reusable component for any query that returns user data.
+     */
+
 }

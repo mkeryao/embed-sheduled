@@ -121,33 +121,46 @@ public class TaskExecutionJob implements Runnable {
             switch (taskConfig.getTaskType()) {
                 case 0: // Bean task
                     BeanTaskExecutor beanTaskExecutor = applicationContext.getBean(BeanTaskExecutor.class);
-                    // The taskConfig passed to this job's constructor already has the correct parameters
-                    // (either from the node or the original task), so we can use it directly.
-                    returnMessage = beanTaskExecutor.execute(taskConfig);
-                    finalStatus = ExecutionState.SUCCESS;
+                    beanTaskExecutor.execute(taskConfig);
                     break;
                 case 1: // Shell task
                     ShellTaskExecutor shellTaskExecutor = applicationContext.getBean(ShellTaskExecutor.class);
-                    returnMessage = shellTaskExecutor.execute(taskConfig);
-                    finalStatus = ExecutionState.SUCCESS;
+                    shellTaskExecutor.execute(taskConfig);
                     break;
                 case 2: // Http task
                     HttpTaskExecutor httpTaskExecutor = applicationContext.getBean(HttpTaskExecutor.class);
-                    returnMessage = httpTaskExecutor.execute(taskConfig);
-                    finalStatus = ExecutionState.SUCCESS;
+                    httpTaskExecutor.execute(taskConfig);
                     break;
                 case 10: // Workflow task
                     WorkflowExecutionService workflowService = applicationContext.getBean(WorkflowExecutionService.class);
                     workflowService.startWorkflow(taskConfig.getTaskId(), this.executionLogId);
-                    finalStatus = ExecutionState.RUNNING; // Workflow itself is now running
                     break;
-                // Other task types (HTTP, Shell) would go here
                 default:
-                    exceptionMessage = "Unknown task type: " + taskConfig.getTaskType();
-                    logger.error(exceptionMessage + " for task ID: {}", taskConfig.getTaskId());
-                    finalStatus = ExecutionState.FAILED;
+                    String errorMsg = "Unknown task type: " + taskConfig.getTaskType();
+                    logger.error(errorMsg + " for task ID: {}", taskConfig.getTaskId());
+                    TaskExecuteLog logEntry = taskExecuteLogDao.findById(this.executionLogId).orElse(null);
+                    if(logEntry != null){
+                        logEntry.setState(ExecutionState.FAILED);
+                        logEntry.setExMsg(errorMsg);
+                        taskExecuteLogDao.update(logEntry);
+                    }
                     break;
             }
+
+            // The individual executors are now responsible for creating and updating their own log records.
+            // We just need to retrieve the final status for retry logic.
+            TaskExecuteLog finalLogState = taskExecuteLogDao.findById(this.executionLogId).orElse(null);
+            if (finalLogState != null) {
+                finalStatus = finalLogState.getState();
+                returnMessage = finalLogState.getRtnMsg();
+                exceptionMessage = finalLogState.getExMsg();
+            } else if (taskConfig.getTaskType() != 10) { // Workflow parent logs are handled differently
+                logger.warn("Could not find log entry for log ID {} after execution. Status may be incorrect.", this.executionLogId);
+                finalStatus = ExecutionState.UNKNOWN; // A state to indicate we lost track
+                exceptionMessage = "Log entry disappeared after execution.";
+            }
+
+
 
         } catch (BeanTaskExecutor.TaskTimeoutException e) {
             logger.error("Task {} (ID: {}) timed out on attempt {}.", taskConfig.getTaskName(), taskConfig.getTaskId(), this.attemptNumber, e);
