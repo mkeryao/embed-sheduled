@@ -1,34 +1,35 @@
 package com.github.embed.scheduler.service;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference;
+import com.alibaba.fastjson.parser.ParserConfig;
+import com.alibaba.fastjson.util.TypeUtils;
 import com.github.embed.scheduler.dao.TaskExecuteLogDao;
 import com.github.embed.scheduler.entity.TaskConfig;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.TypeReference;
-import com.alibaba.fastjson.parser.ParserConfig; // Added import
-import com.alibaba.fastjson.util.TypeUtils;
+import com.github.embed.scheduler.entity.TaskExecuteLog;
+import com.github.embed.scheduler.enums.ExecutionPattern;
+import com.github.embed.scheduler.enums.ExecutionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter; // Import Parameter
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.Optional;
+import java.util.concurrent.*;
 
 @Service
-public class BeanTaskExecutor {
+public class BeanTaskExecutor implements TaskExecutor {
 
     private static final Logger logger = LoggerFactory.getLogger(BeanTaskExecutor.class);
 
@@ -46,92 +47,99 @@ public class BeanTaskExecutor {
         }
     }
 
-    public String execute(TaskConfig taskConfig) throws Exception {
+    @Override
+    public String execute(TaskConfig taskConfig, Long logId) throws Exception {
         final String beanName = taskConfig.getBeanName();
         final String methodName = taskConfig.getMethodName();
-        final String beanParametersJson = taskConfig.getParameters();
         final Integer timeoutSeconds = taskConfig.getExecuteTimeoutSeconds();
 
-        if (!StringUtils.hasText(beanName) || !StringUtils.hasText(methodName)) {
-            throw new IllegalArgumentException("Bean name or method name is empty for task: " + taskConfig.getTaskName());
+        Optional<TaskExecuteLog> logOpt = taskExecuteLogDao.findById(logId);
+        if (!logOpt.isPresent()) {
+            throw new IllegalStateException("Execution log with ID " + logId + " not found.");
         }
+        TaskExecuteLog log = logOpt.get();
 
-        final Object beanInstance;
+        String finalParametersJson = resolveParameters(log, taskConfig);
+
         try {
-            beanInstance = applicationContext.getBean(beanName);
-        } catch (NoSuchBeanDefinitionException e) {
-            logger.error("Bean with name '{}' not found for task '{}'", beanName, taskConfig.getTaskName());
-            throw new Exception("Bean not found: " + beanName, e);
-        }
-
-        final Map<String, Object> parametersMap;
-        if (StringUtils.hasText(beanParametersJson)) {
-            try {
-                parametersMap = JSON.parseObject(beanParametersJson, new TypeReference<Map<String, Object>>() {});
-            } catch (Exception e) {
-                logger.error("Failed to parse parameters JSON (Fastjson) for task '{}': {}. Error: {}", taskConfig.getTaskName(), beanParametersJson, e.getMessage(), e);
-                throw new IllegalArgumentException("Invalid JSON format in parameters field.");
+            if (!StringUtils.hasText(beanName) || !StringUtils.hasText(methodName)) {
+                throw new IllegalArgumentException("Bean name or method name is empty for task: " + taskConfig.getTaskName());
             }
-        } else {
-            parametersMap = Collections.emptyMap();
-        }
 
-        final Method methodToExecute = findMethod(beanInstance.getClass(), methodName, parametersMap);
-        if (methodToExecute == null) {
-            String errorMsg = String.format("Method '%s' with compatible parameters not found in bean '%s' for task '%s'. Check parameter names and types in JSON against method signature.",
-                                            methodName, beanName, taskConfig.getTaskName());
-            logger.error(errorMsg);
-            throw new NoSuchMethodException(errorMsg);
-        }
+            final Object beanInstance;
+            try {
+                beanInstance = applicationContext.getBean(beanName);
+            } catch (NoSuchBeanDefinitionException e) {
+                logger.error("Bean with name '{}' not found for task '{}'", beanName, taskConfig.getTaskName());
+                throw new Exception("Bean not found: " + beanName, e);
+            }
 
-        final Object[] finalArgs = convertParameters(methodToExecute, parametersMap);
+            final Map<String, Object> parametersMap;
+            if (StringUtils.hasText(finalParametersJson)) {
+                try {
+                    parametersMap = JSON.parseObject(finalParametersJson, new TypeReference<Map<String, Object>>() {});
+                } catch (Exception e) {
+                    logger.error("Failed to parse parameters JSON for task '{}': {}. Error: {}", taskConfig.getTaskName(), finalParametersJson, e.getMessage(), e);
+                    throw new IllegalArgumentException("Invalid JSON format in parameters field.");
+                }
+            } else {
+                parametersMap = Collections.emptyMap();
+            }
 
-        Future<Object> future = taskExecutorService.submit(() -> {
-            logger.info("Executing bean task '{}': bean='{}', method='{}', params={}", taskConfig.getTaskName(), beanName, methodName,
-                    parametersMap != null && !parametersMap.isEmpty() ? beanParametersJson : "none");
-            Object result = methodToExecute.invoke(beanInstance, finalArgs);
-            logger.info("Successfully executed method '{}' on bean '{}' for task '{}' (Task ID: {})",
-                    methodName, beanName, taskConfig.getTaskName(), taskConfig.getTaskId());
-            return result;
-        });
+            final Method methodToExecute = findMethod(beanInstance.getClass(), methodName, parametersMap);
+            if (methodToExecute == null) {
+                String errorMsg = String.format("Method '%s' with compatible parameters not found in bean '%s' for task '%s'. Check parameter names and types in JSON against method signature.",
+                        methodName, beanName, taskConfig.getTaskName());
+                logger.error(errorMsg);
+                throw new NoSuchMethodException(errorMsg);
+            }
 
-        try {
-            Object result = (timeoutSeconds != null && timeoutSeconds > 0)
-                    ? future.get(timeoutSeconds, TimeUnit.SECONDS)
-                    : future.get();
-            return result != null ? result.toString() : null;
-        } catch (TimeoutException e) {
-            future.cancel(true); // Interrupt the task
-            throw new TaskTimeoutException("Task " + taskConfig.getTaskName() + " timed out after " + timeoutSeconds + " seconds.");
+            final Object[] finalArgs = convertParameters(methodToExecute, parametersMap);
+
+            Future<Object> future = taskExecutorService.submit(() -> {
+                logger.info("Executing bean task '{}': bean='{}', method='{}', params={}", taskConfig.getTaskName(), beanName, methodName,
+                        !parametersMap.isEmpty() ? finalParametersJson : "none");
+                return methodToExecute.invoke(beanInstance, finalArgs);
+            });
+
+            Object result;
+            try {
+                result = (timeoutSeconds != null && timeoutSeconds > 0)
+                        ? future.get(timeoutSeconds, TimeUnit.SECONDS)
+                        : future.get();
+                log.setState(ExecutionState.SUCCESS);
+                String resultStr = result != null ? result.toString() : null;
+                log.setRtnMsg(resultStr);
+                return resultStr;
+            } catch (TimeoutException ex) {
+                future.cancel(true);
+                throw new TaskTimeoutException("Task " + taskConfig.getTaskName() + " timed out after " + timeoutSeconds + " seconds.");
+            } catch (Exception ex) {
+                throw new Exception("Error executing task method: " + ex.getMessage(),
+                        ex.getCause() != null ? ex.getCause() : ex);
+            }
         } catch (Exception e) {
-            // This will catch exceptions from the method invocation itself
-            throw new Exception("Error executing task method: " + e.getMessage(), e.getCause() != null ? e.getCause() : e);
+            log.setState(ExecutionState.FAILED);
+            log.setExMsg(NestedExceptionUtils.buildMessage(e.getMessage() , e));
+            throw e;
+        } finally {
+            log.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
+            taskExecuteLogDao.update(log);
         }
     }
 
-    /**
-     * Finds a method in the given class that matches the provided method name and
-     * is compatible with the provided parameters.
-     *
-     * Strategy:
-     * 1. Collect all methods with the exact specified name.
-     * 2. From candidates, prioritize:
-     *    a. A no-argument method if no parameters are provided.
-     *    b. A method taking a single {@link Map} argument if parameters are provided (allows flexible parameter passing).
-     *    c. A method where all its parameter names (requires -parameters javac flag) are present as keys in the input {@code parametersMap}.
-     * 3. As a fallback, if only one method with the name exists, it's selected, and {@code convertParameters} will determine compatibility.
-     * 4. If multiple methods exist and ambiguity remains (e.g., overloaded methods where parameter names don't fully resolve the choice based on map keys),
-     *    it may log a warning and select the first candidate or one matching parameter count if unambiguous.
-     *
-     * @param beanClass The class of the bean.
-     * @param methodName The name of the method to find.
-     * @param parametersMap The map of parameters (from JSON) intended for the method.
-     * @return A {@link Method} object if a suitable match is found, otherwise {@code null}.
-     */
+    private String resolveParameters(TaskExecuteLog log, TaskConfig taskConfig) {
+        if (log.getTaskPattern() == ExecutionPattern.WORKFLOW_STEP && StringUtils.hasText(log.getParameters())) {
+            logger.debug("Using parameters from workflow node log for log ID {}.", log.getLogId());
+            return log.getParameters();
+        }
+        logger.debug("Using parameters from task config for log ID {}.", log.getLogId());
+        return taskConfig.getParameters();
+    }
+
     private Method findMethod(Class<?> beanClass, String methodName, final Map<String, Object> parametersMap) {
-        Method[] methods = beanClass.getMethods();
         List<Method> candidates = new ArrayList<>();
-        for (Method method : methods) {
+        for (Method method : beanClass.getMethods()) {
             if (method.getName().equals(methodName)) {
                 candidates.add(method);
             }
@@ -141,15 +149,12 @@ public class BeanTaskExecutor {
             return null;
         }
 
-        // Prefer method where all its parameter names are present as keys in the parametersMap,
-        // or if the method takes a single Map, or if method has no params and map is empty.
         for (Method candidate : candidates) {
             Parameter[] methodParams = candidate.getParameters();
             if (methodParams.length == 0 && (parametersMap == null || parametersMap.isEmpty())) {
-                return candidate; // No-arg method for empty/null params
+                return candidate;
             }
             if (methodParams.length == 1 && Map.class.isAssignableFrom(methodParams[0].getType())) {
-                 // If paramsMap is null, this isn't a good fit unless it's truly optional for the bean method
                 if (parametersMap != null) return candidate;
             }
             if (parametersMap != null && methodParams.length > 0) {
@@ -164,65 +169,26 @@ public class BeanTaskExecutor {
             }
         }
 
-        // Fallback: if only one candidate, return it and let convertParameters try.
-        // If multiple candidates and no clear match by name, this is ambiguous.
         if (candidates.size() == 1) {
-             logger.warn("Only one method found for name '{}'. Proceeding with it: {}. Parameter name matching in convertParameters will be critical.", methodName, candidates.get(0).toGenericString());
             return candidates.get(0);
         }
 
-        // If parametersMap is not null and not empty, and we still haven't found a match by name,
-        // it's safer to return null than to guess based on param count alone.
-        if (parametersMap != null && !parametersMap.isEmpty() && !candidates.isEmpty()) {
-             logger.warn("Multiple method candidates for '{}' and no definitive match by parameter names. Candidates: {}", methodName, candidates);
-             // Could try to match by param count as a last resort if only one such candidate exists
-             List<Method> countMatchingCandidates = new ArrayList<>();
-             for(Method c : candidates) {
-                 if (c.getParameterCount() == parametersMap.size()) {
-                     countMatchingCandidates.add(c);
-                 }
-             }
-             if (countMatchingCandidates.size() == 1) {
-                 logger.warn("Falling back to parameter count matching for method '{}'. Selected: {}", methodName, countMatchingCandidates.get(0).toGenericString());
-                 return countMatchingCandidates.get(0);
-             }
+        if (parametersMap != null && !parametersMap.isEmpty()) {
+            List<Method> countMatchingCandidates = new ArrayList<>();
+            for (Method c : candidates) {
+                if (c.getParameterCount() == parametersMap.size()) {
+                    countMatchingCandidates.add(c);
+                }
+            }
+            if (countMatchingCandidates.size() == 1) {
+                return countMatchingCandidates.get(0);
+            }
         }
-
 
         logger.warn("Could not find a definitive method match for '{}' with provided parameters.", methodName);
         return null;
     }
 
-    /**
-     * Converts a map of parameters (typically from a JSON object) into an array of arguments
-     * suitable for invoking the specified method.
-     * <p>
-     * This method relies on Java 8's {@link Parameter#getName()} to retrieve actual parameter names,
-     * which requires the Java compiler to be run with the {@code -parameters} flag. Spring Boot
-     * projects usually enable this by default. If parameter names are not available, this method
-     * will throw an {@link IllegalStateException}.
-     * </p>
-     * The conversion uses Fastjson's {@link TypeUtils#castToJavaBean(Object, Class)} for each parameter,
-     * attempting to convert the value from the {@code parametersMap} (keyed by parameter name)
-     * to the target method parameter type.
-     * <p>
-     * Special handling for methods expecting a single {@link Map} argument: the input {@code parametersMap}
-     * is passed directly (or cast to the specific Map type if declared by the method).
-     * </p>
-     * If a parameter required by the method is not found in the {@code parametersMap}:
-     * <ul>
-     *   <li>If the method parameter is a primitive type, Fastjson's default for that primitive
-     *       (e.g., 0 for int, false for boolean) will be used.</li>
-     *   <li>If the method parameter is an object type, {@code null} will be passed.</li>
-     * </ul>
-     *
-     * @param method The {@link Method} for which to convert parameters.
-     * @param parametersMap A map where keys are parameter names and values are parameter values from JSON.
-     * @return An array of {@link Object}s representing the converted arguments in the correct order for method invocation.
-     * @throws IllegalArgumentException if a parameter value cannot be converted to the required type,
-     *                                or if parameter names are required but not found (e.g. -parameters flag missing).
-     * @throws IllegalStateException if parameter names are not available via reflection.
-     */
     private Object[] convertParameters(Method method, Map<String, Object> parametersMap) throws Exception {
         Parameter[] methodParameters = method.getParameters();
         if (methodParameters.length == 0) {
@@ -231,53 +197,24 @@ public class BeanTaskExecutor {
 
         if (parametersMap == null) parametersMap = Collections.emptyMap();
 
-        // Handle single Map argument case separately
         if (methodParameters.length == 1 && Map.class.isAssignableFrom(methodParameters[0].getType())) {
-            // Ensure the map is compatible or convert it. Fastjson's TypeUtils.castToJavaBean can handle this.
-            // The TypeReference here is tricky for generic Map<String, SpecificValueType>.
-            // For Map<String, Object> or raw Map, direct casting or TypeUtils.castToMap might be okay.
-            // If method truly expects Map<String, Object>, this is fine.
-            // If it expects Map<String, SpecificType>, TypeUtils.castToJavaBean might work if the map structure matches.
-             Object castedMap = TypeUtils.cast(parametersMap, methodParameters[0].getParameterizedType(), ParserConfig.getGlobalInstance()); // Changed to ParserConfig.getGlobalInstance()
+            Object castedMap = TypeUtils.cast(parametersMap, methodParameters[0].getParameterizedType(), ParserConfig.getGlobalInstance());
             return new Object[]{castedMap};
         }
 
         Object[] convertedArgs = new Object[methodParameters.length];
         for (int i = 0; i < methodParameters.length; i++) {
             Parameter param = methodParameters[i];
-            String paramName = param.getName(); // Relies on -parameters javac flag
-
             if (!param.isNamePresent()) {
-                 logger.error("Parameter names not available for method '{}' (bean: {}). Ensure code is compiled with the -parameters javac flag.", method.getName(), method.getDeclaringClass().getSimpleName());
-                 throw new IllegalStateException("Parameter names not available for method " + method.getName() + ". Compile with -parameters flag.");
+                throw new IllegalStateException("Parameter names not available for method " + method.getName() + ". Compile with -parameters flag.");
             }
-
+            String paramName = param.getName();
             Object valueFromMap = parametersMap.get(paramName);
 
-            if (valueFromMap != null) {
-                try {
-                    convertedArgs[i] = TypeUtils.castToJavaBean(valueFromMap, param.getType());
-                } catch (JSONException e) {
-                    logger.error("Fastjson conversion error for parameter '{}' (type: {}), value: '{}'. Method: {}",
-                                 paramName, param.getType().getSimpleName(), valueFromMap, method.getName(), e);
-                    throw new IllegalArgumentException("Error converting parameter '" + paramName + "' to type " + param.getType().getSimpleName() + ". Value: " + valueFromMap, e);
-                } catch (Exception e) {
-                     logger.error("General error converting parameter '{}' (type: {}), value: '{}'. Method: {}",
-                                 paramName, param.getType().getSimpleName(), valueFromMap, method.getName(), e);
-                    throw new IllegalArgumentException("Error converting parameter '" + paramName + "' to type " + param.getType().getSimpleName() + ". Value: " + valueFromMap, e);
-                }
-            } else { // Value not in map for this parameter name
-                if (param.getType().isPrimitive()) {
-                    logger.warn("Parameter '{}' for method '{}' not found in JSON, and it's a primitive type ({}). Attempting to use Fastjson's default for primitive.",
-                                 paramName, method.getName(), param.getType().getSimpleName());
-                    // TypeUtils.cast(null, primitiveClass, config) should yield the default for primitives (e.g., 0 for int)
-                    convertedArgs[i] = TypeUtils.cast(null, param.getType(), ParserConfig.getGlobalInstance());
-                } else {
-                    // For Object types, if not found, it's null. This is standard.
-                    convertedArgs[i] = null;
-                    logger.debug("Parameter '{}' for method '{}' not found in JSON. Passing null for type {}.",
-                                 paramName, method.getName(), param.getType().getSimpleName());
-                }
+            try {
+                convertedArgs[i] = TypeUtils.cast(valueFromMap, param.getParameterizedType(), ParserConfig.getGlobalInstance());
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Error converting parameter '" + paramName + "' to type " + param.getType().getSimpleName() + ". Value: " + valueFromMap, e);
             }
         }
         return convertedArgs;

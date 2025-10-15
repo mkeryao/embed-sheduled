@@ -9,6 +9,7 @@ import com.github.embed.scheduler.dto.workflow.WorkflowNode;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.util.StringUtils;
 
 /**
  * Entity representing the configuration for a schedulable task. This includes
@@ -87,6 +88,7 @@ public class TaskConfig {
      */
     private boolean isActive;
 
+
     // --- Execution Mode ---
     /**
      * Defines how the task behaves in a cluster: BROADCAST or CLUSTER (uses
@@ -138,7 +140,7 @@ public class TaskConfig {
 
     // --- Notification Settings ---
     /**
-     * Comma-separated user IDs (from {@link TaskUser#userId}) to notify upon
+     * Comma-separated user IDs (from {@link TaskUser#id}) to notify upon
      * successful task completion.
      */
     private String notifySuccessUserIds;
@@ -147,6 +149,7 @@ public class TaskConfig {
      * completion.
      */
     private String notifyFailedUserIds;
+
 
     // --- Workflow Definition (if taskType is WORKFLOW) ---
     /**
@@ -188,4 +191,13 @@ public class TaskConfig {
      * Timestamp of the last update to this task configuration.
      */
     private Timestamp updateTime;
+
+
+    public boolean isSuccessNotification(){
+        return StringUtils.hasText(notifySuccessUserIds) ;
+    }
+
+    public boolean isFailureNotification(){
+        return StringUtils.hasText(notifyFailedUserIds) ;
+    }
 }

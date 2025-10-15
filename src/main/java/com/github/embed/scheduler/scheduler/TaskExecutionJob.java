@@ -121,15 +121,15 @@ public class TaskExecutionJob implements Runnable {
             switch (taskConfig.getTaskType()) {
                 case 0: // Bean task
                     BeanTaskExecutor beanTaskExecutor = applicationContext.getBean(BeanTaskExecutor.class);
-                    beanTaskExecutor.execute(taskConfig);
+                    returnMessage = beanTaskExecutor.execute(taskConfig, this.executionLogId);
                     break;
                 case 1: // Shell task
                     ShellTaskExecutor shellTaskExecutor = applicationContext.getBean(ShellTaskExecutor.class);
-                    shellTaskExecutor.execute(taskConfig);
+                    returnMessage = shellTaskExecutor.execute(taskConfig, this.executionLogId);
                     break;
                 case 2: // Http task
                     HttpTaskExecutor httpTaskExecutor = applicationContext.getBean(HttpTaskExecutor.class);
-                    httpTaskExecutor.execute(taskConfig);
+                    returnMessage = httpTaskExecutor.execute(taskConfig, this.executionLogId);
                     break;
                 case 10: // Workflow task
                     WorkflowExecutionService workflowService = applicationContext.getBean(WorkflowExecutionService.class);
@@ -152,7 +152,10 @@ public class TaskExecutionJob implements Runnable {
             TaskExecuteLog finalLogState = taskExecuteLogDao.findById(this.executionLogId).orElse(null);
             if (finalLogState != null) {
                 finalStatus = finalLogState.getState();
-                returnMessage = finalLogState.getRtnMsg();
+                // returnMessage is now set from the executor's return value
+                if (returnMessage == null) {
+                    returnMessage = finalLogState.getRtnMsg();
+                }
                 exceptionMessage = finalLogState.getExMsg();
             } else if (taskConfig.getTaskType() != 10) { // Workflow parent logs are handled differently
                 logger.warn("Could not find log entry for log ID {} after execution. Status may be incorrect.", this.executionLogId);

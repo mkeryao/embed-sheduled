@@ -69,7 +69,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
         threadPoolTaskScheduler.setPoolSize(15);
-        threadPoolTaskScheduler.setThreadNamePrefix("core-scheduler-");
+        threadPoolTaskScheduler.setThreadNamePrefix("embed-scheduler-");
         threadPoolTaskScheduler.initialize();
         this.taskScheduler = threadPoolTaskScheduler;
         taskRegistrar.setScheduler(this.taskScheduler);
@@ -114,6 +114,11 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             logger.info("Task {} is already scheduled. Cancelling and rescheduling.", taskConfig.getTaskId());
             cancelTask(taskConfig.getTaskId());
         }
+        if(!StringUtils.hasText(taskConfig.getCronExpression())){
+            logger.info("Task {} is cronExpression is Empty. Skip.", taskConfig.getTaskId());
+            return  ;
+        }
+
 
         Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL, null);
         
@@ -209,10 +214,10 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         if (isSuccess) {
             if (isWorkflowStep) {
                 workflowExecutionService.handleNodeCompletion(executionLog.getId());
-            }
-            // Send success notification for regular tasks
-            if (taskConfig.isSuccessNotification()) {
-                notificationService.sendSuccessNotification(taskConfig, executionLog);
+            } else { // It's a regular task, not part of a workflow
+                if (taskConfig.isSuccessNotification()) {
+                    notificationService.sendSuccessNotification(taskConfig, executionLog);
+                }
             }
         } else { // FAILED, TIMED_OUT, etc.
             int maxRetries = taskConfig.getMaxRetries();
@@ -221,12 +226,12 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 scheduleRetry(taskConfig, executionLog);
             } else {
                 logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries);
-                // Failure notification is sent for all failures after retries are exhausted
-                if (taskConfig.isFailureNotification()) {
-                    notificationService.sendFailureNotification(taskConfig, executionLog);
-                }
                 if (isWorkflowStep) {
                     workflowExecutionService.handleNodeFailure(executionLog.getId());
+                } else { // It's a regular task, send failure notification now
+                    if (taskConfig.isFailureNotification()) {
+                        notificationService.sendFailureNotification(taskConfig, executionLog);
+                    }
                 }
             }
         }

@@ -212,7 +212,7 @@ public class WorkflowExecutionService {
             // Also send a notification for the parent workflow failure
             TaskConfig parentTaskConfig = taskConfigDao.findById(parentLog.getTaskId())
                     .orElse(null);
-            if (parentTaskConfig != null) {
+            if (parentTaskConfig != null && StringUtils.hasText( parentTaskConfig.getNotifyFailedUserIds())) {
                 notificationService.sendFailureNotification(parentTaskConfig, parentLog);
             }
         }
@@ -236,7 +236,7 @@ public class WorkflowExecutionService {
             // Send success notification for the parent workflow
             TaskConfig parentTaskConfig = taskConfigDao.findById(parentLog.getTaskId())
                     .orElse(null);
-            if (parentTaskConfig != null) {
+            if (parentTaskConfig != null && StringUtils.hasText(parentTaskConfig.getNotifySuccessUserIds())) {
                 notificationService.sendSuccessNotification(parentTaskConfig, parentLog);
             }
         }

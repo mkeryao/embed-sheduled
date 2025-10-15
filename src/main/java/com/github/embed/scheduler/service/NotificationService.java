@@ -68,7 +68,7 @@ public class NotificationService {
             logger.warn("TaskConfig or TaskExecuteLog is null, cannot send success notification.");
             return;
         }
-        if (!StringUtils.hasText( taskConfig.getNotifySuccessUserIds())) {
+        if (!taskConfig.isSuccessNotification()) {
             logger.debug("Success notifications are disabled for task '{}'.", taskConfig.getTaskName());
             return;
         }
@@ -86,7 +86,7 @@ public class NotificationService {
             logger.warn("TaskConfig or TaskExecuteLog is null, cannot send failure notification.");
             return;
         }
-        if (!StringUtils.hasText(taskConfig.getNotifyFailedUserIds())) {
+        if (!taskConfig.isFailureNotification()) {
             logger.debug("Failure notifications are disabled for task '{}'.", taskConfig.getTaskName());
             return;
         }
