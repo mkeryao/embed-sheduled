@@ -23,6 +23,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.github.embed.scheduler.dao.TaskCalendarDao;
 import com.github.embed.scheduler.dao.TaskConfigDao;
@@ -208,30 +210,38 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         TaskConfig taskConfig = taskConfigDao.findById(executionLog.getTaskId())
                 .orElseThrow(() -> new IllegalStateException("Task config not found for ID: " + executionLog.getTaskId()));
 
-        boolean isSuccess = executionLog.getState() == ExecutionState.SUCCESS;
         boolean isWorkflowStep = executionLog.getTaskPattern() == ExecutionPattern.WORKFLOW_STEP;
 
-        if (isSuccess) {
-            if (isWorkflowStep) {
-                workflowExecutionService.handleNodeCompletion(executionLog.getId());
-            } else { // It's a regular task, not part of a workflow
-                if (taskConfig.isSuccessNotification()) {
-                    notificationService.sendSuccessNotification(taskConfig, executionLog);
+        // For any workflow step (success or failure), delegate to the central workflow processing method.
+        if (isWorkflowStep) {
+            logger.info("Task (Log ID: {}) is a workflow step with state {}. Delegating to WorkflowExecutionService.", executionLogId, executionLog.getState());
+            // Asynchronously delegate to avoid holding the current thread and to process in a new transaction.
+            taskScheduler.execute(() -> {
+                try {
+                    workflowExecutionService.processNodeCompletion(executionLog.getId());
+                } catch (Exception e) {
+                    logger.error("Error during asynchronous workflow node completion processing for log ID: {}", executionLog.getId(), e);
                 }
+            });
+            return; // Stop further processing in this service
+        }
+
+        // --- Logic for regular (non-workflow) tasks ---
+
+        boolean isSuccess = executionLog.getState() == ExecutionState.SUCCESS;
+        if (isSuccess) {
+            if (taskConfig.isSuccessNotification()) {
+                notificationService.sendSuccessNotification(taskConfig, executionLog);
             }
-        } else { // FAILED, TIMED_OUT, etc.
-            int maxRetries = taskConfig.getMaxRetries();
+        } else { // FAILED, TIMED_OUT, etc. for a regular task
+            int maxRetries = taskConfig.getMaxRetryAttempts();
             int currentAttempt = executionLog.getAttempt();
             if (currentAttempt < maxRetries) {
                 scheduleRetry(taskConfig, executionLog);
             } else {
                 logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries);
-                if (isWorkflowStep) {
-                    workflowExecutionService.handleNodeFailure(executionLog.getId());
-                } else { // It's a regular task, send failure notification now
-                    if (taskConfig.isFailureNotification()) {
-                        notificationService.sendFailureNotification(taskConfig, executionLog);
-                    }
+                if (taskConfig.isFailureNotification()) {
+                    notificationService.sendFailureNotification(taskConfig, executionLog);
                 }
             }
         }

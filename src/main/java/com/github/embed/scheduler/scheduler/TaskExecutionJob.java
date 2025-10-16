@@ -78,7 +78,7 @@ public class TaskExecutionJob implements Runnable {
         } else {
             TaskExecuteLog log = new TaskExecuteLog();
             log.setTaskId(taskConfig.getTaskId());
-            log.setStartTime(new Timestamp(System.currentTimeMillis()));
+            log.setStartTime(new Timestamp(System.currentTimeMillis())); //
             log.setState(ExecutionState.RUNNING);
             log.setInstanceId(this.instanceId);
             log.setAttempt(this.attemptNumber);

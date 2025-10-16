@@ -152,7 +152,7 @@ public class WorkflowExecutionService {
             logger.warn("Node with LogId {} did not complete successfully (state: {}). Halting this path.", completedLogId, completedLog.getState());
             taskWorkflowNodeStateDao.updateStatus(instanceId, completedNodeId, ExecutionState.FAILED.name());
             // Mark workflow as failed
-            markWorkflowAsFailed(instanceId, "Node " + completedNodeId + " failed.");
+            markWorkflowAsFailed(instanceId, "Node " + completedNodeId + " failed. [" +  completedLog.getExMsg() + "]");
             return;
         }
 

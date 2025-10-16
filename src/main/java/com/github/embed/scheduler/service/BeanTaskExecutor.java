@@ -107,18 +107,29 @@ public class BeanTaskExecutor implements TaskExecutor {
                 result = (timeoutSeconds != null && timeoutSeconds > 0)
                         ? future.get(timeoutSeconds, TimeUnit.SECONDS)
                         : future.get();
-                log.setState(ExecutionState.SUCCESS);
-                String resultStr = result != null ? result.toString() : null;
-                log.setRtnMsg(resultStr);
-                return resultStr;
             } catch (TimeoutException ex) {
                 future.cancel(true);
                 throw new TaskTimeoutException("Task " + taskConfig.getTaskName() + " timed out after " + timeoutSeconds + " seconds.");
             } catch (Exception ex) {
-                throw new Exception("Error executing task method: " + ex.getMessage(),
-                        ex.getCause() != null ? ex.getCause() : ex);
+                Throwable throwable = NestedExceptionUtils.getRootCause(ex) ;
+                throw new Exception(
+                       NestedExceptionUtils.buildMessage(
+                               "Error executing task method [" +taskConfig.getBeanName()  +"]" , throwable)
+                        , throwable) ;
             }
-        } catch (Exception e) {
+            
+            // If we reach here, the future.get() was successful.
+            log.setState(ExecutionState.SUCCESS);
+            String resultStr = result != null ? result.toString() : null;
+            log.setRtnMsg(resultStr);
+            return resultStr;
+
+        } catch (InvocationTargetException e) {
+            log.setState(ExecutionState.FAILED);
+
+            log.setExMsg(NestedExceptionUtils.buildMessage(e.getCause().getMessage() , e.getCause()));
+            throw e.getCause() instanceof Exception ? (Exception)e.getCause() : e ;
+         } catch (Exception e) {
             log.setState(ExecutionState.FAILED);
             log.setExMsg(NestedExceptionUtils.buildMessage(e.getMessage() , e));
             throw e;

@@ -5,6 +5,7 @@ import com.alibaba.fastjson.TypeReference;
 import com.github.embed.scheduler.entity.TaskConfig;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
 import com.github.embed.scheduler.entity.TaskUser;
+import com.github.embed.scheduler.enums.ExecutionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,20 +63,22 @@ public class WebhookNotificationChannel implements NotificationChannel {
         payload.put("status", logEntry.getState());
         payload.put("startTime", logEntry.getStartTime() != null ? logEntry.getStartTime().toString() : null);
         payload.put("endTime", logEntry.getEndTime() != null ? logEntry.getEndTime().toString() : null);
-        payload.put("message", logEntry.getExMsg());
+        payload.put("exMsg", logEntry.getExMsg());
+        payload.put("rtnMsg", logEntry.getRtnMsg());
         payload.put("instanceId", logEntry.getInstanceId());
         payload.put("logId", logEntry.getLogId());
         payload.put("taskPattern", logEntry.getTaskPattern());
         payload.put("parentLogId", logEntry.getParentLogId());
-        payload.put("notificationType", context.isSuccessNotification() ? "SUCCESS_NOTIFICATION" : "FAILURE_NOTIFICATION");
+        payload.put("notificationType", context.isSuccessNotification() ? ExecutionState.SUCCESS.getState() : ExecutionState.FAILED.getState());
         payload.put("user", user.getUsername());
 
-
         String jsonPayload = JSON.toJSONString(payload);
+        logger.info("[{}]" ,jsonPayload);
 
         String webhookAddresses = user.getWebhookAddress();
         // Attempt to parse as JSON list if it starts with [ and ends with ]
-        if (StringUtils.hasText(webhookAddresses) && webhookAddresses.trim().startsWith("[")
+        if (StringUtils.hasText(webhookAddresses)
+                && webhookAddresses.trim().startsWith("[")
                 && webhookAddresses.trim().endsWith("]")) {
             try {
                 List<String> urls = JSON.parseObject(webhookAddresses, new TypeReference<List<String>>() {});

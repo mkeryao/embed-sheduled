@@ -63,7 +63,7 @@ public class MySampleTask {
         logger.info("###MySampleTask.simpleExecute completed.");
         int id = (int) params.getOrDefault("id", 100);
         if (id % 5 == 0) {
-            throw new RuntimeException("Simulated failure: " + id);
+            throw new IllegalArgumentException("Simulated failure: " + id);
         }
         params.put("status", "success");
         params.put("name" , "simpleExecute");
