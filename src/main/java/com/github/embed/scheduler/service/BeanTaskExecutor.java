@@ -130,13 +130,14 @@ public class BeanTaskExecutor implements TaskExecutor {
             log.setExMsg(NestedExceptionUtils.buildMessage(e.getCause().getMessage() , e.getCause()));
             throw e.getCause() instanceof Exception ? (Exception)e.getCause() : e ;
          } catch (Exception e) {
+            String errorMsg = "Bean execution failed: " + e.getMessage();
+            logger.error("Bean Task ID {} execution failed. {}", taskConfig.getTaskId(), errorMsg, e);
             log.setState(ExecutionState.FAILED);
-            log.setExMsg(NestedExceptionUtils.buildMessage(e.getMessage() , e));
-            throw e;
+            log.setExMsg(errorMsg);
         } finally {
-            log.setEndTime(new java.sql.Timestamp(System.currentTimeMillis()));
             taskExecuteLogDao.update(log);
         }
+        return null;
     }
 
     private String resolveParameters(TaskExecuteLog log, TaskConfig taskConfig) {

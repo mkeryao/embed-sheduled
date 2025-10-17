@@ -211,11 +211,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 .orElseThrow(() -> new IllegalStateException("Task config not found for ID: " + executionLog.getTaskId()));
 
         boolean isWorkflowStep = executionLog.getTaskPattern() == ExecutionPattern.WORKFLOW_STEP;
-
-        // For any workflow step (success or failure), delegate to the central workflow processing method.
         if (isWorkflowStep) {
             logger.info("Task (Log ID: {}) is a workflow step with state {}. Delegating to WorkflowExecutionService.", executionLogId, executionLog.getState());
-            // Asynchronously delegate to avoid holding the current thread and to process in a new transaction.
             taskScheduler.execute(() -> {
                 try {
                     workflowExecutionService.processNodeCompletion(executionLog.getId());
@@ -223,27 +220,38 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                     logger.error("Error during asynchronous workflow node completion processing for log ID: {}", executionLog.getId(), e);
                 }
             });
-            return; // Stop further processing in this service
+            return;
         }
-
-        // --- Logic for regular (non-workflow) tasks ---
 
         boolean isSuccess = executionLog.getState() == ExecutionState.SUCCESS;
         if (isSuccess) {
             if (taskConfig.isSuccessNotification()) {
                 notificationService.sendSuccessNotification(taskConfig, executionLog);
             }
-        } else { // FAILED, TIMED_OUT, etc. for a regular task
-            int maxRetries = taskConfig.getMaxRetryAttempts();
-            int currentAttempt = executionLog.getAttempt();
-            if (currentAttempt < maxRetries) {
-                scheduleRetry(taskConfig, executionLog);
-            } else {
-                logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries);
-                if (taskConfig.isFailureNotification()) {
-                    notificationService.sendFailureNotification(taskConfig, executionLog);
+            return;
+        }
+
+        // --- Unified retry logic for all non-workflow tasks ---
+        Integer maxRetries = taskConfig.getMaxRetryAttempts();
+        int currentAttempt = executionLog.getAttempt();
+        ExecutionPattern pattern = executionLog.getTaskPattern();
+        if (maxRetries != null && maxRetries > 0) {
+            if (pattern == ExecutionPattern.RETRY) {
+                // 处于重试链路，严格计数
+                if (currentAttempt < maxRetries) {
+                    scheduleRetry(taskConfig, executionLog);
+                    return;
                 }
+            } else if (pattern == ExecutionPattern.NORMAL || pattern == ExecutionPattern.MANUAL) {
+                // 首次失败，启动重试链路
+                scheduleRetry(taskConfig, executionLog);
+                return;
             }
+        }
+        // 达到最大重试次数或未配置重试，发送最终失败通知
+        logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries != null ? maxRetries : "N/A");
+        if (taskConfig.isFailureNotification()) {
+            notificationService.sendFailureNotification(taskConfig, executionLog);
         }
     }
 
@@ -261,8 +269,8 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 notificationService,
                 distributedLockService.getSchedulerInstanceId(),
                 nextAttempt,
-                previousLog.getTaskPattern(),
-                previousLog.getParentLogId() != null ? previousLog.getParentLogId().longValue() : null,
+                ExecutionPattern.RETRY, // Correctly mark this as a RETRY
+                previousLog.getId(), // Link this retry to the previous failed log
                 previousLog.getParameters(),
                 previousLog.getWorkflowNodeId(),
                 null // A new log will be created, so no initial log id

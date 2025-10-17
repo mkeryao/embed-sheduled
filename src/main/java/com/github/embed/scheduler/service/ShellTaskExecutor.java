@@ -150,13 +150,13 @@ public class ShellTaskExecutor implements TaskExecutor {
                     logger.warn("Failed to delete temporary script file: {}. Error: {}", tempScriptPath, e.getMessage());
                 }
             }
-            if (logEntry.getRtnMsg() != null && logEntry.getRtnMsg().length() > 1950) {
-                logEntry.setRtnMsg(logEntry.getRtnMsg().substring(0, 1950) + "...");
-            }
-            if (logEntry.getExMsg() != null && logEntry.getExMsg().length() > 1950) {
-                logEntry.setExMsg(logEntry.getExMsg().substring(0, 1950) + "...");
-            }
+            String fullOutput = "STDOUT:\n" + outputBuilder.toString() + "\nSTDERR:\n" + errorBuilder.toString();
+            logEntry.setRtnMsg(fullOutput.substring(0, Math.min(fullOutput.length(), 2000)));
             taskExecuteLogDao.update(logEntry);
+
+            if (process != null) {
+                process.destroyForcibly();
+            }
         }
         return logEntry.getRtnMsg();
     }
