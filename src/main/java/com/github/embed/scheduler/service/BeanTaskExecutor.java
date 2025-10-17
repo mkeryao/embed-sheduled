@@ -9,6 +9,7 @@ import com.github.embed.scheduler.entity.TaskConfig;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
 import com.github.embed.scheduler.enums.ExecutionPattern;
 import com.github.embed.scheduler.enums.ExecutionState;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -112,10 +113,7 @@ public class BeanTaskExecutor implements TaskExecutor {
                 throw new TaskTimeoutException("Task " + taskConfig.getTaskName() + " timed out after " + timeoutSeconds + " seconds.");
             } catch (Exception ex) {
                 Throwable throwable = NestedExceptionUtils.getRootCause(ex) ;
-                throw new Exception(
-                       NestedExceptionUtils.buildMessage(
-                               "Error executing task method [" +taskConfig.getBeanName()  +"]" , throwable)
-                        , throwable) ;
+                throw new Exception(  ExceptionUtils.getRootCauseMessage(ex) , throwable) ;
             }
             
             // If we reach here, the future.get() was successful.
@@ -123,11 +121,9 @@ public class BeanTaskExecutor implements TaskExecutor {
             String resultStr = result != null ? result.toString() : null;
             log.setRtnMsg(resultStr);
             return resultStr;
-
         } catch (InvocationTargetException e) {
             log.setState(ExecutionState.FAILED);
-
-            log.setExMsg(NestedExceptionUtils.buildMessage(e.getCause().getMessage() , e.getCause()));
+            log.setExMsg( ExceptionUtils.getRootCauseMessage(e));
             throw e.getCause() instanceof Exception ? (Exception)e.getCause() : e ;
          } catch (Exception e) {
             String errorMsg = "Bean execution failed: " + e.getMessage();
