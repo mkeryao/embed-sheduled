@@ -30,7 +30,7 @@ function drawWorkflowInstanceStatusDAG(svgContainer, nodes, edges, nodeStatuses)
 
     (nodes || []).forEach(function(node) {
         const g = $(document.createElementNS(svgNS, 'g')).addClass('dag-node-instance vis-node'); // Added vis-node class
-        const nodeStatusInfo = statusMap.get(node.nodeId) || { status: 'NOT_CONFIGURED', nodeId: node.nodeId };
+        const nodeStatusInfo = statusMap.get(node.nodeId) || { status: 'NOT_EXECUTE', nodeId: node.nodeId };
 
         let fillColor = '#f8f9fa'; // Default (light gray)
         let strokeColor = '#6c757d'; // Default border (gray)
@@ -41,7 +41,7 @@ function drawWorkflowInstanceStatusDAG(svgContainer, nodes, edges, nodeStatuses)
             case 'FAILED': case 'TIMED_OUT': fillColor = '#f8d7da'; strokeColor = '#dc3545'; textColor = '#842029'; break;
             case 'RUNNING': fillColor = '#cce5ff'; strokeColor = '#0d6efd'; textColor = '#052c65'; break;
             case 'SKIPPED': case 'NOT_EXECUTED': fillColor = '#e9ecef'; strokeColor = '#adb5bd'; textColor = '#495057'; break;
-            case 'NOT_CONFIGURED': fillColor = '#f0f0f0'; strokeColor = '#ced4da'; textColor = '#6c757d'; break;
+            case 'NOT_EXECUTE': fillColor = '#f0f0f0'; strokeColor = '#ced4da'; textColor = '#6c757d'; break;
         }
 
         const rect = $(document.createElementNS(svgNS, 'rect'))

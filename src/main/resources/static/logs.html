@@ -43,6 +43,7 @@
             <th data-i18n-key="logsPage.logTable.taskId">Task ID</th>
             <th data-i18n-key="logsPage.logTable.taskName">Task Name</th>
             <th data-i18n-key="logsPage.logTable.executionMode">Execution Mode</th>
+            <th data-i18n-key="logsPage.logTable.taskPattern">Task Pattern</th>
             <th data-i18n-key="logsPage.logTable.status">Status</th>
             <th data-i18n-key="logsPage.logTable.instanceId">Instance ID</th>
             <th data-i18n-key="logsPage.logTable.startTime">Start Time</th>
@@ -101,6 +102,7 @@
                 <p><strong data-i18n-key="logsPage.logDetails.taskId">Task ID:</strong> <span id="modalTaskId"></span></p>
                 <p><strong data-i18n-key="logsPage.logDetails.taskName">Task Name:</strong> <span id="modalTaskName"></span></p>
                 <p><strong data-i18n-key="logsPage.logDetails.instanceId">Instance ID:</strong> <span id="modalInstanceId"></span></p>
+                <p><strong data-i18n-key="logsPage.logDetails.taskPattern">Instance ID:</strong> <span id="modalTaskPattern"></span></p>
                 <p><strong data-i18n-key="logsPage.logDetails.status">Status:</strong> <span id="modalLogStatus"></span></p>
                 <div class="form-group">
                     <label for="modalLogMessage" data-i18n-key="logsPage.logDetailModal.messageLabel">Message:</label>
@@ -229,7 +231,7 @@
             tableBody.empty();
 
             if (!logsToDisplay || logsToDisplay.length === 0) {
-                tableBody.html(`<tr><td colspan="9" class="text-center">${i18n.translate('logsPage.logTable.noLogsFound', 'No logs found for the current filter.')}</td></tr>`);
+                tableBody.html(`<tr><td colspan="11" class="text-center">${i18n.translate('logsPage.logTable.noLogsFound', 'No logs found for the current filter.')}</td></tr>`);
                 setupPagination(0);
                 return;
             }
@@ -265,11 +267,44 @@
                     return `<span class="badge ${modeInfo.class}">${modeInfo.text}</span>`;
                 }
 
+                function formatTaskPattern(mode) {
+                    if (!mode.taskPattern) return `<span class="badge badge-secondary">-</span>`;
+                    const modeMap = {
+                        'NORMAL': {
+                            text: i18n.translate('tasksPage.taskPatterns.normal', '调度执行'),
+                            class: 'badge-info'
+                        },
+                        'WORKFLOW_STEP': {
+                            text: i18n.translate('tasksPage.taskPatterns.workflow-step', '工作流步骤'),
+                            class: 'badge-primary'
+                        },
+                        'RETRY': {
+                            text: i18n.translate('tasksPage.taskPatterns.retry', '重试任务(' + (mode.parentLogId || 0) + ')'),
+                            class: 'badge-warning'
+                        },
+                        'MANUAL': {
+                            text: i18n.translate('tasksPage.taskPatterns.manual', '手工执行'),
+                            class: 'badge-dark'
+                        },
+                        'WORKFLOW_PARENT': {
+                            text: i18n.translate('tasksPage.taskPatterns.workflow-parent', '工作流主任务'),
+                            class: 'badge-success'
+                        }
+                    };
+                    const modeInfo = modeMap[mode.taskPattern.toUpperCase()] || {
+                        text: mode.taskPattern,
+                        class: 'badge-secondary'
+                    };
+                    return `<span class="badge ${modeInfo.class}">${modeInfo.text}</span>`;
+                }
+
+
                 const row = `<tr class="log-row" data-log-id="${log.logId}">
                         <td>${log.logId}</td>
                         <td>${log.taskId}</td>
                         <td>${log.taskName || '-'}</td>
                         <td>${formatExecutionMode(log.executionMode)}</td>
+                        <td>${formatTaskPattern(log)}</td>
                         <td>${formatStateWithBadge(log.state)}</td>
                         <td>${log.instanceId || ''}</td>
                         <td>${log.startTime ? new Date(log.startTime).toLocaleString() : ''}</td>
@@ -297,6 +332,7 @@
                 $('#modalLogId').text(logEntry.logId);
                 $('#modalTaskId').text(logEntry.taskId);
                 $('#modalTaskName').text(logEntry.taskName || '-');
+                $('#modalTaskPattern').text(logEntry.taskPattern || '-');
                 $('#modalInstanceId').text(logEntry.instanceId || '-');
                 $('#modalLogStatus').html(formatStateWithBadge(logEntry.state));
                 $('#modalLogMessage').val(logEntry.rtnMsg || '');

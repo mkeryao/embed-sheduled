@@ -34,8 +34,8 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     @Resource(name = "schedulerJdbcTemplate")
     private JdbcTemplate jdbcTemplate;
 
-    private static final String LOG_COLUMNS = "log_id, task_id, workflow_id, start_time, end_time, state, rtn_msg, ex_msg, workflow_instance_id, parent_log_id, task_pattern, workflow_node_id, parameters, instance_id";
-    private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, workflow_id, start_time, state, workflow_instance_id, parent_log_id, task_pattern, rtn_msg, ex_msg, workflow_node_id, parameters, instance_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String LOG_COLUMNS = "log_id, task_id, workflow_id, start_time, end_time, state, rtn_msg, ex_msg, workflow_instance_id, parent_log_id, task_pattern, workflow_node_id, parameters, instance_id,attempt";
+    private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, workflow_id, start_time, state, workflow_instance_id, parent_log_id, task_pattern, rtn_msg, ex_msg, workflow_node_id, parameters, instance_id,attempt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
     private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, workflow_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, workflow_instance_id=?, parent_log_id=?, task_pattern=?, workflow_node_id=?, parameters=?, instance_id=? WHERE log_id=?";
     private static final String SELECT_BY_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE log_id=?";
     private static final String SELECT_ALL_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log ORDER BY start_time DESC";
@@ -61,6 +61,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
         log.setParentLogId(rs.getObject("parent_log_id", Integer.class));
         log.setTaskPattern(ExecutionPattern.valueOf(rs.getString("task_pattern")));
         log.setWorkflowNodeId(rs.getString("workflow_node_id"));
+        log.setAttempt(rs.getObject("attempt", Integer.class));
         return log;
     };
 
@@ -81,6 +82,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
             ps.setString(10, log.getWorkflowNodeId());
             ps.setString(11, log.getParameters());
             ps.setString(12, log.getInstanceId());
+            ps.setInt(13,log.getAttempt());
             return ps;
         }, keyHolder);
         log.setLogId(keyHolder.getKey().longValue());

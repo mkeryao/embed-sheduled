@@ -50,7 +50,7 @@ public class WorkflowExecutionService {
     @Autowired
     private DistributedLockService distributedLockService;
 
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void startWorkflow(int workflowId, Long parentLogId) {
         logger.info("Attempting to start workflow with ID: {} for parent log ID: {}", workflowId, parentLogId);
 
@@ -129,13 +129,13 @@ public class WorkflowExecutionService {
      * Creates the initial log for a start node and then calls the main execution logic.
      * This is the entry point for nodes that don't have dependencies.
      */
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void executeStartNode(WorkflowNode node, int workflowId, Long workflowInstanceId, Long parentWorkflowLogId) {
         // The save is now part of executeNode's transaction
         executeNode(node, workflowId, workflowInstanceId, parentWorkflowLogId);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void processNodeCompletion(long completedLogId) {
         TaskExecuteLog completedLog = taskExecuteLogDao.findById(completedLogId)
                 .orElseThrow(() -> new IllegalStateException("Completed log with ID " + completedLogId + " not found."));
@@ -199,7 +199,7 @@ public class WorkflowExecutionService {
     /**
      * Marks a workflow instance and its parent log as failed.
      */
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void markWorkflowAsFailed(Long instanceId, String reason) {
         TaskExecuteLog parentLog = taskExecuteLogDao.findById(instanceId).orElse(null);
         if (parentLog != null && parentLog.getState() != ExecutionState.FAILED) {
@@ -221,7 +221,7 @@ public class WorkflowExecutionService {
     /**
      * Marks a workflow instance and its parent log as complete.
      */
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void markWorkflowAsComplete(Long instanceId) {
         TaskExecuteLog parentLog = taskExecuteLogDao.findById(instanceId)
                 .orElseThrow(() -> new IllegalStateException("Parent workflow log " + instanceId + " not found."));
@@ -252,7 +252,7 @@ public class WorkflowExecutionService {
      * @param instanceId The unique ID for this workflow run.
      * @param parentWorkflowLogId The log ID of the parent workflow trigger.
      */
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void executeNode(WorkflowNode node, int workflowId, Long instanceId, Long parentWorkflowLogId) {
         // 1. Update state tracking table to RUNNING
         taskWorkflowNodeStateDao.updateStatus(instanceId, node.getNodeId(), ExecutionState.RUNNING.name());
@@ -292,13 +292,13 @@ public class WorkflowExecutionService {
      * Handles the completion of a node. This is called by CoreSchedulerService after a node's TaskExecutionJob finishes.
      * It's a wrapper around processNodeCompletion.
      */
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void handleNodeCompletion(long completedLogId) {
         logger.info("Handling completion for node log ID: {}", completedLogId);
         processNodeCompletion(completedLogId);
     }
 
-    @Transactional
+    @Transactional(transactionManager = "schedulerTransactionManager")
     public void handleNodeFailure(long failedLogId) {
         TaskExecuteLog failedLog = taskExecuteLogDao.findById(failedLogId)
                 .orElseThrow(() -> new IllegalStateException("Failed log with ID " + failedLogId + " not found."));

@@ -22,6 +22,7 @@ import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -123,7 +124,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
 
 
         Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL, null);
-        
+
         try {
             CustomTaskTrigger customTaskTrigger = new CustomTaskTrigger(taskConfig, taskCalendarDao);
             ScheduledFuture<?> scheduledFuture = taskScheduler.schedule(taskRunnable, customTaskTrigger);
@@ -160,7 +161,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         Runnable taskRunnable = createTaskRunnable(taskConfig, pattern, null);
         taskScheduler.execute(taskRunnable);
     }
-    
+
     public void triggerWorkflowNodeTask(long logId) {
         TaskExecuteLog log = taskExecuteLogDao.findById(logId).orElse(null);
         if (log == null) {
@@ -172,7 +173,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             logger.error("Cannot trigger workflow node task, task config not found for id: {}", log.getTaskId());
             return;
         }
-    
+
         // Prepare a temporary TaskConfig with overridden parameters for this specific run
         TaskConfig configForNodeRun = taskConfig;
         if (log.getParameters() != null && !log.getParameters().isEmpty()) {
@@ -183,7 +184,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
 
         logger.info("Asynchronously triggering execution for workflow node '{}' (Task ID: {}, Log ID: {})",
                 log.getWorkflowNodeId(), log.getTaskId(), log.getId());
-    
+
         TaskExecutionJob job = new TaskExecutionJob(
                 configForNodeRun, // Pass the config with potentially overridden parameters
                 this.applicationContext,
@@ -199,7 +200,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 log.getWorkflowNodeId(), // Correctly use the node ID from the log
                 log.getId()
         );
-    
+
         taskScheduler.execute(job);
     }
 
@@ -232,21 +233,14 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         }
 
         // --- Unified retry logic for all non-workflow tasks ---
-        Integer maxRetries = taskConfig.getMaxRetryAttempts();
+        Integer maxRetries =  taskConfig.getMaxRetryAttempts();
         int currentAttempt = executionLog.getAttempt();
-        ExecutionPattern pattern = executionLog.getTaskPattern();
-        if (maxRetries != null && maxRetries > 0) {
-            if (pattern == ExecutionPattern.RETRY) {
-                // 处于重试链路，严格计数
-                if (currentAttempt < maxRetries) {
-                    scheduleRetry(taskConfig, executionLog);
-                    return;
-                }
-            } else if (pattern == ExecutionPattern.NORMAL || pattern == ExecutionPattern.MANUAL) {
-                // 首次失败，启动重试链路
-                scheduleRetry(taskConfig, executionLog);
-                return;
-            }
+        if (executionLog.getTaskPattern() != ExecutionPattern.MANUAL
+                &&  maxRetries != null
+                && maxRetries > 0
+                && currentAttempt < maxRetries) { //手工执行不重试
+            scheduleRetry(taskConfig, executionLog);
+            return;
         }
         // 达到最大重试次数或未配置重试，发送最终失败通知
         logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries != null ? maxRetries : "N/A");
@@ -257,7 +251,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
 
     private void scheduleRetry(TaskConfig taskConfig, TaskExecuteLog previousLog) {
         int nextAttempt = previousLog.getAttempt() + 1;
-        long delay = calculateRetryDelay(nextAttempt, taskConfig.getRetryPolicy());
+        long delay = calculateRetryDelay(nextAttempt, taskConfig.getRetryIntervalSeconds() , taskConfig.getRetryIntervalMultiplier());
         logger.info("Scheduling retry {}/{} for task {} in {} ms.", nextAttempt, taskConfig.getMaxRetries(), taskConfig.getTaskId(), delay);
 
         TaskExecutionJob retryJob = new TaskExecutionJob(
@@ -279,22 +273,16 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         taskScheduler.schedule(retryJob, Instant.now().plusMillis(delay));
     }
 
-    private long calculateRetryDelay(int attempt, String retryPolicy) {
-        if (!StringUtils.hasText(retryPolicy) || !retryPolicy.contains(":")) {
-            return 30000; // Default to 30 seconds
-        }
+    private long calculateRetryDelay(int attempt, int  tryIntervalSeconds  , float  retryIntervalMultiplier ) {
 
-        String[] parts = retryPolicy.split(":", 2);
-        String policyType = parts[0];
-        long baseInterval = Long.parseLong(parts[1]);
-
-        switch (policyType.toLowerCase()) {
-            case "exponential":
-                return baseInterval * (long) Math.pow(2, attempt - 1);
-            case "fixed":
-            default:
-                return baseInterval;
+        if (tryIntervalSeconds <= 0) {
+            tryIntervalSeconds = 60; // Default to 60 seconds if not set
         }
+        if(retryIntervalMultiplier < 1.0){
+           return  attempt * tryIntervalSeconds * 1000L;
+        }
+        return (long) (retryIntervalMultiplier * (long) Math.pow(2, attempt - 1))
+                * tryIntervalSeconds * 1000L;
     }
 
     private TaskExecutionJob createTaskRunnable(TaskConfig taskConfig, ExecutionPattern executionPattern, Long parentLogId) {
@@ -306,7 +294,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 this,
                 notificationService,
                 distributedLockService.getSchedulerInstanceId(),
-                1,
+                0,
                 executionPattern,
                 parentLogId,
                 taskConfig.getParameters(),

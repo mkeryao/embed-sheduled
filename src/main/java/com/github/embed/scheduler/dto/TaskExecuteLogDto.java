@@ -27,6 +27,7 @@ public class TaskExecuteLogDto {
     private Integer taskType; // Added field from TaskConfig
     private String taskName; // Added field from TaskConfig
     private ExecutionMode executionMode;
+    private Integer  attempt ;// Added field from TaskExecuteLog;
 
     public static TaskExecuteLogDto fromEntity(TaskExecuteLog log, Integer taskType, String taskName, ExecutionMode executionMode) {
         TaskExecuteLogDto dto = new TaskExecuteLogDto();
@@ -44,6 +45,7 @@ public class TaskExecuteLogDto {
         dto.setTaskType(taskType);
         dto.setTaskName(taskName);
         dto.setExecutionMode(executionMode);
+        dto.setAttempt(log.getAttempt());
         return dto;
     }
 }

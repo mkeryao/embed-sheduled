@@ -147,6 +147,7 @@ CREATE TABLE `task_execute_log` (
   `state` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL,
   `task_pattern` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL,
   `rtn_msg` varchar(2000) COLLATE utf8mb4_bin DEFAULT NULL,
+  `attempt` int  NULL,
   `ex_msg` text COLLATE utf8mb4_bin,
   `parameters` varchar(4000) COLLATE utf8mb4_bin DEFAULT NULL,
   PRIMARY KEY (`log_id`),

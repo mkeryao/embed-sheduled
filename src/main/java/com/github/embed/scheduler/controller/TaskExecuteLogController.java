@@ -185,51 +185,17 @@ public class TaskExecuteLogController {
         }
 
         List<TaskExecuteLog> nodeAttemptLogs = taskExecuteLogDao.findByParentExecuteNo(workflowLogId);
-        Map<String, WorkflowInstanceNodeStatusDto> latestNodeStatuses = new HashMap<>();
-
-        // Initialize all defined nodes with NOT_EXECUTED status
-        for (WorkflowNode definedNode : workflowNodes) {
-            if (definedNode.getNodeId() == null)
-                continue; // Skip invalid nodes
-            WorkflowInstanceNodeStatusDto statusDto = new WorkflowInstanceNodeStatusDto();
-            statusDto.setNodeId(definedNode.getNodeId());
-            statusDto.setStatus("NOT_EXECUTED");
-            latestNodeStatuses.put(definedNode.getNodeId(), statusDto);
-        }
-
-        // Process logs to find the latest status for each node based on its original
-        // taskConfigId
-        // Group logs by the task_id of the node log (which corresponds to the original
-        // task_config_id of the node's task)
-        Map<Integer, List<TaskExecuteLog>> logsByOriginalTaskConfigId = new HashMap<>();
-        for (TaskExecuteLog log : nodeAttemptLogs) {
-            // Node logs should have task_id set to the original task_config_id it executed
-            if (log.getTaskId() == null)
-                continue;
-            logsByOriginalTaskConfigId.computeIfAbsent(log.getTaskId(), k -> new ArrayList<>()).add(log);
-        }
-
-        for (WorkflowNode definedNode : workflowNodes) {
-            if (definedNode.getNodeId() == null || definedNode.getTaskConfigId() == null)
-                continue;
-
-            List<TaskExecuteLog> attemptsForThisNodeDefinition = logsByOriginalTaskConfigId
-                    .get(definedNode.getTaskConfigId());
-
-            if (attemptsForThisNodeDefinition != null && !attemptsForThisNodeDefinition.isEmpty()) {
-                // Sort by logId descending to get the latest attempt first
-                attemptsForThisNodeDefinition.sort(Comparator.comparing(TaskExecuteLog::getLogId).reversed());
-                TaskExecuteLog latestAttempt = attemptsForThisNodeDefinition.get(0);
-
-                WorkflowInstanceNodeStatusDto statusDto = latestNodeStatuses.get(definedNode.getNodeId());
-                if (statusDto != null) { // Should always be true due to pre-population
-                    statusDto.setStatus(latestAttempt.getState().name());
-                    statusDto.setLastLogId(latestAttempt.getLogId().longValue());
-                    statusDto.setLastStartTime(latestAttempt.getStartTime());
-                    statusDto.setLastEndTime(latestAttempt.getEndTime());
-                    statusDto.setLastMessage(StringUtils.hasText(latestAttempt.getExMsg()) ? latestAttempt.getExMsg()
-                            : latestAttempt.getRtnMsg());
-                }
+        List<WorkflowInstanceNodeStatusDto>  nodeStatusList = new ArrayList<>();
+        for(TaskExecuteLog log : nodeAttemptLogs) {
+            if (log.getWorkflowNodeId() != null) {
+                WorkflowInstanceNodeStatusDto statusDto = new WorkflowInstanceNodeStatusDto();
+                statusDto.setNodeId(log.getWorkflowNodeId());
+                statusDto.setStatus(log.getState().name());
+                statusDto.setLastLogId(log.getLogId());
+                statusDto.setLastStartTime(log.getStartTime());
+                statusDto.setLastEndTime(log.getEndTime());
+                statusDto.setLastMessage(StringUtils.hasText(log.getExMsg()) ? log.getExMsg() : log.getRtnMsg());
+                nodeStatusList.add(statusDto);
             }
         }
 
@@ -239,7 +205,7 @@ public class TaskExecuteLogController {
                 workflowConfig.getTaskName(),
                 workflowNodes,
                 workflowEdges,
-                new ArrayList<>(latestNodeStatuses.values()));
+                nodeStatusList );
         return ResponseEntity.ok(detailsDto);
     }
 }
