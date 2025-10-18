@@ -41,7 +41,7 @@ public class DistributedLockService {
     /**
      * Delay in milliseconds between lock acquisition retries.
      */
-    @Value("${scheduler.lock.retry.delayMs:1000}")
+    @Value("${scheduler.lock.retry.delayMs:10000}")
     private long lockRetryDelayMs;
 
 

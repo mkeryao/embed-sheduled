@@ -3,6 +3,7 @@ package com.github.embed.scheduler.scheduler;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
@@ -264,7 +265,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 distributedLockService.getSchedulerInstanceId(),
                 nextAttempt,
                 ExecutionPattern.RETRY, // Correctly mark this as a RETRY
-                previousLog.getId(), // Link this retry to the previous failed log
+                Objects.nonNull( previousLog.getParentLogId() ) ? previousLog.getParentLogId() : previousLog.getId(), // Link this retry to the previous failed log
                 previousLog.getParameters(),
                 previousLog.getWorkflowNodeId(),
                 null // A new log will be created, so no initial log id

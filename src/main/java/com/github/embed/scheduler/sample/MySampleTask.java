@@ -24,34 +24,45 @@ public class MySampleTask {
             Thread.currentThread().interrupt();
             logger.warn("Task interrupted during sleep");
         }
+        Double random = new Random().nextDouble() ;
+        if(random > 0.9){
+            throw new IndexOutOfBoundsException("Index out of bounds [" + random + "]");
+        }
         logger.info("###MySampleTask.executeSuccess completed.");
         params.put("status", "success");
+        params.put("rand" , random);
+        params.put("message", "Task completed successfully");
         return params;
     }
 
     public void executeFailed(String error) throws InterruptedException {
         logger.info("###MySampleTask.executeFailed called with error: '{}'", error);
-        TimeUnit.SECONDS.sleep(new Random().nextInt() * 5000L);
+        TimeUnit.SECONDS.sleep((long)new Random().nextDouble()* 500L);
+        Double random = new Random().nextDouble() ;
+        if(random > 0.3){
+            throw new IllegalArgumentException("[Simulated failure: " + random + "]");
+        }
         // Simulate a failure
-        throw new IllegalArgumentException("[Simulated failure: " + error + "]");
     }
 
     public Map<String, Object> executeException(Map<String, Object> params) throws InterruptedException {
 
         logger.info("###MySampleTask.executeFailed called with error: '{}'", params);
-        TimeUnit.SECONDS.sleep(new Random().nextLong() * 100L);
+        TimeUnit.SECONDS.sleep((long)new Random().nextDouble()* 500L);
         // Simulate a failure
         int id = (int) params.getOrDefault("id", 10);
         if (id % 5 == 0) {
             throw new RuntimeException("Simulated failure: " + id);
         }
+        logger.info("###MySampleTask.executeFailed completed: '{}'", params);
         return params;
 
     }
 
-    public Map<String, Object> executeWithMap(Map<String, Object> params) {
+    public Map<String, Object> executeWithMap(Map<String, Object> params) throws InterruptedException {
         logger.info("###MySampleTask.executeWithMap called with parameters: {}", params);
         params.forEach((key, value) -> logger.info("Param: {} = {}", key, value));
+        TimeUnit.SECONDS.sleep((long)new Random().nextDouble()* 60L);
         int id = (int) params.getOrDefault("id", 10);
         if (id % 5 == 0) {
             throw new RuntimeException("Simulated failure: " + id);
@@ -60,26 +71,26 @@ public class MySampleTask {
         return params;
     }
 
-    public Map<String, Object> simpleExecute(Map<String, Object> params) {
+    public Map<String, Object> simpleExecute(Map<String, Object> params) throws InterruptedException {
         logger.info("###MySampleTask.simpleExecute called. No parameters.");
-        logger.info("###MySampleTask.simpleExecute completed.");
+        TimeUnit.SECONDS.sleep((long)new Random().nextDouble()* 50L);
         int id = (int) params.getOrDefault("id", 100);
         if (id % 5 == 0) {
             throw new IllegalArgumentException("Simulated failure: " + id);
         }
         params.put("status", "success");
         params.put("name", "simpleExecute");
+        logger.info("###MySampleTask.simpleExecute completed.");
         return params;
     }
 
     public Map<String, Object> executeTimeout(Map<String, Object> params) throws InterruptedException {
         logger.info("###MySampleTask.executeTimeout called. with parameters {}", params);
-
         Object timeout = params.get("timeout");
         if (Objects.nonNull(timeout)) {
             TimeUnit.SECONDS.sleep((long) timeout);
         } else {
-            TimeUnit.SECONDS.sleep(new Random().nextLong() * 5000L);
+            TimeUnit.SECONDS.sleep((long)new Random().nextDouble()* 500L);
         }
         logger.info("###MySampleTask.simpleExecute completed.");
 

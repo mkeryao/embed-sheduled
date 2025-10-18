@@ -97,6 +97,7 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
         registry.addResourceHandler("/**")
                 .addResourceLocations(
                 "file:/apps/staging/embed-scheduled/static/",
+                "file:D:/Workspace2/embed-sheduled/src/main/resources/static/" ,
                 "file:E:/Workspace3/embed-sheduled/src/main/resources/static/" ,
                 "file:E:/WorkspaceVscode/embed-sheduled/src/main/resources/static/");
     }
