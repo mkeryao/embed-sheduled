@@ -73,6 +73,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
         threadPoolTaskScheduler.setPoolSize(15);
+        threadPoolTaskScheduler.setWaitForTasksToCompleteOnShutdown(true);
         threadPoolTaskScheduler.setThreadNamePrefix("embed-scheduler-");
         threadPoolTaskScheduler.initialize();
         this.taskScheduler = threadPoolTaskScheduler;
@@ -124,7 +125,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         }
 
 
-        Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL, null);
+        Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL , null);
 
         try {
             CustomTaskTrigger customTaskTrigger = new CustomTaskTrigger(taskConfig, taskCalendarDao);
@@ -194,7 +195,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 this,
                 this.notificationService,
                 this.distributedLockService.getSchedulerInstanceId(),
-                log.getAttempt() > 0 ? log.getAttempt() : 1, // Use attempt from log if it's a retry
+                log.getAttemptNumber() > 0 ? log.getAttemptNumber() : 1, // Use attempt from log if it's a retry
                 ExecutionPattern.WORKFLOW_STEP,
                 log.getParentLogId() != null ? log.getParentLogId().longValue() : null,
                 log.getParameters(), // Keep passing for logging/retry purposes
@@ -235,23 +236,25 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
 
         // --- Unified retry logic for all non-workflow tasks ---
         Integer maxRetries =  taskConfig.getMaxRetryAttempts();
-        int currentAttempt = executionLog.getAttempt();
+        Integer currentAttempt = executionLog.getAttemptNumber();
         if (executionLog.getTaskPattern() != ExecutionPattern.MANUAL
+                &&  executionLog.getTaskPattern() != ExecutionPattern.WORKFLOW_STEP //工作量重试比较麻烦 先不考虑
                 &&  maxRetries != null
-                && maxRetries > 0
-                && currentAttempt < maxRetries) { //手工执行不重试
+                &&  maxRetries > 0
+                &&  currentAttempt < maxRetries) { //手工执行不重试
             scheduleRetry(taskConfig, executionLog);
             return;
         }
         // 达到最大重试次数或未配置重试，发送最终失败通知
-        logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries != null ? maxRetries : "N/A");
-        if (taskConfig.isFailureNotification()) {
+       // logger.error("Task {} failed after reaching max retries ({}). No more retries.", taskConfig.getTaskId(), maxRetries != null ? maxRetries : "N/A");
+        if (taskConfig.isFailureNotification()
+                && executionLog.getState() != ExecutionState.SKIPPED) {
             notificationService.sendFailureNotification(taskConfig, executionLog);
         }
     }
 
     private void scheduleRetry(TaskConfig taskConfig, TaskExecuteLog previousLog) {
-        int nextAttempt = previousLog.getAttempt() + 1;
+        int nextAttempt = previousLog.getAttemptNumber() + 1;
         long delay = calculateRetryDelay(nextAttempt, taskConfig.getRetryIntervalSeconds() , taskConfig.getRetryIntervalMultiplier());
         logger.info("Scheduling retry {}/{} for task {} in {} ms.", nextAttempt, taskConfig.getMaxRetries(), taskConfig.getTaskId(), delay);
 
@@ -265,11 +268,12 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 distributedLockService.getSchedulerInstanceId(),
                 nextAttempt,
                 ExecutionPattern.RETRY, // Correctly mark this as a RETRY
-                Objects.nonNull( previousLog.getParentLogId() ) ? previousLog.getParentLogId() : previousLog.getId(), // Link this retry to the previous failed log
+                Objects.nonNull(previousLog.getParentLogId()) ? previousLog.getParentLogId() :  previousLog.getId(), // Link this retry to the previous failed log
                 previousLog.getParameters(),
                 previousLog.getWorkflowNodeId(),
                 null // A new log will be created, so no initial log id
         );
+        logger.info("[retryJob][{}]" , retryJob);
 
         taskScheduler.schedule(retryJob, Instant.now().plusMillis(delay));
     }

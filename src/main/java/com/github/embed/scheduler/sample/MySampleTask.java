@@ -36,11 +36,11 @@ public class MySampleTask {
     }
 
     public void executeFailed(String error) throws InterruptedException {
-        logger.info("###MySampleTask.executeFailed called with error: '{}'", error);
+        logger.info("$$$###MySampleTask.executeFailed called with error: '{}'", error);
         TimeUnit.SECONDS.sleep((long)new Random().nextDouble()* 500L);
         Double random = new Random().nextDouble() ;
-        if(random > 0.3){
-            throw new IllegalArgumentException("[Simulated failure: " + random + "]");
+        if(random > 0.1){
+            throw new IllegalArgumentException("[$$Simulated failure: " + random + "]");
         }
         // Simulate a failure
     }

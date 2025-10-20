@@ -3,6 +3,7 @@ package com.github.embed.scheduler.entity;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.experimental.Accessors;
 
 import java.sql.Timestamp;
 
@@ -14,6 +15,7 @@ import java.sql.Timestamp;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Accessors(chain = true)
 public class TaskLock {
     /**
      * The unique name of the lock (e.g., "GLOBAL_SCHEDULER_LOCK", "TASK_ID_123_LOCK").
@@ -37,11 +39,18 @@ public class TaskLock {
      * The duration in milliseconds for which the lock is valid after being acquired/refreshed.
      * After this duration, the lock is considered expired and can be acquired by another instance.
      */
-    private Integer leaseDurationMs;
+    private Integer leastDurationSeconds;
 
     /**
      * A version number used for optimistic locking if needed, or simply as a counter
      * for lock updates. Can help in preventing stale lock operations.
      */
     private Integer version;
+
+
+    public TaskLock(String lockName, String ownerInstanceId, int version) {
+        this.lockName = lockName;
+        this.ownerInstanceId = ownerInstanceId;
+        this.version = version;
+    }
 }

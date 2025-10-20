@@ -147,7 +147,7 @@ CREATE TABLE `task_execute_log` (
   `state` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL,
   `task_pattern` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL,
   `rtn_msg` varchar(2000) COLLATE utf8mb4_bin DEFAULT NULL,
-  `attempt` int  NULL,
+  `attempt_number` int  NULL,
   `ex_msg` text COLLATE utf8mb4_bin,
   `parameters` varchar(4000) COLLATE utf8mb4_bin DEFAULT NULL,
   PRIMARY KEY (`log_id`),
@@ -180,7 +180,7 @@ CREATE TABLE `task_lock` (
   `lock_name` varchar(255) COLLATE utf8mb4_bin NOT NULL,
   `owner_instance_id` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL,
   `lock_acquired_time` timestamp NULL DEFAULT NULL,
-  `lease_duration_ms` int DEFAULT NULL,
+  `least_duration_seconds` int DEFAULT NULL,
   `version` int DEFAULT NULL,
   PRIMARY KEY (`lock_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

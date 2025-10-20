@@ -2,7 +2,7 @@
 <Configuration status="debug" name="embed-sheduled" monitorInterval="30">
 	<Properties>
 		<Property name="LOG_HOME">/apps/staging/embbed-scheduled/logs/</Property>
-		<Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{traceId}][%X{execute_no}] %c - %msg%n</Property>
+		<Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{traceId}][%X{uuid}] %c - %msg%n</Property>
 		<Property name="LOG_PATTERN2">%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</Property>
 		<Property name="APP_NAME">embed-sheduled</Property>
 		<Property name="FILE_INTERVEL">1</Property>
@@ -15,7 +15,7 @@
 	<Appenders>
 		<Console name="console" target="SYSTEM_OUT">
 			<!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
-			<ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY"/>
+			<ThresholdFilter level="trace" onMatch="ACCEPT" onMismatch="DENY"/>
 			<PatternLayout pattern="${LOG_PATTERN}" />
 		</Console>
 
@@ -149,10 +149,32 @@
 			<AppenderRef ref="file-debug" />
 			<AppenderRef ref="console" />
 		</Root>
-		<AsyncLogger name="access" level="info" additivity="false">
+		<Logger name="access" level="info" additivity="false">
 			<AppenderRef ref="file-info" />
 			<AppenderRef ref="console" />
-		</AsyncLogger>
+		</Logger>
+		<Logger name="org.springframework.jdbc.core.JdbcTemplate" level="debug" additivity="false">
+			<AppenderRef ref="file-debug" />
+			<AppenderRef ref="console" />
+		</Logger>
+		<Logger name="com.zaxxer.hikari" level="debug" additivity="false">
+			<AppenderRef ref="file-debug" />
+			<AppenderRef ref="console" />
+		</Logger>
+
+		<Logger name="druid.sql.Statement" level="debug" additivity="false">
+			<AppenderRef ref="file-debug" />
+			<AppenderRef ref="console" />
+		</Logger>
+		<Logger name="druid.sql.Statement" level="debug" additivity="false">
+			<AppenderRef ref="file-debug" />
+			<AppenderRef ref="console" />
+		</Logger>
+		<Logger name="org.springframework.jdbc.core.StatementCreatorUtils" level="trace" additivity="false">
+			<AppenderRef ref="file-debug" />
+			<AppenderRef ref="console" />
+		</Logger>
+
 <!-- 		<AsyncLogger name="com.github.embed" level="debug" additivity="false">
 			<AppenderRef ref="file-job" />
 			<AppenderRef ref="console" />

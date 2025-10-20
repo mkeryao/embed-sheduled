@@ -1,6 +1,7 @@
 package com.github.embed.scheduler.service;
 
 import com.github.embed.scheduler.dao.TaskLockDao;
+import com.github.embed.scheduler.entity.TaskLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.net.UnknownHostException;
+import java.util.Optional;
 
 /**
  * Service for managing distributed locks using a database table (`task_lock`).
@@ -20,7 +22,7 @@ import java.net.UnknownHostException;
 public class DistributedLockService {
 
     private static final Logger logger = LoggerFactory.getLogger(DistributedLockService.class);
-    private static final int DEFAULT_CLUSTER_LOCK_LEASE_SEC = 10; // 60 seconds
+
 
     @Autowired
     private TaskLockDao taskLockDao;
@@ -35,14 +37,18 @@ public class DistributedLockService {
     /**
      * Maximum number of attempts to acquire a lock.
      */
-    @Value("${scheduler.lock.retry.maxAttempts:3}")
+    @Value("${scheduler.lock.retry.maxAttempts:1}")
     private int maxLockAttempts;
 
     /**
      * Delay in milliseconds between lock acquisition retries.
      */
-    @Value("${scheduler.lock.retry.delayMs:10000}")
+    @Value("${scheduler.lock.retry.delayMs:1000}")
     private long lockRetryDelayMs;
+
+
+    @Value("${scheduler.lock.least.second:30}")
+    private int lockLeastSecond = 30; // 60 seconds
 
 
     private String schedulerInstanceId;
@@ -65,7 +71,7 @@ public class DistributedLockService {
         }
         logger.info("DistributedLockService initialized. Max lock attempts: {}, Retry delay: {}ms", maxLockAttempts, lockRetryDelayMs);
         // Ensure a common lock record exists if needed, e.g., for a global leader election lock
-        taskLockDao.ensureLockRecordExists("GLOBAL_SCHEDULER_LOCK");
+        taskLockDao.tryAcquireOrRefreshLock("GLOBAL_SCHEDULER_LOCK" , schedulerInstanceId , 20 );
     }
 
     /**
@@ -84,24 +90,23 @@ public class DistributedLockService {
      * @param owner The identifier of the entity attempting to acquire the lock (typically the scheduler instance ID).
      * @return {@code true} if the lock was successfully acquired or refreshed, {@code false} otherwise.
      */
-    public boolean tryLock(String lockName, String owner) {
+    public  Optional<TaskLock> tryLock(String lockName, String owner) {
         if ( !StringUtils.hasText(lockName) ||  !StringUtils.hasText(owner) ) {
             logger.warn("Lock name or owner is null/empty. LockName: '{}', Owner: '{}'", lockName, owner);
-            return false;
+            return Optional.empty();
         }
 
-        int leaseDurationMs = DEFAULT_CLUSTER_LOCK_LEASE_SEC * 1000;
+        logger.info("Attempting to acquire lock [{}] for owner [{}]. Lease: {}Seconds." +
+                        " Max attempts: {}. Retry delay: {}ms.",
+                lockName, owner, lockLeastSecond, maxLockAttempts, lockRetryDelayMs);
 
-        logger.info("Attempting to acquire lock [{}] for owner [{}]. Lease: {}ms. Max attempts: {}. Retry delay: {}ms.",
-                lockName, owner, leaseDurationMs, maxLockAttempts, lockRetryDelayMs);
-
-        for (int attempt = 1; attempt <= maxLockAttempts; attempt++) {
+        for (int attempt = 1; attempt <= maxLockAttempts; attempt ++) {
             logger.debug("Lock acquisition attempt {}/{} for lock [{}] by owner [{}].", attempt, maxLockAttempts, lockName, owner);
-            boolean acquired = taskLockDao.tryAcquireOrRefreshLock(lockName, owner, leaseDurationMs);
+            Optional<TaskLock> acquiredLock = taskLockDao.tryAcquireOrRefreshLock(lockName, owner, lockLeastSecond);
 
-            if (acquired) {
+            if (acquiredLock.isPresent()) {
                 logger.info("Lock [{}] successfully acquired by owner [{}] on attempt {}.", lockName, owner, attempt);
-                return true;
+                return acquiredLock;
             }
 
             logger.warn("Lock acquisition attempt {}/{} failed for lock [{}] by owner [{}].", attempt, maxLockAttempts, lockName, owner);
@@ -113,36 +118,35 @@ public class DistributedLockService {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     logger.warn("Lock acquisition retry sleep interrupted for lock [{}]. Failing early.", lockName, e);
-                    return false;
+                    return Optional.empty();
                 }
             }
         }
 
         logger.warn("Failed to acquire lock [{}] for owner [{}] after {} attempts.", lockName, owner, maxLockAttempts);
-        return false;
+        return Optional.empty();
     }
 
     /**
      * Releases a distributed lock if it is currently held by the specified owner.
      *
-     * @param lockName The name of the lock to release.
-     * @param owner The identifier of the entity that currently holds the lock.
+     * @param taskLock The name of the lock to release.
      */
-    public void unlock(String lockName, String owner) {
-        if (!StringUtils.hasText(lockName)) {
+    public void unlock(TaskLock taskLock) {
+        if (!StringUtils.hasText(taskLock.getLockName())) {
             logger.warn("Attempted to unlock with null or empty lockName.");
             return;
         }
-         if (!StringUtils.hasText(owner)) {
-            logger.warn("Attempted to unlock with null or empty owner for lockName: {}", lockName);
+         if (!StringUtils.hasText(taskLock.getOwnerInstanceId())) {
+            logger.warn("Attempted to unlock with null or empty owner for lockName: {}", taskLock.getLockName());
             return;
         }
 
-        boolean released = taskLockDao.releaseLock(lockName, owner);
+        boolean released = taskLockDao.releaseLock(taskLock);
         if (released) {
-            logger.info("Lock [{}] successfully released by owner [{}].", lockName, owner);
+            logger.info("Lock [{}] successfully released by owner [{}].", taskLock.getLockName(), taskLock.getOwnerInstanceId());
         } else {
-            logger.warn("Failed to release lock [{}] by owner [{}]. It might not have been owned by this instance or was already released/expired.", lockName, owner);
+            logger.warn("Failed to release lock [{}] by owner [{}]. It might not have been owned by this instance or was already released/expired.", taskLock.getLockName(), taskLock.getOwnerInstanceId());
         }
     }
 }

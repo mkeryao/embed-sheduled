@@ -31,30 +31,22 @@ public interface TaskLockDao {
      *
      * @param lockName The name of the lock.
      * @param ownerInstanceId The ID of the instance trying to acquire/refresh the lock.
-     * @param leaseDurationMs The duration in milliseconds for which the lock should be held or extended.
+     * @param leastDurationSeconds The duration in milliseconds for which the lock should be held or extended.
      * @return {@code true} if the lock was successfully acquired or refreshed, {@code false} otherwise.
      */
-    boolean tryAcquireOrRefreshLock(String lockName, String ownerInstanceId, int leaseDurationMs);
+    Optional<TaskLock> tryAcquireOrRefreshLock(String lockName, String ownerInstanceId, int leastDurationSeconds);
 
     /**
      * Releases a lock if it is currently held by the specified owner instance.
      * This typically involves setting the owner instance ID and lock acquisition time to null.
      *
-     * @param lockName The name of the lock.
-     * @param ownerInstanceId The ID of the instance that currently owns the lock.
+     * @param taskLock The name of the lock.
      * @return {@code true} if the lock was successfully released, {@code false} otherwise
      *         (e.g., lock not found, or not owned by this instance).
      */
-    boolean releaseLock(String lockName, String ownerInstanceId);
+    boolean releaseLock(TaskLock taskLock);
 
-    /**
-     * Ensures that a record for the specified lock name exists in the database.
-     * If a lock record does not exist, it creates a new one with default (unlocked) values.
-     * This is useful for pre-populating lock entries or ensuring a lock can be selected "for update".
-     *
-     * @param lockName The name of the lock for which to ensure a record exists.
-     */
-    void ensureLockRecordExists(String lockName);
+
 
     /**
      * Saves a new lock record. This is generally used for initial setup or administrative purposes,

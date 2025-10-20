@@ -73,7 +73,7 @@ public class TaskExecuteLog {
     private Long workflowInstanceId;
 
     /** The attempt number for this execution (e.g., 1 for the first try, 2 for the first retry, etc.). */
-    private int attempt;
+    private Integer attemptNumber;
 
     /** The parameters used for this specific execution, captured at runtime. */
     private String parameters;

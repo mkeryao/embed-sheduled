@@ -55,8 +55,11 @@ public class CustomTaskTrigger implements Trigger {
 
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             // 1. Get next time from CronTrigger
-            nextPotentialExecutionTime = cronTrigger.nextExecutionTime(new SimpleTriggerContext(
-                    nextPotentialExecutionTime, lastExecutionTime, triggerContext.lastCompletionTime()));
+            nextPotentialExecutionTime = cronTrigger.nextExecutionTime(
+                    new SimpleTriggerContext(
+                            nextPotentialExecutionTime,
+                            lastExecutionTime,
+                            triggerContext.lastCompletionTime()));
 
             if (nextPotentialExecutionTime == null) {
                 logger.warn("Task ID {}: Cron expression '{}' yielded no further execution times.",

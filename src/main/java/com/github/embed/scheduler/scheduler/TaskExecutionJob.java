@@ -1,7 +1,11 @@
 package com.github.embed.scheduler.scheduler;
 
 import java.sql.Timestamp;
+import java.util.Optional;
 
+import com.github.embed.scheduler.entity.TaskLock;
+import lombok.Data;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -20,25 +24,24 @@ import com.github.embed.scheduler.service.NotificationService;
 import com.github.embed.scheduler.service.ShellTaskExecutor;
 import com.github.embed.scheduler.service.WorkflowExecutionService;
 
+@Data
 public class TaskExecutionJob implements Runnable {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskExecutionJob.class);
 
-    private final TaskConfig taskConfig;
-    private final ApplicationContext applicationContext;
-    private final TaskExecuteLogDao taskExecuteLogDao;
-    private final DistributedLockService distributedLockService;
-    private final CoreSchedulerService coreSchedulerService;
-    private final NotificationService notificationService;
-    private final String instanceId;
-    private final int attemptNumber;
-    private final ExecutionPattern executionPattern;
-    private final Long parentLogId;
-    private final String parameters;
-    private final String workflowNodeId;
-    private final Long initialExecutionLogId; // Can be null for new tasks
-
-    private Long executionLogId; // The ID for this specific run
+    private  TaskConfig taskConfig;
+    private  ApplicationContext applicationContext;
+    private  TaskExecuteLogDao taskExecuteLogDao;
+    private  DistributedLockService distributedLockService;
+    private  CoreSchedulerService coreSchedulerService;
+    private  NotificationService notificationService;
+    private  String instanceId;
+    private  Integer attemptNumber;
+    private  ExecutionPattern executionPattern;
+    private  Long parentLogId;
+    private  String parameters;
+    private  String workflowNodeId;
+    private  Long executionLogId; // The ID for this specific run
 
     public TaskExecutionJob(TaskConfig taskConfig,
                             ApplicationContext applicationContext,
@@ -65,57 +68,50 @@ public class TaskExecutionJob implements Runnable {
         this.parentLogId = parentLogId;
         this.parameters = parameters;
         this.workflowNodeId = workflowNodeId;
-        this.initialExecutionLogId = initialExecutionLogId;
+        this.executionLogId = initialExecutionLogId;
     }
 
     @Override
     public void run() {
-        // If an initial log ID is provided (e.g., for a workflow node), use it.
-        // Otherwise, create a new log entry.
-        if (this.initialExecutionLogId != null) {
-            this.executionLogId = this.initialExecutionLogId;
-            // The state should have already been set to RUNNING by the caller
-        } else {
-            TaskExecuteLog log = new TaskExecuteLog();
-            log.setTaskId(taskConfig.getTaskId());
-            log.setStartTime(new Timestamp(System.currentTimeMillis())); //
-            log.setState(ExecutionState.RUNNING);
-            log.setInstanceId(this.instanceId);
-            log.setAttempt(this.attemptNumber);
-            log.setTaskPattern(this.executionPattern);
-            log.setParentLogId(this.parentLogId != null ? this.parentLogId.intValue() : null);
-            log.setParameters(this.parameters);
-            log.setWorkflowNodeId(this.workflowNodeId);
-            
-            TaskExecuteLog savedLog = taskExecuteLogDao.save(log);
-            this.executionLogId = savedLog.getId();
-        }
 
-        MDC.put("execute_no", String.valueOf(this.executionLogId));
-        MDC.put("task_id", String.valueOf(taskConfig.getTaskId()));
-        MDC.put("task_name", taskConfig.getTaskName());
-        MDC.put("attempt_no", String.valueOf(this.attemptNumber));
 
-        logger.info("Attempt {} for task: {} (ID: {}, Log ID: {})",
+        MDC.put("uuid",  this.executionLogId + ":" + taskConfig.getTaskId());
+        logger.info("Execute Attempt {} for task: {} (ID: {}, Log ID: {})",
                 this.attemptNumber, taskConfig.getTaskName(), taskConfig.getTaskId(), this.executionLogId);
         
         ExecutionState finalStatus = ExecutionState.FAILED;
         String returnMessage = null;
         String exceptionMessage = null;
-        boolean lockAcquired = false;
+        Optional<TaskLock> lockAcquired = Optional.empty();
         String derivedLockName = null;
 
         try {
             if (taskConfig.getExecutionMode() == ExecutionMode.CLUSTER) {
                 derivedLockName = "task_lock_id_" + taskConfig.getTaskId();
                 lockAcquired = distributedLockService.tryLock(derivedLockName, this.instanceId);
-                if (!lockAcquired) {
+                if (!lockAcquired.isPresent()) {
                     finalStatus = ExecutionState.SKIPPED;
                     returnMessage = "Skipped: Could not acquire CLUSTER lock '" + derivedLockName + "'";
                     logger.warn("{} for task ID {}", returnMessage, taskConfig.getTaskId());
                     return;
                 }
                 logger.info("CLUSTER Lock '{}' acquired for task ID {}", derivedLockName, taskConfig.getTaskId());
+            }
+            if(this.executionLogId == null){
+                    TaskExecuteLog log = new TaskExecuteLog();
+                    log.setTaskId(taskConfig.getTaskId());
+                    log.setStartTime(new Timestamp(System.currentTimeMillis())); //
+                    log.setState(ExecutionState.RUNNING);
+                    log.setInstanceId(this.instanceId);
+                    log.setAttemptNumber(this.attemptNumber);
+                    log.setTaskPattern(this.executionPattern);
+                    log.setParentLogId(this.parentLogId != null ? this.parentLogId.intValue() : null);
+                    log.setParameters(this.parameters);
+                    log.setWorkflowNodeId(this.workflowNodeId);
+                    finalStatus = log.getState() ;
+                    taskExecuteLogDao.save(log);
+                    this.executionLogId = log.getId();
+                    MDC.put("uuid",  this.executionLogId + "&" + taskConfig.getTaskId());
             }
 
             switch (taskConfig.getTaskType()) {
@@ -174,8 +170,8 @@ public class TaskExecutionJob implements Runnable {
             finalStatus = ExecutionState.FAILED;
             exceptionMessage = e.getClass().getSimpleName() + ": " + e.getMessage();
         } finally {
-            if (lockAcquired && derivedLockName != null) {
-                distributedLockService.unlock(derivedLockName, this.instanceId);
+            if (StringUtils.isNotBlank(derivedLockName) && lockAcquired.isPresent()) {
+                distributedLockService.unlock(lockAcquired.get());
                 logger.info("CLUSTER Lock '{}' released for task ID {}", derivedLockName, taskConfig.getTaskId());
             }
 
@@ -185,8 +181,10 @@ public class TaskExecutionJob implements Runnable {
             }
 
             // Callback to the scheduler for completion handling (retries, workflow progression)
-            if (finalStatus != ExecutionState.RUNNING) {
-                 coreSchedulerService.handleTaskCompletion(this.executionLogId);
+            if (finalStatus != ExecutionState.RUNNING
+                     && finalStatus != ExecutionState.SKIPPED) {
+                //logger.info("[handleTaskCompletion({})]" , this.executionLogId);
+                coreSchedulerService.handleTaskCompletion(this.executionLogId);
             }
 
             MDC.clear();
