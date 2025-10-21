@@ -3,6 +3,7 @@ package com.github.embed.scheduler.dao;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
 import com.github.embed.scheduler.enums.ExecutionPattern;
 import com.github.embed.scheduler.enums.ExecutionState;
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -82,7 +83,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
             ps.setString(10, log.getWorkflowNodeId());
             ps.setString(11, log.getParameters());
             ps.setString(12, log.getInstanceId());
-            ps.setInt(13,log.getAttemptNumber());
+            ps.setInt(13, ObjectUtils.defaultIfNull( log.getAttemptNumber() , 0));
             return ps;
         }, keyHolder);
         log.setLogId(keyHolder.getKey().longValue());

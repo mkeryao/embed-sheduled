@@ -124,12 +124,16 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             return  ;
         }
 
-
-        Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL , null);
+        Runnable taskWrapper = () -> {
+            logger.info("Triggering scheduled execution for task '{}' (ID: {})", taskConfig.getTaskName(), taskConfig.getTaskId());
+            TaskExecutionJob job = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL, null);
+            taskScheduler.execute(job);
+        };
+        //Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL , null);
 
         try {
             CustomTaskTrigger customTaskTrigger = new CustomTaskTrigger(taskConfig, taskCalendarDao);
-            ScheduledFuture<?> scheduledFuture = taskScheduler.schedule(taskRunnable, customTaskTrigger);
+            ScheduledFuture<?> scheduledFuture = taskScheduler.schedule(taskWrapper, customTaskTrigger);
             scheduledTasks.put(taskConfig.getTaskId(), scheduledFuture);
             logger.info("Task '{}' (ID: {}) with cron '{}' scheduled successfully using CustomTaskTrigger.", taskConfig.getTaskName(), taskConfig.getTaskId(), taskConfig.getCronExpression());
         } catch (Exception e) {
@@ -273,7 +277,6 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 previousLog.getWorkflowNodeId(),
                 null // A new log will be created, so no initial log id
         );
-        logger.info("[retryJob][{}]" , retryJob);
 
         taskScheduler.schedule(retryJob, Instant.now().plusMillis(delay));
     }

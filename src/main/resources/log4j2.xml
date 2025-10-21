@@ -1,185 +1,188 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="debug" name="embed-sheduled" monitorInterval="30">
-	<Properties>
-		<Property name="LOG_HOME">/apps/staging/embbed-scheduled/logs/</Property>
-		<Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{traceId}][%X{uuid}] %c - %msg%n</Property>
-		<Property name="LOG_PATTERN2">%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</Property>
-		<Property name="APP_NAME">embed-sheduled</Property>
-		<Property name="FILE_INTERVEL">1</Property>
-		<Property name="FILE_SIZE">50MB</Property>
-		<Property name="P2D">60d</Property>
-		<Property name="MAX">50</Property>
-	</Properties>
+    <Properties>
+        <Property name="LOG_HOME">/apps/staging/embbed-scheduled/logs/</Property>
+        <Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{traceId}][%X{uuid}] %c - %msg%n
+        </Property>
+        <Property name="LOG_PATTERN2">%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</Property>
+        <Property name="APP_NAME">embed-sheduled</Property>
+        <Property name="FILE_INTERVEL">1</Property>
+        <Property name="FILE_SIZE">50MB</Property>
+        <Property name="P2D">60d</Property>
+        <Property name="MAX">50</Property>
+    </Properties>
 
 
-	<Appenders>
-		<Console name="console" target="SYSTEM_OUT">
-			<!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
-			<ThresholdFilter level="trace" onMatch="ACCEPT" onMismatch="DENY"/>
-			<PatternLayout pattern="${LOG_PATTERN}" />
-		</Console>
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+            <ThresholdFilter level="trace" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
 
-		<!-- trace debug file -->
-		<RollingRandomAccessFile name="file-debug"
-								 fileName="${LOG_HOME}/${APP_NAME}-debug.log"
-								 filePattern="${LOG_HOME}/${APP_NAME}-debug-%d{yyyy-MM-dd}_%i.log">
-			<Filters>
-				<ThresholdFilter level="info" onMatch="DENY" onMismatch="NEUTRAL"/>
-				<ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="NEUTRAL"/>
-			</Filters>
-			<PatternLayout pattern="${LOG_PATTERN}" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true" />
-				<SizeBasedTriggeringPolicy size="${FILE_SIZE}" />
-			</Policies>
-			<DefaultRolloverStrategy max="${MAX}">
-				<Delete basePath="${LOG_HOME}/">
-					<IfLastModified age="${P2D}" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
+        <!-- trace debug file -->
+        <RollingRandomAccessFile name="file-debug"
+                                 fileName="${LOG_HOME}/${APP_NAME}-debug.log"
+                                 filePattern="${LOG_HOME}/${APP_NAME}-debug-%d{yyyy-MM-dd}_%i.log">
+            <Filters>
+                <ThresholdFilter level="info" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="NEUTRAL"/>
+            </Filters>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="${FILE_SIZE}"/>
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX}">
+                <Delete basePath="${LOG_HOME}/">
+                    <IfLastModified age="${P2D}"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
 
-		<RollingRandomAccessFile name="file-info"
-								 fileName="${LOG_HOME}/${APP_NAME}-info.log"
-								 filePattern="${LOG_HOME}/${APP_NAME}-info-%d{yyyy-MM-dd}_%i.log">
-			<Filters>
-				<ThresholdFilter level="warn" onMatch="DENY" onMismatch="NEUTRAL"/>
-				<ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
-			</Filters>
-			<PatternLayout pattern="${LOG_PATTERN}" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true" />
-				<SizeBasedTriggeringPolicy size="${FILE_SIZE}" />
-			</Policies>
-			<DefaultRolloverStrategy max="${MAX}">
-				<Delete basePath="${LOG_HOME}/">
-					<IfLastModified age="${P2D}" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
+        <RollingRandomAccessFile name="file-info"
+                                 fileName="${LOG_HOME}/${APP_NAME}-info.log"
+                                 filePattern="${LOG_HOME}/${APP_NAME}-info-%d{yyyy-MM-dd}_%i.log">
+            <Filters>
+                <ThresholdFilter level="warn" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="${FILE_SIZE}"/>
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX}">
+                <Delete basePath="${LOG_HOME}/">
+                    <IfLastModified age="${P2D}"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
 
-		<RollingRandomAccessFile name="file-error"
-								 fileName="${LOG_HOME}/${APP_NAME}-error.log"
-								 filePattern="${LOG_HOME}/${APP_NAME}-error-%d{yyyy-MM-dd}_%i.log">
-			<Filters>
-				<ThresholdFilter level="warn" onMatch="ACCEPT" onMismatch="DENY"/>
-			</Filters>
-			<PatternLayout pattern="${LOG_PATTERN}" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true" />
-				<SizeBasedTriggeringPolicy size="${FILE_SIZE}" />
-			</Policies>
-			<DefaultRolloverStrategy max="${MAX}">
-				<Delete basePath="${LOG_HOME}/">
-					<IfLastModified age="${P2D}" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
+        <RollingRandomAccessFile name="file-error"
+                                 fileName="${LOG_HOME}/${APP_NAME}-error.log"
+                                 filePattern="${LOG_HOME}/${APP_NAME}-error-%d{yyyy-MM-dd}_%i.log">
+            <Filters>
+                <ThresholdFilter level="warn" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="${FILE_SIZE}"/>
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX}">
+                <Delete basePath="${LOG_HOME}/">
+                    <IfLastModified age="${P2D}"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
 
-		<RollingRandomAccessFile name="file-access"
-								 fileName="${LOG_HOME}/${APP_NAME}-access.log"
-								 filePattern="${LOG_HOME}/${APP_NAME}-access-%d{yyyy-MM-dd}_%i.log">
-			<ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
-			<PatternLayout pattern="${LOG_PATTERN}" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true" />
-				<SizeBasedTriggeringPolicy size="${FILE_SIZE}" />
-			</Policies>
-			<DefaultRolloverStrategy max="${MAX}">
-				<Delete basePath="${LOG_HOME}/">
-					<IfLastModified age="${P2D}" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
+        <RollingRandomAccessFile name="file-access"
+                                 fileName="${LOG_HOME}/${APP_NAME}-access.log"
+                                 filePattern="${LOG_HOME}/${APP_NAME}-access-%d{yyyy-MM-dd}_%i.log">
+            <ThresholdFilter level="info" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="${FILE_SIZE}"/>
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX}">
+                <Delete basePath="${LOG_HOME}/">
+                    <IfLastModified age="${P2D}"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
 
-		<RollingRandomAccessFile name="file-etc"
-								 fileName="${LOG_HOME}/${APP_NAME}-etc.log"
-								 filePattern="${LOG_HOME}/${APP_NAME}-etc-%d{yyyy-MM-dd}_%i.log">
-			<!-- <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/> -->
-			<PatternLayout pattern="${LOG_PATTERN}" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true" />
-				<SizeBasedTriggeringPolicy size="${FILE_SIZE}" />
-			</Policies>
-			<DefaultRolloverStrategy max="${MAX}">
-				<Delete basePath="${LOG_HOME}/">
-					<IfLastModified age="${P2D}" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
+        <RollingRandomAccessFile name="file-etc"
+                                 fileName="${LOG_HOME}/${APP_NAME}-etc.log"
+                                 filePattern="${LOG_HOME}/${APP_NAME}-etc-%d{yyyy-MM-dd}_%i.log">
+            <!-- <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/> -->
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="${FILE_SIZE}"/>
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX}">
+                <Delete basePath="${LOG_HOME}/">
+                    <IfLastModified age="${P2D}"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
 
-		<RollingRandomAccessFile name="file-job"
-								 fileName="${LOG_HOME}/${APP_NAME}-job.log"
-								 filePattern="${LOG_HOME}/${APP_NAME}-etc-%d{yyyy-MM-dd}_%i.log">
-			<!-- <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/> -->
-			<PatternLayout pattern="${LOG_PATTERN}" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true" />
-				<SizeBasedTriggeringPolicy size="${FILE_SIZE}" />
-			</Policies>
-			<DefaultRolloverStrategy max="${MAX}">
-				<Delete basePath="${LOG_HOME}/">
-					<IfLastModified age="${P2D}" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
+        <RollingRandomAccessFile name="file-job"
+                                 fileName="${LOG_HOME}/${APP_NAME}-job.log"
+                                 filePattern="${LOG_HOME}/${APP_NAME}-etc-%d{yyyy-MM-dd}_%i.log">
+            <!-- <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/> -->
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="${FILE_SIZE}"/>
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX}">
+                <Delete basePath="${LOG_HOME}/">
+                    <IfLastModified age="${P2D}"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
 
-		<RollingRandomAccessFile name="file-jetcaches"
-								 fileName="${LOG_HOME}/${APP_NAME}-jetcaches.log"
-								 filePattern="${LOG_HOME}/${APP_NAME}-etc-%d{yyyy-MM-dd}_%i.log">
-			<!-- <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/> -->
-			<PatternLayout pattern="${LOG_PATTERN2}" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true" />
-				<SizeBasedTriggeringPolicy size="${FILE_SIZE}" />
-			</Policies>
-			<DefaultRolloverStrategy max="${MAX}">
-				<Delete basePath="${LOG_HOME}/">
-					<IfLastModified age="${P2D}" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
+        <RollingRandomAccessFile name="file-jetcaches"
+                                 fileName="${LOG_HOME}/${APP_NAME}-jetcaches.log"
+                                 filePattern="${LOG_HOME}/${APP_NAME}-etc-%d{yyyy-MM-dd}_%i.log">
+            <!-- <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/> -->
+            <PatternLayout pattern="${LOG_PATTERN2}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="${FILE_INTERVEL}" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="${FILE_SIZE}"/>
+            </Policies>
+            <DefaultRolloverStrategy max="${MAX}">
+                <Delete basePath="${LOG_HOME}/">
+                    <IfLastModified age="${P2D}"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
 
-	</Appenders>
+    </Appenders>
 
-	<Loggers>
-		<Root level="info">
-			<AppenderRef ref="file-info" />
-			<AppenderRef ref="file-error" />
-			<AppenderRef ref="file-debug" />
-			<AppenderRef ref="console" />
-		</Root>
-		<Logger name="access" level="info" additivity="false">
-			<AppenderRef ref="file-info" />
-			<AppenderRef ref="console" />
-		</Logger>
-		<Logger name="org.springframework.jdbc.core.JdbcTemplate" level="debug" additivity="false">
-			<AppenderRef ref="file-debug" />
-			<AppenderRef ref="console" />
-		</Logger>
-		<Logger name="com.zaxxer.hikari" level="debug" additivity="false">
-			<AppenderRef ref="file-debug" />
-			<AppenderRef ref="console" />
-		</Logger>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="file-info"/>
+            <AppenderRef ref="file-error"/>
+            <AppenderRef ref="file-debug"/>
+            <AppenderRef ref="console"/>
+        </Root>
+        <Logger name="access" level="info" additivity="false">
+            <AppenderRef ref="file-info"/>
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="org.springframework.jdbc.core.JdbcTemplate" level="debug" additivity="false">
+            <AppenderRef ref="file-debug"/>
+            <AppenderRef ref="console"/>
+        </Logger>
+        <Logger name="com.zaxxer.hikari" level="debug" additivity="false">
+            <AppenderRef ref="file-debug"/>
+            <AppenderRef ref="console"/>
+        </Logger>
 
-		<Logger name="druid.sql.Statement" level="debug" additivity="false">
-			<AppenderRef ref="file-debug" />
-			<AppenderRef ref="console" />
-		</Logger>
-		<Logger name="druid.sql.Statement" level="debug" additivity="false">
-			<AppenderRef ref="file-debug" />
-			<AppenderRef ref="console" />
-		</Logger>
-		<Logger name="org.springframework.jdbc.core.StatementCreatorUtils" level="trace" additivity="false">
-			<AppenderRef ref="file-debug" />
-			<AppenderRef ref="console" />
-		</Logger>
 
-<!-- 		<AsyncLogger name="com.github.embed" level="debug" additivity="false">
-			<AppenderRef ref="file-job" />
-			<AppenderRef ref="console" />
-         </AsyncLogger> -->
+		<!--
+		        <Logger name="druid.sql.Statement" level="debug" additivity="false">
+                     <AppenderRef ref="file-debug" />
+                     <AppenderRef ref="console" />
+                 </Logger>
+                 <Logger name="druid.sql.Statement" level="debug" additivity="false">
+                     <AppenderRef ref="file-debug" />
+                     <AppenderRef ref="console" />
+                 </Logger>
+                 <Logger name="org.springframework.jdbc.core.StatementCreatorUtils" level="trace" additivity="false">
+                     <AppenderRef ref="file-debug" />
+                     <AppenderRef ref="console" />
+                 </Logger>
+                     <AsyncLogger name="com.github.embed" level="debug" additivity="false">
+                     <AppenderRef ref="file-job" />
+                     <AppenderRef ref="console" />
+                  </AsyncLogger>
+         -->
 
-	</Loggers>
+    </Loggers>
 
 </Configuration>

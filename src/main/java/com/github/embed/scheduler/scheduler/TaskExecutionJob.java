@@ -76,8 +76,8 @@ public class TaskExecutionJob implements Runnable {
 
 
         MDC.put("uuid",  this.executionLogId + ":" + taskConfig.getTaskId());
-        logger.info("Execute Attempt {} for task: {} (ID: {}, Log ID: {})",
-                this.attemptNumber, taskConfig.getTaskName(), taskConfig.getTaskId(), this.executionLogId);
+        logger.info("Execute {} Attempt {} for task: {} (ID: {}, Log ID: {})",
+                executionPattern.name(),   this.attemptNumber, taskConfig.getTaskName(), taskConfig.getTaskId(), this.executionLogId);
         
         ExecutionState finalStatus = ExecutionState.FAILED;
         String returnMessage = null;
