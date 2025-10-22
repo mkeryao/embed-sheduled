@@ -1,10 +1,7 @@
 package com.github.embed.scheduler.scheduler;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.stream.Collectors;
@@ -286,11 +283,16 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         if (tryIntervalSeconds <= 0) {
             tryIntervalSeconds = 60; // Default to 60 seconds if not set
         }
+        long baseDelay;
         if(retryIntervalMultiplier < 1.0){
-           return  attempt * tryIntervalSeconds * 1000L;
+            baseDelay = (long) attempt * tryIntervalSeconds * 1000L;
+        }else {
+            baseDelay = (long) (retryIntervalMultiplier * (long) Math.pow(2, attempt - 1))
+                    * tryIntervalSeconds * 1000L;
         }
-        return (long) (retryIntervalMultiplier * (long) Math.pow(2, attempt - 1))
-                * tryIntervalSeconds * 1000L;
+        // Add jitter to prevent thundering herd problem
+        long jitter = (long) (baseDelay * 0.2 * new Random().nextDouble());
+        return baseDelay + jitter;
     }
 
     private TaskExecutionJob createTaskRunnable(TaskConfig taskConfig, ExecutionPattern executionPattern, Long parentLogId) {

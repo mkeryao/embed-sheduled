@@ -4,6 +4,7 @@ import com.github.embed.scheduler.dao.TaskLockDao;
 import com.github.embed.scheduler.entity.TaskLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ import java.util.Optional;
  * The scheduler instance ID is used to identify lock owners.
  */
 @Service
-public class DistributedLockService {
+public class DistributedLockService implements InitializingBean {
 
     private static final Logger logger = LoggerFactory.getLogger(DistributedLockService.class);
 
@@ -27,12 +28,6 @@ public class DistributedLockService {
     @Autowired
     private TaskLockDao taskLockDao;
 
-    /**
-     * Configurable scheduler instance ID. If not provided, a UUID is generated.
-     * Used to identify the owner of a lock.
-     */
-    @Value("${scheduler.instance.id:#{null}}")
-    private String configuredInstanceId;
 
     /**
      * Maximum number of attempts to acquire a lock.
@@ -50,14 +45,14 @@ public class DistributedLockService {
     @Value("${scheduler.lock.least.second:30}")
     private int lockLeastSecond = 30; // 60 seconds
 
-
+    @Value("${scheduler.instance.id:#{null}}")
     private String schedulerInstanceId;
 
     /**
      * Initializes the service, setting up the scheduler instance ID.
      * It also ensures that a placeholder record for a global scheduler lock exists in the database.
      */
-    @PostConstruct
+
     public void init() throws UnknownHostException {
         if (!StringUtils.hasText(schedulerInstanceId)) {
             //获取当前机器的IP和Name
@@ -65,9 +60,6 @@ public class DistributedLockService {
                     + ":" + java.net.InetAddress.getLocalHost().getHostAddress() ;
                    // + ":" + java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
             logger.info("scheduler.instance.id not configured, instance id: {}", schedulerInstanceId);
-        } else {
-            this.schedulerInstanceId = configuredInstanceId;
-            logger.info("scheduler.instance.id configured as: {}", schedulerInstanceId);
         }
         logger.info("DistributedLockService initialized. Max lock attempts: {}, Retry delay: {}ms", maxLockAttempts, lockRetryDelayMs);
         // Ensure a common lock record exists if needed, e.g., for a global leader election lock
@@ -148,5 +140,10 @@ public class DistributedLockService {
         } else {
             logger.warn("Failed to release lock [{}] by owner [{}]. It might not have been owned by this instance or was already released/expired.", taskLock.getLockName(), taskLock.getOwnerInstanceId());
         }
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        init();
     }
 }

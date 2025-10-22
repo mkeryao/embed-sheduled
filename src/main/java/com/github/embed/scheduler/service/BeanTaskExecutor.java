@@ -16,9 +16,11 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.NestedExceptionUtils;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Resource;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -40,7 +42,8 @@ public class BeanTaskExecutor implements TaskExecutor {
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
 
-    private final ExecutorService taskExecutorService = Executors.newCachedThreadPool();
+    @Resource
+    private ThreadPoolTaskExecutor beanThreadPoolTaskExecutor ;
 
     public static class TaskTimeoutException extends RuntimeException {
         public TaskTimeoutException(String message) {
@@ -97,7 +100,7 @@ public class BeanTaskExecutor implements TaskExecutor {
 
             final Object[] finalArgs = convertParameters(methodToExecute, parametersMap);
 
-            Future<Object> future = taskExecutorService.submit(() -> {
+            Future<Object> future = beanThreadPoolTaskExecutor.submit(() -> {
                 logger.info("Executing bean task '{}': bean='{}', method='{}', params={}", taskConfig.getTaskName(), beanName, methodName,
                         !parametersMap.isEmpty() ? finalParametersJson : "none");
                 return methodToExecute.invoke(beanInstance, finalArgs);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="debug" name="embed-sheduled" monitorInterval="30">
     <Properties>
-        <Property name="LOG_HOME">/apps/staging/embbed-scheduled/logs/</Property>
+        <Property name="LOG_HOME">/apps/staging/embed-scheduled/logs/</Property>
         <Property name="LOG_PATTERN">[%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] [%X{traceId}][%X{uuid}] %c - %msg%n
         </Property>
         <Property name="LOG_PATTERN2">%d{yyyy-MM-dd HH:mm:ss.SSS} - %msg%n</Property>

@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.TransactionManager;
 import org.springframework.web.client.RestTemplate;
 
@@ -65,6 +66,19 @@ public class SchedulerConfiguration {
                             .getValue() );
         }
         throw new BeanCreationException("Can not create Bean schedulerTransactionManager") ;
+    }
+
+
+    @Bean
+    public ThreadPoolTaskExecutor beanThreadPoolTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(15);
+        executor.setMaxPoolSize(20);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("bean-scheduled-");
+        executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.initialize();
+        return executor;
     }
 
 }

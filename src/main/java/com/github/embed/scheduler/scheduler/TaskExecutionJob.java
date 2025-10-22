@@ -75,7 +75,7 @@ public class TaskExecutionJob implements Runnable {
     public void run() {
 
 
-        MDC.put("uuid",  this.executionLogId + ":" + taskConfig.getTaskId());
+        MDC.put("uuid",  "task-" + taskConfig.getTaskId() + "-execute-" + this.executionLogId);
         logger.info("Execute {} Attempt {} for task: {} (ID: {}, Log ID: {})",
                 executionPattern.name(),   this.attemptNumber, taskConfig.getTaskName(), taskConfig.getTaskId(), this.executionLogId);
         
@@ -111,7 +111,7 @@ public class TaskExecutionJob implements Runnable {
                     finalStatus = log.getState() ;
                     taskExecuteLogDao.save(log);
                     this.executionLogId = log.getId();
-                    MDC.put("uuid",  this.executionLogId + "&" + taskConfig.getTaskId());
+                    MDC.put("uuid",  "task-" + taskConfig.getTaskId() + "-execute-" + this.executionLogId);
             }
 
             switch (taskConfig.getTaskType()) {
