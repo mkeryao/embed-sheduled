@@ -7,6 +7,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.Trigger;
@@ -59,7 +60,7 @@ public class CustomTaskTrigger implements Trigger {
                     new SimpleTriggerContext(
                             nextPotentialExecutionTime,
                             lastExecutionTime,
-                            triggerContext.lastCompletionTime()));
+                            ObjectUtils.defaultIfNull( triggerContext.lastCompletionTime() ,nextPotentialExecutionTime )));
 
             if (nextPotentialExecutionTime == null) {
                 logger.warn("Task ID {}: Cron expression '{}' yielded no further execution times.",
@@ -97,13 +98,13 @@ public class CustomTaskTrigger implements Trigger {
             // 4. Check against taskConfig.taskCalendarGroup
             if (StringUtils.hasText(taskConfig.getTaskCalendarGroup())) {
                 java.sql.Date executionSqlDate = new java.sql.Date(nextPotentialExecutionTime.getTime());
-                boolean isExcludedByCalendar = taskCalendarDao.findCalendarByName(taskConfig.getTaskCalendarGroup())
+                boolean isIncludeByCalendar = taskCalendarDao.findCalendarByName(taskConfig.getTaskCalendarGroup())
                         .flatMap(calendar -> taskCalendarDao
                                 .findCalendarDayByCalendarIdAndDate(calendar.getCalendarId(), executionSqlDate))
-                        .map(calendarDay -> !calendarDay.isWorkingDay()) // true if it's a non-working day (excluded)
-                        .orElse(true); // Not in calendar or is a working day -> not excluded
+                        .map(calendarDay -> calendarDay.isWorkingDay()) // true if it's a non-working day (excluded)
+                        .orElse(false); // Not in calendar or is a working day -> not excluded
 
-                if (isExcludedByCalendar) {
+                if (!isIncludeByCalendar) {
                     logger.debug("Task ID {}: Candidate time {} is excluded by calendar group '{}'. Skipping.",
                             taskConfig.getTaskId(), nextPotentialExecutionTime, taskConfig.getTaskCalendarGroup());
                     continue;

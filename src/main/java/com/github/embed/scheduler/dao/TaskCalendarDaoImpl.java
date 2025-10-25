@@ -44,7 +44,7 @@ public class TaskCalendarDaoImpl implements TaskCalendarDao {
     // --- Caches ---
     private final Cache<Integer, TaskCalendar> calendarCacheById = CacheBuilder.newBuilder()
             .maximumSize(50) // Max 50 calendar definitions by ID
-            .expireAfterWrite(1, TimeUnit.HOURS)
+            .expireAfterWrite(24 * 7, TimeUnit.HOURS)
             .build();
 
     private final Cache<String, TaskCalendar> calendarCacheByName = CacheBuilder.newBuilder()

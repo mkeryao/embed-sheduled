@@ -451,7 +451,7 @@ public class TaskConfigController {
     @GetMapping("/{id}/next-runs")
     public ResponseEntity<Map<String, Object>> getNextRunsWithConstraints(
             @PathVariable Integer id,
-            @RequestParam(defaultValue = "5") int count) {
+            @RequestParam(defaultValue = "15") int count) {
 
         Map<String, Object> response = new HashMap<>();
 

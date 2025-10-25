@@ -8,13 +8,14 @@
         <version>2.5.14</version> <!-- Using a specific version for Java 8 compatibility -->
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.example</groupId>
-    <artifactId>taskscheduler</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>taskscheduler</name>
+    <groupId>com.github</groupId>
+    <artifactId>embed-scheduler</artifactId>
+    <version>1.0.1</version>
+    <name>embed-scheduler</name>
     <description>Task Scheduler project</description>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
@@ -32,11 +33,19 @@
                     <artifactId>spring-boot-starter-logging</artifactId>
                     <groupId>org.springframework.boot</groupId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>spring-boot-starter-tomcat</artifactId>
+                    <groupId>org.springframework.boot</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-log4j2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-undertow</artifactId>
         </dependency>
 
         <!-- Jackson Databind for JSON processing -->
@@ -93,7 +102,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- JWT Libraries -->
+        <!-- JWT Libraries
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -107,14 +116,16 @@
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId> <!-- This pulls in Jackson. For a full switch, this would need an alternative or careful testing. -->
-                                                <!-- Fastjson does not have a direct jjwt integration like jjwt-jackson. -->
-                                                <!-- This means JWTs themselves might still be processed by Jackson internally by jjwt library. -->
-                                                <!-- The goal here is for Spring MVC HTTP message conversion and internal app JSON handling. -->
+            <artifactId>jjwt-jackson</artifactId>
             <version>0.11.5</version>
             <scope>runtime</scope>
         </dependency>
-
+        -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+            <version>0.9.1</version>
+        </dependency>
         <!-- Guava Dependency -->
         <dependency>
             <groupId>com.google.guava</groupId>

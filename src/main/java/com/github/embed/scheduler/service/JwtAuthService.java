@@ -3,13 +3,10 @@ package com.github.embed.scheduler.service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,24 +16,12 @@ import java.util.function.Function;
 @Slf4j
 public class JwtAuthService {
 
-    @Value("${jwt.secret.jwt.secret:DefaultSecretKeyNeedsToBeLongEnoughForHS256}") // Default for testing, replace in properties
-    private String secret;
+    @Value("${scheduler.jwt.secret:DefaultSecretKeyNeedsToBeLongEnoughForHS256}") // Default for testing, replace in properties
+    private String secretKey;
 
-    @Value("${jwt.secret.jwt.expirationMs:3600000}") // 1 hour by default
+    @Value("${scheduler.jwt.expirationMs:3600000}") // 1 hour by default
     private long expirationMs;
 
-    private Key key;
-
-    @PostConstruct
-    public void init() {
-        if (secret == null || secret.length() < 32) { // HS256 needs at least 256 bits (32 bytes)
-            // In a real app, throw an error or ensure a strong default if not configured
-            this.secret = "FallbackSecretKeyThatIsDefinitelyLongEnoughForHS256Algorithm";
-            // Log a warning that a default, potentially insecure key is being used.
-            log.error("[Warning: JWT secret key is not configured or too short. Using a default insecure key.]");
-        }
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
-    }
 
     public String generateToken(String username) {
         Map<String, Object> claims = new HashMap<>();
@@ -49,7 +34,7 @@ public class JwtAuthService {
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(key, SignatureAlgorithm.HS256)
+                .signWith(SignatureAlgorithm.HS256, secretKey)
                 .compact();
     }
 
@@ -60,7 +45,9 @@ public class JwtAuthService {
 
     public Boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            Jwts.parser()
+                    .setSigningKey(secretKey)
+                    .parseClaimsJws(token);
             return !isTokenExpired(token);
         } catch (Exception e) { // Catches SignatureException, MalformedJwtException, ExpiredJwtException etc.
             return false;
@@ -82,7 +69,9 @@ public class JwtAuthService {
     }
 
     private Claims getAllClaimsFromToken(String token) {
-        return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+        return Jwts.parser().setSigningKey(secretKey)
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     private Boolean isTokenExpired(String token) {

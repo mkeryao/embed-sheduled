@@ -6,9 +6,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.support.CronExpression;
 import org.springframework.transaction.TransactionManager;
 import org.springframework.web.client.RestTemplate;
 
@@ -17,9 +20,11 @@ import javax.sql.DataSource;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
-public class SchedulerConfiguration {
+public class SchedulerConfiguration implements AsyncConfigurer {
 
 
     @Resource
@@ -31,14 +36,14 @@ public class SchedulerConfiguration {
         return new RestTemplate();
     }
 
-    //@ConditionalOnMissingBean(value = JdbcTemplate.class , name = "schedulerJdbcTemplate")
+    @ConditionalOnMissingBean(value = JdbcTemplate.class , name = "schedulerJdbcTemplate")
     @Bean("schedulerJdbcTemplate")
     public JdbcTemplate schedulerJdbcTemplate(
             @Value("${scheduler.ds.name:schedulerDataSource}") String schedulerName
             ){
         DataSource dataSource = dataSourceMap.get(schedulerName) ;
         if(Objects.nonNull(dataSource)){
-            new JdbcTemplate(dataSource) ;
+            return new JdbcTemplate(dataSource) ;
         }
         if( 1 == dataSourceMap.size()){
             return new JdbcTemplate(
@@ -50,10 +55,10 @@ public class SchedulerConfiguration {
         throw new BeanCreationException("Can not create Bean schedulerJdbcTemplate") ;
     }
 
-
+    //@ConditionalOnMissingBean(value = TransactionManager.class , name = "schedulerTransactionManager")
     @Bean("schedulerTransactionManager")
     public TransactionManager schedulerTransactionManager(
-            @Value("${scheduler.tsm.name:schedulerTransactionManager") String schedulerName){
+            @Value("${scheduler.ds.name:schedulerDataSource}") String schedulerName){
         DataSource dataSource = dataSourceMap.get(schedulerName) ;
         if(Objects.nonNull(dataSource)){
             return new DataSourceTransactionManager(dataSource) ;
@@ -69,14 +74,16 @@ public class SchedulerConfiguration {
     }
 
 
-    @Bean
-    public ThreadPoolTaskExecutor beanThreadPoolTaskExecutor() {
+    @Bean(name = "asyncThreadPoolTaskExecutor")
+    public ThreadPoolTaskExecutor getAsyncExecutor () {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(15);
         executor.setMaxPoolSize(20);
         executor.setQueueCapacity(50);
-        executor.setThreadNamePrefix("bean-scheduled-");
+        executor.setThreadNamePrefix("async-scheduled-");
         executor.setTaskDecorator(new MdcTaskDecorator());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }

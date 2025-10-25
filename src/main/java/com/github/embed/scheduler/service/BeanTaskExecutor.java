@@ -42,8 +42,8 @@ public class BeanTaskExecutor implements TaskExecutor {
     @Autowired
     private TaskExecuteLogDao taskExecuteLogDao;
 
-    @Resource
-    private ThreadPoolTaskExecutor beanThreadPoolTaskExecutor ;
+    @Resource(name="asyncThreadPoolTaskExecutor")
+    private ThreadPoolTaskExecutor asyncThreadPoolTaskExecutor ;
 
     public static class TaskTimeoutException extends RuntimeException {
         public TaskTimeoutException(String message) {
@@ -100,7 +100,7 @@ public class BeanTaskExecutor implements TaskExecutor {
 
             final Object[] finalArgs = convertParameters(methodToExecute, parametersMap);
 
-            Future<Object> future = beanThreadPoolTaskExecutor.submit(() -> {
+            Future<Object> future = asyncThreadPoolTaskExecutor.submit(() -> {
                 logger.info("Executing bean task '{}': bean='{}', method='{}', params={}", taskConfig.getTaskName(), beanName, methodName,
                         !parametersMap.isEmpty() ? finalParametersJson : "none");
                 return methodToExecute.invoke(beanInstance, finalArgs);

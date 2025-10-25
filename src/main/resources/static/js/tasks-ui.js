@@ -1196,7 +1196,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             }
 
             // 调用API获取下次执行时间 - 使用新的端点
-            makeApiCall('GET', `/tasks/${taskId}/next-runs?count=5`, null,
+            makeApiCall('GET', `/tasks/${taskId}/next-runs?count=15`, null,
                 function (response) {
                     const modalBody = $('#nextRunsModal .modal-body');
 
