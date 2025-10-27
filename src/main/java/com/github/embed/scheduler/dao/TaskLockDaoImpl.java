@@ -51,7 +51,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
     // "更新-后-确认" 查询：获取锁的当前所有者和版本
     // 安全关键点 2: 更新后必须立刻确认所有权并获取新版本
     private static final String SELECT_OWNER_VERSION_SQL =
-            "SELECT owner_instance_id, version FROM task_lock WHERE lock_name = ?";
+            "SELECT owner_instance_id, version , lock_name ,least_duration_seconds , lock_acquired_time FROM task_lock WHERE lock_name = ? ";
 
     // 续约锁
     // 安全关键点 3: 必须同时匹配 owner 和 version (CAS)
@@ -166,7 +166,7 @@ public class TaskLockDaoImpl implements TaskLockDao {
             }
 
         } catch (Exception e) {
-            // log.error("Error while trying to update expired lock", e);
+            logger.error("Error while trying to update expired lock", e);
             return Optional.empty();
         }
     }

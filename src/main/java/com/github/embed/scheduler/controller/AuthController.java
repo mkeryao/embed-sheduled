@@ -52,11 +52,7 @@ public class AuthController {
                     .body("Invalid username or password.");
         }
 
-        // If password matches (Note: this is a simplified check as hashing is not fully implemented yet)
-        // For now, direct comparison for placeholder, replace with hash check
-        // if (!user.getPasswordHash().equals(loginRequest.getPassword())) { // Replace with hashed password check
-        //     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
-        // }
+
 
         final String token = jwtAuthService.generateToken(user.getUsername());
         return ResponseEntity.ok(new AuthResponse(token, user.getUsername()));

@@ -39,7 +39,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     private static final String INSERT_SQL = "INSERT INTO task_execute_log (task_id, workflow_id, start_time, state, workflow_instance_id, parent_log_id, task_pattern, rtn_msg, ex_msg, workflow_node_id, parameters, instance_id,attempt_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
     private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, workflow_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, workflow_instance_id=?, parent_log_id=?, task_pattern=?, workflow_node_id=?, parameters=?, instance_id=? WHERE log_id=?";
     private static final String SELECT_BY_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE log_id=?";
-    private static final String SELECT_ALL_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log ORDER BY start_time DESC";
+    private static final String SELECT_ALL_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log ORDER BY start_time DESC limit 1000";
     private static final String SELECT_BY_TASK_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE task_id=? ORDER BY start_time DESC";
     private static final String UPDATE_LOG_STATUS_SQL = "UPDATE task_execute_log SET end_time=CURRENT_TIMESTAMP, state=?, rtn_msg=?, ex_msg=? WHERE log_id=?";
 
