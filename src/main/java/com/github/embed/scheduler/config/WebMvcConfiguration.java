@@ -30,7 +30,7 @@ import javax.annotation.Resource;
  */
 @Configuration
 @ConditionalOnWebApplication
-@Order(10)
+//@Order(10)
 //@ConditionalOnMissingBean({WebMvcConfigurationSupport.class})
 public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
