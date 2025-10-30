@@ -5,7 +5,10 @@
     <title data-i18n-key="loginPage.title">Login - Task Scheduler</title>
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
-    <script src="js/i18n.js"></script> <!-- Load i18n early -->
+    <!-- Load translation files first -->
+    <script src="locales/en.js"></script>
+    <script src="locales/zh.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/i18n-init.js"></script>
 </head>
 <body>
@@ -41,9 +44,12 @@
         $(document).ready(function() {
             // 使用全局初始化函数
             if (typeof window.initializeI18n === 'function') {
-                window.initializeI18n().then(() => {
+                try {
+                    window.initializeI18n();
                     console.log("i18n初始化完成，登录页面准备就绪");
-                }).catch(err => console.error("登录页面初始化i18n时出错:", err));
+                } catch (err) {
+                    console.error("登录页面初始化i18n时出错:", err);
+                }
             } else {
                 console.error("全局初始化函数未定义，尝试使用传统方式");
                 // 回退到原始方法
@@ -56,9 +62,18 @@
                 }
             }
 
-            // If token exists, redirect to tasks.html (existing logic)
+            // Check token validity on page load
             if (localStorage.getItem('jwtToken')) {
-                window.location.href = 'tasks.html';
+                checkTokenValidity(
+                    function() { // onValid
+                        window.location.href = 'tasks.html';
+                    },
+                    function() { // onInvalid
+                        // Token is invalid, clear it and stay on login page
+                        localStorage.removeItem('jwtToken');
+                        localStorage.removeItem('username');
+                    }
+                );
             }
 
             $('#login-form').submit(function(event) {
