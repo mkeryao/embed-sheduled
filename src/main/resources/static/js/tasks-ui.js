@@ -432,7 +432,8 @@ if (typeof window.tasksUiInitialized === 'undefined') {
 
         // 使用全局初始化函数
         if (typeof window.initializeI18n === 'function') {
-            window.initializeI18n().then(() => {
+            try {
+                window.initializeI18n();
                 console.log("i18n initialized for tasks.html");
                 populateTaskTypeFilter();
 
@@ -440,17 +441,22 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 loadTasks();
                 loadUsersForSelects();
                 loadCalendarsForSelect();
-            });
+            } catch (e) {
+                console.error("Error initializing i18n for tasks.html", e);
+            }
         } else {
             console.error("全局i18n初始化函数未定义，尝试使用传统方式初始化");
             // 回退到直接调用i18n.init
             if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => {
+                try {
+                    i18n.init();
                     populateTaskTypeFilter();
                     loadTasks();
                     loadUsersForSelects();
                     loadCalendarsForSelect();
-                });
+                } catch(e) {
+                     console.error("Error initializing i18n for tasks.html", e);
+                }
             } else {
                 console.error("i18n对象未定义，无法初始化国际化")
             }

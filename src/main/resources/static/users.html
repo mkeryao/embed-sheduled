@@ -96,7 +96,8 @@
                     console.error("users.html初始化i18n时出错:", err);
                 }
             } else if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => console.log("i18n initialized using traditional method"));
+                i18n.init()
+				console.log("i18n initialized using traditional method");
             } else {
                 console.error("无法初始化i18n，用户管理页面将无法正确显示国际化内容");
             }
@@ -109,6 +110,7 @@
                     e.preventDefault();
                     logout();
                 });
+                if (typeof i18n !== 'undefined') { i18n.applyTranslations(); }
             });
             loadUsers();
 
