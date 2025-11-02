@@ -75,9 +75,15 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
                     message = jqXHR.responseJSON.message;
                 } else if (jqXHR.responseText) {
                     try {
+                        // First, try to parse as JSON
                         const err = JSON.parse(jqXHR.responseText);
-                        if (err.message) message = err.message;
-                    } catch(e) { /* ignore parse error */ }
+                        if (err.message) {
+                            message = err.message;
+                        }
+                    } catch(e) {
+                        // If parsing fails, it might be a plain text response
+                        message = jqXHR.responseText;
+                    }
                 }
                 console.error('API Call Error:', message);
                 alert('An error occurred: ' + message);

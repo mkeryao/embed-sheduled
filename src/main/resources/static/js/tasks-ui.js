@@ -454,7 +454,7 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                     loadTasks();
                     loadUsersForSelects();
                     loadCalendarsForSelect();
-                } catch(e) {
+                } catch(e ) {
                      console.error("Error initializing i18n for tasks.html", e);
                 }
             } else {
@@ -632,7 +632,20 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 },
                 function (jqXHR) {
                     // 提供更详细的错误信息
-                    let errorDetails = jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText;
+                    let errorDetails;
+                    if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                        errorDetails = jqXHR.responseJSON.message;
+                    } else if (jqXHR.responseText) {
+                        try {
+                            const err = JSON.parse(jqXHR.responseText);
+                            errorDetails = err.message || jqXHR.responseText;
+                        } catch (e) {
+                            errorDetails = jqXHR.responseText;
+                        }
+                    } else {
+                        errorDetails = jqXHR.statusText;
+                    }
+
                     let errorMsg = '';
 
                     if (taskData.taskType === 10) {
