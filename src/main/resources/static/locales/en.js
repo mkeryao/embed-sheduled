@@ -1,4 +1,5 @@
-{
+window.translations = window.translations || {};
+window.translations.en = {
     "navbar": {
         "brand": "Task Scheduler",
         "tasks": "Tasks",
@@ -602,4 +603,4 @@
             "errorDeletingUser": "Error deleting user: {{error}}"
         }
     }
-}
+};

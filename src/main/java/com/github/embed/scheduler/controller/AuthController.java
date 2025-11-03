@@ -1,5 +1,6 @@
 package com.github.embed.scheduler.controller;
 
+import com.github.embed.scheduler.annotation.JwtAuth;
 import com.github.embed.scheduler.dao.TaskUserDao;
 import com.github.embed.scheduler.dto.LoginRequest;
 import com.github.embed.scheduler.dto.AuthResponse;
@@ -10,12 +11,15 @@ import com.github.embed.scheduler.util.PasswordUtil; // Will create this next
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import com.github.embed.scheduler.annotation.JwtAuth;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.Optional;
 
 @RestController
@@ -56,5 +60,12 @@ public class AuthController {
 
         final String token = jwtAuthService.generateToken(user.getUsername());
         return ResponseEntity.ok(new AuthResponse(token, user.getUsername()));
+    }
+
+
+    @GetMapping("/validate-token")
+    public ResponseEntity<?> validateToken() {
+        // If the request reaches here, the token is valid (due to JwtAuthInterceptor)
+        return ResponseEntity.ok(Collections.singletonMap("valid", true));
     }
 }

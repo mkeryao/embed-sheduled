@@ -5,6 +5,8 @@
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
     <script src="js/i18n.js"></script>
+    <script src="locales/en.js"></script>
+    <script src="locales/zh.js"></script>
     <script src="js/i18n-init.js"></script>
 </head>
 <body>
@@ -164,26 +166,29 @@
 
 <script>
     $(document).ready(function() {
+        let currentLogs = []; // Store the currently displayed set of logs (subset of allLogs if filtered)
+        let allLogsCache = null; // Cache for all logs to avoid re-fetching if not necessary
+        let currentPage = 1;
+        const rowsPerPage = 10;
         // 使用全局初始化函数
         if (typeof window.initializeI18n === 'function') {
-            window.initializeI18n().then(() => {
-                console.log("i18n initialized for logs.html");
+			window.initializeI18n();
+			console.log("i18n initialized for logs.html");
 
-                // Initial log load based on URL or default
-                if (typeof getUrlParams === 'function') {
-                    const urlParams = getUrlParams();
-                    const taskIdFromUrl = urlParams['taskId'];
-                    if (taskIdFromUrl) {
-                        $('#taskIdFilter').val(taskIdFromUrl);
-                        loadLogs({ taskId: taskIdFromUrl });
-                    } else {
-                        loadLogs();
-                    }
-                } else {
-                    console.error("getUrlParams function is not defined. Cannot process URL parameters.");
-                    loadLogs();
-                }
-            });
+			// Initial log load based on URL or default
+			if (typeof getUrlParams === 'function') {
+				const urlParams = getUrlParams();
+				const taskIdFromUrl = urlParams['taskId'];
+				if (taskIdFromUrl) {
+					$('#taskIdFilter').val(taskIdFromUrl);
+					loadLogs({ taskId: taskIdFromUrl });
+				} else {
+					loadLogs();
+				}
+			} else {
+				console.error("getUrlParams function is not defined. Cannot process URL parameters.");
+				loadLogs();
+			}
         } else {
             console.error("i18n object not defined in logs.html. Content will not be translated.");
             // Fallback if i18n fails (optional, or just let it show keys)
@@ -205,10 +210,12 @@
             if (typeof i18n !== 'undefined') { i18n.applyTranslations(); }
         });
 
+        /*
         let currentLogs = []; // Store the currently displayed set of logs (subset of allLogs if filtered)
         let allLogsCache = null; // Cache for all logs to avoid re-fetching if not necessary
         let currentPage = 1;
         const rowsPerPage = 10;
+        */
 
         function calculateDuration(startTime, endTime) {
             if (!startTime || !endTime) return '-';

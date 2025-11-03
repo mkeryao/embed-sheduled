@@ -75,9 +75,15 @@ function makeApiCall(method, endpoint, data, onSuccess, onError) {
                     message = jqXHR.responseJSON.message;
                 } else if (jqXHR.responseText) {
                     try {
+                        // First, try to parse as JSON
                         const err = JSON.parse(jqXHR.responseText);
-                        if (err.message) message = err.message;
-                    } catch(e) { /* ignore parse error */ }
+                        if (err.message) {
+                            message = err.message;
+                        }
+                    } catch(e) {
+                        // If parsing fails, it might be a plain text response
+                        message = jqXHR.responseText;
+                    }
                 }
                 console.error('API Call Error:', message);
                 alert('An error occurred: ' + message);
@@ -116,20 +122,24 @@ function getUrlParams() {
 
 function checkAuth() {
     const token = localStorage.getItem('jwtToken');
-    const publicPages = ['/login.html', '/index.html', '/']; // index.html handles its own redirect
+    const currentPage = window.location.pathname;
+    // Define public pages that do not require authentication
+    // Note: Ends with check is for pages like / or /index.html in root or sub-directories
+    const publicPages = ['/login.html', '/index.html', '/'];
 
-    if (!token && !publicPages.includes(window.location.pathname)) {
-        logout(); // Redirect to login if not on a public page and no token
+    const isPublicPage = publicPages.some(page => currentPage.endsWith(page));
+
+    if (!token && !isPublicPage) {
+        // If there's no token and the page is not public, redirect to login.
+        logout();
     }
-    // If token exists, allow access. Specific pages might do further validation if needed.
+    // If a token exists, the user is considered authenticated.
+    // Specific pages can perform further validation if needed.
 }
 
-// Call checkAuth on page load for non-public pages
+// Call checkAuth on page load for every page. The function itself now determines if authentication is needed.
 $(document).ready(function() {
-    const publicPages = ['/login.html', '/index.html', '/'];
-    if (!publicPages.includes(window.location.pathname)) {
-        checkAuth();
-    }
+    checkAuth();
 
     // Global logout link handler
     $('#logout-link').on('click', function(e) {
@@ -138,6 +148,21 @@ $(document).ready(function() {
     });
 });
 
+// --- Token Validation ---
+function checkTokenValidity(onValid, onInvalid) {
+    makeApiCall('GET', '/auth/validate-token', null,
+        function(response) { // onSuccess
+            if (response && response.valid) {
+                if (onValid) onValid();
+            } else {
+                if (onInvalid) onInvalid();
+            }
+        },
+        function() { // onError (e.g., 401 Unauthorized)
+            if (onInvalid) onInvalid();
+        }
+    );
+}
 // Helper to display generic success/error messages
 function showFeedback(message, isError = false) {
     const feedbackDiv = $('#feedback-message');

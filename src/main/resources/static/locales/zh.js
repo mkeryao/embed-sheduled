@@ -1,4 +1,5 @@
-{
+window.translations = window.translations || {};
+window.translations.zh = {
   "navbar": {
     "brand": "任务调度器",
     "tasks": "任务",
@@ -603,4 +604,4 @@
       "errorDeletingUser": "删除用户时出错：{{error}}"
     }
   }
-}
+};

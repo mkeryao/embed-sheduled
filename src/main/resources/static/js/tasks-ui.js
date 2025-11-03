@@ -432,7 +432,8 @@ if (typeof window.tasksUiInitialized === 'undefined') {
 
         // 使用全局初始化函数
         if (typeof window.initializeI18n === 'function') {
-            window.initializeI18n().then(() => {
+            try {
+                window.initializeI18n();
                 console.log("i18n initialized for tasks.html");
                 populateTaskTypeFilter();
 
@@ -440,17 +441,22 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 loadTasks();
                 loadUsersForSelects();
                 loadCalendarsForSelect();
-            });
+            } catch (e) {
+                console.error("Error initializing i18n for tasks.html", e);
+            }
         } else {
             console.error("全局i18n初始化函数未定义，尝试使用传统方式初始化");
             // 回退到直接调用i18n.init
             if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => {
+                try {
+                    i18n.init();
                     populateTaskTypeFilter();
                     loadTasks();
                     loadUsersForSelects();
                     loadCalendarsForSelect();
-                });
+                } catch(e ) {
+                     console.error("Error initializing i18n for tasks.html", e);
+                }
             } else {
                 console.error("i18n对象未定义，无法初始化国际化")
             }
@@ -626,7 +632,20 @@ if (typeof window.tasksUiInitialized === 'undefined') {
                 },
                 function (jqXHR) {
                     // 提供更详细的错误信息
-                    let errorDetails = jqXHR.responseJSON ? jqXHR.responseJSON.message : jqXHR.statusText;
+                    let errorDetails;
+                    if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                        errorDetails = jqXHR.responseJSON.message;
+                    } else if (jqXHR.responseText) {
+                        try {
+                            const err = JSON.parse(jqXHR.responseText);
+                            errorDetails = err.message || jqXHR.responseText;
+                        } catch (e) {
+                            errorDetails = jqXHR.responseText;
+                        }
+                    } else {
+                        errorDetails = jqXHR.statusText;
+                    }
+
                     let errorMsg = '';
 
                     if (taskData.taskType === 10) {
@@ -2260,145 +2279,54 @@ if (typeof window.tasksUiInitialized === 'undefined') {
             }
         });
 
-        // 节点助手切换按钮点击事件
-        $(document).on('click', '#toggleNodeHelper', function() {
-            const nodeHelperContent = $('#nodeHelperContent');
-            if (nodeHelperContent.is(':visible')) {
-                nodeHelperContent.slideUp();
-                $(this).find('i').removeClass('bi-chevron-up').addClass('bi-chevron-down');
-                localStorage.setItem('nodeHelperHidden', 'true');
-                console.log("Node helper hidden by user");
-            } else {
-                nodeHelperContent.slideDown();
-                $(this).find('i').removeClass('bi-chevron-down').addClass('bi-chevron-up');
-                localStorage.setItem('nodeHelperHidden', 'false');
-                console.log("Node helper shown by user");
+        // Cron 表达式建议功能
+        $(document).ready(function() {
+            const cronSuggestions = [
+                { expression: '0 0/5 * * * ?', description: '每5分钟执行一次' },
+                { expression: '0 0/10 * * * ?', description: '每10分钟执行一次' },
+                { expression: '0 0/30 * * * ?', description: '每30分钟执行一次' },
+                { expression: '0 0 * * * ?', description: '每小时执行一次' },
+                { expression: '0 0 0 * * ?', description: '每天凌晨0点执行' },
+                { expression: '0 0 12 * * ?', description: '每天中午12点执行' },
+                { expression: '0 0 0 1 * ?', description: '每月1日凌晨0点执行' },
+                { expression: '0 0 0 ? * MON', description: '每周一凌晨0点执行' },
+                { expression: '0 0 0 1 1 ?', description: '每年1月1日凌晨0点执行' }
+            ];
 
-                // 当用户显示节点助手时，确保任务列表已加载
-                if (window.graphModeEnabled) {
-                    loadAvailableTasksForNodes();
+            const $cronInput = $('#cronExpression');
+            const $suggestionsContainer = $('.cron-suggestions');
+
+            // 填充建议列表
+            cronSuggestions.forEach(suggestion => {
+                const $item = $(`
+                    <div class="cron-suggestion-item" data-expression="${suggestion.expression}">
+                        ${suggestion.expression}
+                        <div class="cron-desc">${suggestion.description}</div>
+                    </div>
+                `);
+                $suggestionsContainer.append($item);
+            });
+
+            // 显示建议列表
+            $cronInput.on('focus', function() {
+                $suggestionsContainer.show();
+            });
+
+            // 点击建议项
+            $suggestionsContainer.on('click', '.cron-suggestion-item', function() {
+                const expression = $(this).data('expression');
+                $cronInput.val(expression);
+                $suggestionsContainer.hide();
+            });
+
+            // 点击外部隐藏
+            $(document).on('click', function(event) {
+                if (!$cronInput.is(event.target) && $cronInput.has(event.target).length === 0 &&
+                    !$suggestionsContainer.is(event.target) && $suggestionsContainer.has(event.target).length === 0) {
+                    $suggestionsContainer.hide();
                 }
-            }
+            });
         });
-
-        // 工作流编辑模式切换处理
-        $('#editorModeForm, #editorModeGraph').on('click', function() {
-            const isFormMode = $(this).attr('id') === 'editorModeForm';
-
-            // 更新按钮状态
-            $('#editorModeForm, #editorModeGraph').removeClass('active');
-            $(this).addClass('active');
-
-            // 更新控件显示
-            if (isFormMode) {
-                $('#formModeControls').show();
-                $('#graphModeControls').hide();
-                $('#edgeDefinitionForm').show();
-                // 表单模式下，显示节点和边缘的JSON编辑区和节点助手
-                $('.workflow-json-editor').show();
-                $('#nodeHelperCard').show(); // 显示节点助手卡片
-                $('#workflowNodesJson, #workflowEdgesJson').closest('.form-group').show();
-                $('#globalParametersJson').closest('.form-group').show();                // 表单模式下，强制显示节点助手内容
-                if (typeof window.ensureNodeHelperVisible === 'function') {
-                    window.ensureNodeHelperVisible(true);
-                } else {
-                    // 如果函数不可用，直接显示相关元素
-                    $('#workflowTaskFields').show();
-                    $('#nodeHelperCard').show();
-                    $('#nodeHelperContent').show();
-                }
-                // 刷新DAG视图 - 始终使用安全的调用方式
-                if (typeof window.safeRedrawDAG === 'function') {
-                    window.safeRedrawDAG();
-                } else if (typeof safeRedrawDAG === 'function') {
-                    safeRedrawDAG();
-                } else if (typeof window.redrawDAG === 'function') {
-                    try {
-                        window.redrawDAG();
-                    } catch (e) {
-                        console.error('redrawDAG调用失败:', e);
-                    }
-                } else {
-                    console.error('redrawDAG函数未定义，请检查tasks-workflow.js是否正确加载');
-                }
-
-                // 更改帮助文本
-                $('#dagHelpText').text(i18n.translate('tasksPage.modal.workflowTaskFields.formModeHelp',
-                    '表单模式：通过上方节点助手和JSON编辑区管理工作流'));
-            } else {
-                $('#formModeControls').hide();
-                $('#graphModeControls').show();
-                $('#edgeDefinitionForm').hide();
-                // 图形模式下，隐藏节点和边缘的JSON编辑区，根据用户设置显示/隐藏节点助手
-                $('#workflowNodesJson, #workflowEdgesJson').closest('.form-group').hide();
-                // 使用全局辅助函数处理节点助手可见性(根据用户选择)
-                if (typeof window.ensureNodeHelperVisible === 'function') {
-                    window.ensureNodeHelperVisible(false);
-                } else {
-                    // 如果函数不可用，根据用户偏好显示节点助手
-                    $('#workflowTaskFields').show();
-                    $('#nodeHelperCard').show();
-                    if (localStorage.getItem('nodeHelperHidden') === 'true') {
-                        $('#nodeHelperContent').hide();
-                    } else {
-                        $('#nodeHelperContent').show();
-                    }
-                }
-
-                $('#globalParametersJson').closest('.form-group').hide();                  // 切换到交互式图形编辑模式
-                if (typeof window.safeInitGraphMode === 'function') {
-                    window.safeInitGraphMode();
-                } else if (typeof window.initGraphMode === 'function') {
-                    window.initGraphMode();
-                } else {
-                    console.error('图形模式初始化函数未定义，请确保tasks-workflow.js已正确加载');
-                    // 提供基本的图形模式回退功能
-                    $('#graphModeControls').show();
-                    $('#workflowNodesJson, #workflowEdgesJson, #workflowJsonRefreshRow').hide();
-                    window.graphModeEnabled = true;
-                }
-
-                // 确保任务列表选择功能在图形模式下可用
-                setTimeout(function() {
-                    // 确保工作流任务字段可见
-                    $('#workflowTaskFields').show();
-                    // 加载可用任务列表（如果节点助手内容可见）
-                    if ($('#nodeHelperContent').is(':visible')) {
-                        loadAvailableTasksForNodes();
-                    }
-                }, 100);
-
-                // 更改帮助文本
-                $('#dagHelpText').text(i18n.translate('tasksPage.modal.workflowTaskFields.graphModeHelp',
-                    '图形模式：直接在图上拖拽节点，创建和编辑连线'));
-            }
-        });
-
-        // 自动排版按钮
-        $('#autoLayoutBtn').on('click', function() {
-            // 调用增强后的自动布局算法
-            if (window.arrangeNodesAutoLayout) {
-                window.arrangeNodesAutoLayout();
-            } else {
-                showFeedback(i18n.translate('tasksPage.feedback.autoLayoutNotReady', '自动布局功能尚未准备好'), true);
-            }
-        });
-
-        // 放大、缩小、重置按钮
-        $('#zoomInBtn').on('click', function() {
-            zoomDag(1.2); // 放大20%
-        });
-
-        $('#zoomOutBtn').on('click', function() {
-            zoomDag(0.8); // 缩小20%
-        });
-
-        $('#resetZoomBtn').on('click', function() {
-            resetZoom(); // 重置到100%
-        });
-
-        // 初始化缩放显示
-        updateZoomFeedback();
     });
 }
 

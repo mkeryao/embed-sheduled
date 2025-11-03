@@ -6,6 +6,8 @@
     <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
     <script src="js/i18n.js"></script>
+    <script src="locales/en.js"></script>
+    <script src="locales/zh.js"></script>
     <script src="js/i18n-init.js"></script>
 </head>
 <body>
@@ -87,9 +89,15 @@
     <script>
         $(document).ready(function() {
             if (typeof window.initializeI18n === 'function') {
-                window.initializeI18n().then(() => console.log("i18n initialized for users.html"));
+                try {
+                    window.initializeI18n();
+                    console.log("i18n initialized for users.html");
+                } catch (err) {
+                    console.error("users.html初始化i18n时出错:", err);
+                }
             } else if (typeof i18n !== 'undefined') {
-                i18n.init().then(() => console.log("i18n initialized using traditional method"));
+                i18n.init()
+				console.log("i18n initialized using traditional method");
             } else {
                 console.error("无法初始化i18n，用户管理页面将无法正确显示国际化内容");
             }
@@ -102,6 +110,7 @@
                     e.preventDefault();
                     logout();
                 });
+                if (typeof i18n !== 'undefined') { i18n.applyTranslations(); }
             });
             loadUsers();
 

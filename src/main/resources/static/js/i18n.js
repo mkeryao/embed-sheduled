@@ -3,34 +3,6 @@ const i18n = {
     currentLang: 'zh',
     translations: {},
 
-    async loadTranslations(lang) {
-        try {
-            const response = await fetch(`locales/${lang}.json?v=${new Date().getTime()}`); // Cache busting
-            if (!response.ok) {
-                console.error(`Could not load translations for ${lang}. Status: ${response.status}`);
-                this.translations[lang] = {}; // Initialize to prevent errors
-                if (lang !== this.defaultLang) {
-                    console.warn(`Falling back to default language: ${this.defaultLang}`);
-                    return await this.loadTranslations(this.defaultLang); // Await the fallback
-                }
-                return false; // Failed to load default language
-            }
-            this.translations[lang] = await response.json();
-            this.currentLang = lang; // Set currentLang only on successful load of the target 'lang' or a successful fallback
-            localStorage.setItem('preferredLang', lang); // Store the originally intended language
-            console.log(`Translations successfully loaded for ${this.currentLang}`);
-            return true;
-        } catch (error) {
-            console.error(`Error loading or parsing translations for ${lang}:`, error);
-            this.translations[lang] = {}; // Initialize on error
-            if (lang !== this.defaultLang) {
-               console.warn(`Falling back to default language: ${this.defaultLang} after error.`);
-               return await this.loadTranslations(this.defaultLang); // Await the fallback
-            }
-            return false; // Failed to load default language after error
-        }
-    },
-
     translate(key, fallback = '') {
         const keys = key.split('.');
         let currentTrans = this.translations[this.currentLang] || {};
@@ -102,20 +74,19 @@ const i18n = {
         console.log("Translations applied for language:", this.currentLang);
     },
 
-    async init(initialLang = null) {
+    init(initialLang = null) {
+        // Translations are now pre-loaded via <script> tags into window.translations
+        this.translations = window.translations || {};
+
         const preferredLang = initialLang || localStorage.getItem('preferredLang') || navigator.language.split('-')[0] || this.defaultLang;
-        let langToLoad = (preferredLang === 'zh') ? 'zh' : 'en'; // Default to 'en' if not 'zh'
+        this.currentLang = (this.translations[preferredLang]) ? preferredLang : this.defaultLang;
 
-        // currentLang will be updated by loadTranslations upon successful load of a file
-        // or will remain the initial this.currentLang (e.g. 'en') if all loads fail.
-        const loadedSuccessfully = await this.loadTranslations(langToLoad);
-
-        if (!loadedSuccessfully) {
-            // This means even the default language failed to load.
-            // this.currentLang would still be the initial defaultLang ('en') but this.translations[this.defaultLang] would be {}
-            console.error(`Initial translation load failed for preferred language '${langToLoad}' and fallback default language '${this.defaultLang}'. UI will display keys.`);
+        if (!this.translations[this.currentLang]) {
+            console.error(`Translations for '${this.currentLang}' not found in pre-loaded data. UI will display keys.`);
+        } else {
+            console.log(`Using pre-loaded translations for '${this.currentLang}'`);
         }
-        // Always call applyTranslations. It will use keys/fallbacks if data is missing.
+        localStorage.setItem('preferredLang', this.currentLang);
         this.applyTranslations();
         this.updateLanguageSwitcherState(this.currentLang);
     },
