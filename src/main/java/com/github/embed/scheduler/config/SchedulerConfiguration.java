@@ -69,12 +69,22 @@ public class SchedulerConfiguration implements AsyncConfigurer {
     }
 
 
+    @Value("${scheduler.async.core-pool-size:15}")
+    private int asyncCorePoolSize ;
+
+    @Value("${scheduler.async.max-pool-size:20}")
+    private int asyncMaxPoolSize ;
+
+    @Value("${scheduler.async.queue-capacity:20}")
+    private int asyncQueueCapacity ;
+
+
     @Bean(name = "asyncThreadPoolTaskExecutor")
     public ThreadPoolTaskExecutor getAsyncExecutor () {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(15);
-        executor.setMaxPoolSize(20);
-        executor.setQueueCapacity(50);
+        executor.setCorePoolSize(asyncCorePoolSize);
+        executor.setMaxPoolSize(asyncMaxPoolSize);
+        executor.setQueueCapacity(asyncQueueCapacity);
         executor.setThreadNamePrefix("async-scheduled-");
         executor.setTaskDecorator(new MdcTaskDecorator());
         executor.setWaitForTasksToCompleteOnShutdown(true);

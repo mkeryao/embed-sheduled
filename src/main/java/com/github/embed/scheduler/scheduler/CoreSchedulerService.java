@@ -66,10 +66,13 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
     private ThreadPoolTaskScheduler taskScheduler;
     private final Map<Integer, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
+    @Value("${scheduler.task.core-pool-size:15}")
+    private int corePoolSize ;
+
     @Override
     public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
         ThreadPoolTaskScheduler threadPoolTaskScheduler = new ThreadPoolTaskScheduler();
-        threadPoolTaskScheduler.setPoolSize(15);
+        threadPoolTaskScheduler.setPoolSize(corePoolSize);
         threadPoolTaskScheduler.setWaitForTasksToCompleteOnShutdown(true);
         threadPoolTaskScheduler.setThreadNamePrefix("embed-scheduler-");
         threadPoolTaskScheduler.initialize();
@@ -117,7 +120,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
             cancelTask(taskConfig.getTaskId());
         }
         if(!StringUtils.hasText(taskConfig.getCronExpression())){
-            logger.info("Task {} is cronExpression is Empty. Skip.", taskConfig.getTaskId());
+            logger.info("Task {}  cronExpression is Empty. Skip.", taskConfig.getTaskId());
             return  ;
         }
 
