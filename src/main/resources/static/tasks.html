@@ -744,6 +744,10 @@
             <div class="modal-body">
                 <p data-i18n-key="tasksPage.manualTriggerConfirm.message">为防止误操作，请输入任务名称以确认手动触发：</p>
                 <input type="text" class="form-control" id="manualTriggerTaskNameInput" placeholder="" data-i18n-key-placeholder="tasksPage.manualTriggerConfirm.inputPlaceholder">
+                <div class="form-group mt-3">
+                    <label for="manualTriggerParams" data-i18n-key="tasksPage.manualTriggerConfirm.paramsLabel">自定义参数</label>
+                    <textarea class="form-control" id="manualTriggerParams" rows="3" placeholder="如果为空，则使用任务默认参数" data-i18n-key-placeholder="tasksPage.manualTriggerConfirm.paramsPlaceholder"></textarea>
+                </div>
                 <div class="text-danger mt-2" id="manualTriggerValidationMessage" style="display:none;"></div>
                 <input type="hidden" id="manualTriggerTaskId" value="">
             </div>

@@ -33,7 +33,7 @@ public interface TaskExecuteLogDao {
      * @return A list of all task execution logs.
      */
     List<TaskExecuteLog> findAll();
-
+    List<TaskExecuteLog> findAll(String group);
     /**
      * Finds all log entries associated with a specific task ID.
      * @param taskId The ID of the task.
@@ -87,7 +87,7 @@ public interface TaskExecuteLogDao {
      * Gets the total counts for each execution state (SUCCESS, FAILED, etc.) across all logs.
      * @return A list of maps, where each map has "state" and "count" keys.
      */
-    List<Map<String, Object>> getOverallStatusCounts();
+    List<Map<String, Object>> getOverallStatusCounts(String taskGroup);
 
     /**
      * Gets the counts for each execution state for a specific task.
@@ -124,7 +124,7 @@ public interface TaskExecuteLogDao {
      * Includes task_id and task_name.
      * @return List of maps, e.g., {task_id, task_name, success_count, failed_count}
      */
-    List<Map<String, Object>> getPerTaskSuccessFailureCounts();
+    List<Map<String, Object>> getPerTaskSuccessFailureCounts(String taskGroup);
 
     /**
      * Gets the top N tasks by average execution time (in milliseconds) for successful runs.
@@ -132,7 +132,7 @@ public interface TaskExecuteLogDao {
      * @param limit The number of top tasks to retrieve.
      * @return List of maps, e.g., {task_id, task_name, avg_duration_ms}
      */
-    List<Map<String, Object>> getTopNAverageExecutionTimes(int limit);
+    List<Map<String, Object>> getTopNAverageExecutionTimes(String taskGroup , int limit);
 
     /**
      * Finds all log entries where parent_execute_no matches the given ID.

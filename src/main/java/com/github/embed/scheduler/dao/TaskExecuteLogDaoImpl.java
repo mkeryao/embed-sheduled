@@ -1,8 +1,13 @@
 package com.github.embed.scheduler.dao;
 
-import com.github.embed.scheduler.entity.TaskExecuteLog;
-import com.github.embed.scheduler.enums.ExecutionPattern;
-import com.github.embed.scheduler.enums.ExecutionState;
+import java.sql.PreparedStatement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import javax.annotation.Resource;
+
 import org.apache.commons.lang3.ObjectUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,15 +17,11 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 
-import javax.annotation.Resource;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import com.github.embed.scheduler.entity.TaskExecuteLog;
+import com.github.embed.scheduler.enums.ExecutionPattern;
+import com.github.embed.scheduler.enums.ExecutionState;
 
 /**
  * JDBC implementation of the {@link TaskExecuteLogDao} interface.
@@ -40,6 +41,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     private static final String UPDATE_SQL = "UPDATE task_execute_log SET task_id=?, workflow_id=?, start_time=?, end_time=?, state=?, rtn_msg=?, ex_msg=?, workflow_instance_id=?, parent_log_id=?, task_pattern=?, workflow_node_id=?, parameters=?, instance_id=? WHERE log_id=?";
     private static final String SELECT_BY_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE log_id=?";
     private static final String SELECT_ALL_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log ORDER BY start_time DESC limit 1000";
+
     private static final String SELECT_BY_TASK_ID_SQL = "SELECT " + LOG_COLUMNS + " FROM task_execute_log WHERE task_id=? ORDER BY start_time DESC";
     private static final String UPDATE_LOG_STATUS_SQL = "UPDATE task_execute_log SET end_time=CURRENT_TIMESTAMP, state=?, rtn_msg=?, ex_msg=? WHERE log_id=?";
 
@@ -105,6 +107,15 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
+    public List<TaskExecuteLog> findAll(String group){
+        String sql = "SELECT  tel.*  FROM task_execute_log tel " +
+                " INNER JOIN task_config tc ON tel.task_id = tc.task_id " +
+                " WHERE tc.task_group = ? " +
+                " ORDER BY tel.start_time DESC limit 1000";
+        return jdbcTemplate.query(sql, rowMapper, group);
+    }
+
+    @Override
     public List<TaskExecuteLog> findByTaskId(Integer taskId) {
         return jdbcTemplate.query(SELECT_BY_TASK_ID_SQL, rowMapper, taskId);
     }
@@ -165,9 +176,11 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public List<Map<String, Object>> getOverallStatusCounts() {
-        String sql = "SELECT state, COUNT(*) as count FROM task_execute_log GROUP BY state";
-        return jdbcTemplate.queryForList(sql);
+    public List<Map<String, Object>> getOverallStatusCounts(String taskGroup) {
+        String sql = "SELECT state, COUNT(*) as count FROM task_execute_log  a " +
+                " INNER JOIN task_config tc ON a.task_id = tc.task_id " +
+                " WHERE tc.task_group = ?  GROUP BY state";
+        return jdbcTemplate.queryForList(sql , taskGroup);
     }
 
     @Override
@@ -189,7 +202,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
 
     @Override
     public Double getAverageExecutionTime(Integer taskId) {
-        String sql = "SELECT AVG(CAST(TIMESTAMPDIFF(MILLISECOND, start_time, end_time) AS DOUBLE)) " +
+        String sql = "SELECT AVG( TIMESTAMPDIFF(MICROSECOND, start_time, end_time)  DIV 1000 ) " +
                 "FROM task_execute_log " +
                 "WHERE task_id = ? AND state = 'SUCCESS' AND start_time IS NOT NULL AND end_time IS NOT NULL";
         try {
@@ -198,15 +211,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
             return null;
         } catch (Exception e) {
             logger.error("Error calculating average execution time for task ID {}: {}. SQL: {}", taskId, e.getMessage(), sql, e);
-            String h2Sql = "SELECT AVG(DATEDIFF('MILLISECOND', start_time, end_time)) " +
-                    "FROM task_execute_log " +
-                    "WHERE task_id = ? AND state = 'SUCCESS' AND start_time IS NOT NULL AND end_time IS NOT NULL";
-            try {
-                return jdbcTemplate.queryForObject(h2Sql, Double.class, taskId);
-            } catch (Exception e2) {
-                logger.error("Error calculating average execution time for task ID {} with H2 SQL: {}. SQL: {}", taskId, e2.getMessage(), h2Sql, e);
-                return null;
-            }
+            return null;
         }
     }
 
@@ -225,16 +230,17 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public List<Map<String, Object>> getPerTaskSuccessFailureCounts() {
+    public List<Map<String, Object>> getPerTaskSuccessFailureCounts(String taskGroup) {
         String sql = "SELECT l.task_id, tc.task_name, " +
                 "SUM(CASE WHEN l.state = 'SUCCESS' THEN 1 ELSE 0 END) as success_count, " +
                 "SUM(CASE WHEN l.state = 'FAILED' THEN 1 ELSE 0 END) as failed_count " +
                 "FROM task_execute_log l " +
                 "JOIN task_config tc ON l.task_id = tc.task_id " +
+                "WHERE tc.task_group = ? " +
                 "GROUP BY l.task_id, tc.task_name " +
                 "ORDER BY tc.task_name ASC";
         try {
-            return jdbcTemplate.queryForList(sql);
+            return jdbcTemplate.queryForList(sql , taskGroup);
         } catch (Exception e) {
             logger.error("Error fetching per-task success/failure counts: {}", e.getMessage(), e);
             return new ArrayList<>();
@@ -242,34 +248,21 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
     }
 
     @Override
-    public List<Map<String, Object>> getTopNAverageExecutionTimes(int limit) {
+    public List<Map<String, Object>> getTopNAverageExecutionTimes(String taskGroup , int limit) {
         String sql = "SELECT l.task_id, tc.task_name, " +
-                "AVG(TIMESTAMPDIFF(MILLISECOND, l.start_time, l.end_time)) as avg_duration_ms " +
+                "AVG(TIMESTAMPDIFF(MICROSECOND, l.start_time, l.end_time)) / 1000 as avg_duration_ms " +
                 "FROM task_execute_log l " +
                 "JOIN task_config tc ON l.task_id = tc.task_id " +
-                "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
+                "WHERE tc.task_group = ? AND l.state = 'SUCCESS' " +
+                "AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
                 "GROUP BY l.task_id, tc.task_name " +
                 "ORDER BY avg_duration_ms DESC " +
                 "LIMIT ?";
         try {
-            return jdbcTemplate.queryForList(sql, limit);
+            return jdbcTemplate.queryForList(sql, taskGroup , limit);
         } catch (Exception e) {
-            logger.error("Error fetching top N average execution times with primary SQL: {}. Trying H2 specific.", e.getMessage());
-            String h2Sql = "SELECT l.task_id, tc.task_name, " +
-                    "AVG(CAST(DATEDIFF('MILLISECOND', l.start_time, l.end_time) AS DOUBLE)) as avg_duration_ms " +
-                    "FROM task_execute_log l " +
-                    "JOIN task_config tc ON l.task_id = tc.task_id " +
-                    "WHERE l.state = 'SUCCESS' AND l.start_time IS NOT NULL AND l.end_time IS NOT NULL " +
-                    "GROUP BY l.task_id, tc.task_name " +
-                    "ORDER BY avg_duration_ms DESC " +
-                    "LIMIT ?";
-            try {
-                logger.info("Attempting H2-specific SQL for getTopNAverageExecutionTimes.");
-                return jdbcTemplate.queryForList(h2Sql, limit);
-            } catch (Exception e2) {
-                logger.error("Error fetching top N average execution times with H2-specific SQL: {}", e2.getMessage(), e2);
-                return new ArrayList<>();
-            }
+            logger.error("Error fetching top N average execution Exception:{}", e.getMessage());
+            return new ArrayList<>();
         }
     }
 
@@ -323,7 +316,7 @@ public class TaskExecuteLogDaoImpl implements TaskExecuteLogDao {
 
     @Override
     public long countSuccessfulExecutionsByNodeId(Long workflowInstanceId, List<String> nodeIds) {
-        if (nodeIds == null || nodeIds.isEmpty()) {
+        if (CollectionUtils.isEmpty(nodeIds)) {
             return 0;
         }
         String inSql = String.join(",", java.util.Collections.nCopies(nodeIds.size(), "?"));

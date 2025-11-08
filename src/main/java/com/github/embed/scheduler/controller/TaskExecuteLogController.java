@@ -4,6 +4,7 @@ import com.github.embed.scheduler.annotation.JwtAuth;
 import com.github.embed.scheduler.dao.TaskExecuteLogDao;
 import com.github.embed.scheduler.entity.TaskExecuteLog;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus; // Added
@@ -40,11 +41,14 @@ public class TaskExecuteLogController {
     @Autowired // Added
     private TaskConfigDao taskConfigDao; // Added
 
+    @Value("${scheduler.group.name}")
+    private String schedulerGroupName;
+
     @GetMapping
     public ResponseEntity<List<TaskExecuteLogDto>> getAllLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        List<TaskExecuteLog> allLogs = taskExecuteLogDao.findAll();
+        List<TaskExecuteLog> allLogs = taskExecuteLogDao.findAll(schedulerGroupName);
 
         // Create a map of taskId to TaskConfig for efficient lookups
         Set<Integer> taskIds = allLogs.stream()
@@ -123,18 +127,18 @@ public class TaskExecuteLogController {
 
     @GetMapping("/statistics/global-counts")
     public ResponseEntity<Map<String, Long>> getGlobalCounts() { // Changed to specific Map type
-        return ResponseEntity.ok(taskStatisticsService.getGlobalExecutionStateCounts());
+        return ResponseEntity.ok(taskStatisticsService.getGlobalExecutionStateCounts(schedulerGroupName));
     }
 
     @GetMapping("/statistics/task-breakdown")
     public ResponseEntity<List<Map<String, Object>>> getTaskBreakdown() { // Changed to specific List<Map> type
-        return ResponseEntity.ok(taskStatisticsService.getTaskBreakdownStatistics());
+        return ResponseEntity.ok(taskStatisticsService.getTaskBreakdownStatistics(schedulerGroupName));
     }
 
     @GetMapping("/statistics/top-avg-execution-time")
     public ResponseEntity<List<Map<String, Object>>> getTopAvgExecutionTime(
             @RequestParam(defaultValue = "5") int limit) {
-        return ResponseEntity.ok(taskStatisticsService.getTopNTasksByAverageExecutionTime(limit));
+        return ResponseEntity.ok(taskStatisticsService.getTopNTasksByAverageExecutionTime( schedulerGroupName ,limit));
     }
 
     @GetMapping("/workflow-instance/{workflowLogId}")
@@ -200,7 +204,7 @@ public class TaskExecuteLogController {
         }
 
         WorkflowInstanceDetailsDto detailsDto = new WorkflowInstanceDetailsDto(
-                mainLog.getLogId().longValue(),
+                mainLog.getLogId(),
                 workflowConfig.getTaskId(),
                 workflowConfig.getTaskName(),
                 workflowNodes,

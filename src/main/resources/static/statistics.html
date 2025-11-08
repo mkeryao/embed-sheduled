@@ -17,7 +17,7 @@
         <h2 class="my-3" data-i18n-key="statisticsPage.header">Task Execution Statistics</h2>
         <div class="row mb-4">
             <div class="col-md-4">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-header" data-i18n-key="statisticsPage.stats.globalCountsHeader">Global Statistics</div>
                     <div class="card-body" id="globalStatsBody">
                         <p class="text-muted" data-i18n-key="common.loading">Loading...</p>
@@ -25,7 +25,7 @@
                 </div>
             </div>
             <div class="col-md-8">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-header" data-i18n-key="statisticsPage.stats.slowestTasksHeader">Top 5 Slowest Tasks (Avg. Success Execution Time)</div>
                     <div class="card-body" id="topSlowestTasksBody">
                         <p class="text-muted" data-i18n-key="common.loading">Loading...</p>
@@ -106,7 +106,7 @@
         let taskBreakdownChart = null;
 
         function loadGlobalStats() {
-            $('#globalStatsBody').html(`<canvas id="globalCountsChart" width="100%" height="100"></canvas>`);
+            $('#globalStatsBody').html(`<canvas id="globalCountsChart"></canvas>`);
             makeApiCall('GET', '/logs/statistics/global-counts', null,
                 function(data) {
                     const ctx = document.getElementById('globalCountsChart').getContext('2d');
@@ -140,6 +140,7 @@
                         },
                         options: {
                             responsive: true,
+                            maintainAspectRatio: false,
                             plugins: {
                                 legend: {
                                     position: 'bottom'
@@ -160,7 +161,7 @@
         }
 
         function loadTopSlowestTasks() {
-            $('#topSlowestTasksBody').html(`<canvas id="topSlowestTasksChart" width="100%" height="150"></canvas>`);
+            $('#topSlowestTasksBody').html(`<canvas id="topSlowestTasksChart"></canvas>`);
             makeApiCall('GET', '/logs/statistics/top-avg-execution-time?limit=5', null,
                 function(tasks) {
                     const ctx = document.getElementById('topSlowestTasksChart').getContext('2d');
@@ -188,6 +189,7 @@
                         options: {
                             indexAxis: 'y',
                             responsive: true,
+                            maintainAspectRatio: false,
                             scales: {
                                 x: {
                                     beginAtZero: true

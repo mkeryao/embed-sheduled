@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import com.alibaba.fastjson.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -24,12 +25,14 @@ public class MySampleTask {
             Thread.currentThread().interrupt();
             logger.warn("Task interrupted during sleep");
         }
+        final String input = JSON.toJSONString(params) ;
         Double random = new Random().nextDouble() ;
         if(random > 0.9){
             throw new IndexOutOfBoundsException("Index out of bounds [" + random + "]");
         }
         logger.info("###MySampleTask.executeSuccess completed.");
         params.put("status", "success");
+        params.put("params" , input) ;
         params.put("rand" , random);
         params.put("message", "Task completed successfully");
         return params;

@@ -353,13 +353,14 @@ public class TaskConfigController {
     }
 
     @PostMapping("/{id}/trigger")
-    public ResponseEntity<String> triggerTask(@PathVariable Integer id) {
+    public ResponseEntity<String> triggerTask(@PathVariable Integer id,
+                        @RequestBody(required = false) String params) {
         Optional<TaskConfig> taskOptional = taskConfigDao.findById(id);
         if (!taskOptional.isPresent()) {
             return ResponseEntity.notFound().build();
         }
         try {
-            coreSchedulerService.triggerTaskManually(id);
+            coreSchedulerService.triggerTaskManually(id, params);
             return ResponseEntity.ok("Task " + id + " triggered successfully.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build(); // If task not found by triggerTaskManually

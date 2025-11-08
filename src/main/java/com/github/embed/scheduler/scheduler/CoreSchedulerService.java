@@ -20,10 +20,7 @@ import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.github.embed.scheduler.dao.TaskCalendarDao;
 import com.github.embed.scheduler.dao.TaskConfigDao;
@@ -126,7 +123,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
 
         Runnable taskWrapper = () -> {
             logger.info("Triggering scheduled execution for task '{}' (ID: {})", taskConfig.getTaskName(), taskConfig.getTaskId());
-            TaskExecutionJob job = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL, null);
+            TaskExecutionJob job = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL, null, null);
             taskScheduler.execute(job);
         };
         //Runnable taskRunnable = createTaskRunnable(taskConfig, ExecutionPattern.NORMAL , null);
@@ -158,13 +155,13 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         }
     }
 
-    public void triggerTaskManually(Integer taskId) {
+    public void triggerTaskManually(Integer taskId, String params) {
         TaskConfig taskConfig = taskConfigDao.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found with ID: " + taskId));
 
         logger.info("Manually triggering task '{}' (ID: {})", taskConfig.getTaskName(), taskId);
         ExecutionPattern pattern = (taskConfig.getTaskType() == 10) ? ExecutionPattern.WORKFLOW_PARENT : ExecutionPattern.MANUAL;
-        Runnable taskRunnable = createTaskRunnable(taskConfig, pattern, null);
+        Runnable taskRunnable = createTaskRunnable(taskConfig, pattern, null, params);
         taskScheduler.execute(taskRunnable);
     }
 
@@ -298,7 +295,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
         return baseDelay + jitter;
     }
 
-    private TaskExecutionJob createTaskRunnable(TaskConfig taskConfig, ExecutionPattern executionPattern, Long parentLogId) {
+    private TaskExecutionJob createTaskRunnable(TaskConfig taskConfig, ExecutionPattern executionPattern, Long parentLogId, String params) {
         return new TaskExecutionJob(
                 taskConfig,
                 applicationContext,
@@ -310,7 +307,7 @@ public class CoreSchedulerService implements SchedulingConfigurer, ApplicationLi
                 0,
                 executionPattern,
                 parentLogId,
-                taskConfig.getParameters(),
+                StringUtils.hasText(params) ? params : taskConfig.getParameters(),
                 executionPattern == ExecutionPattern.WORKFLOW_STEP ? taskConfig.getWorkflowNodeId() : null,
                 null // A new log will be created, so no initial log id
         );

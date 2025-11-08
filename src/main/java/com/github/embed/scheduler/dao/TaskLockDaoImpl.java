@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -123,9 +124,10 @@ public class TaskLockDaoImpl implements TaskLockDao {
             jdbcTemplate.update(INSERT_LOCK_SQL, lockName, ownerInstanceId, leastDurationSeconds);
             // 插入成功，我们获得了锁，版本为 1
             return Optional.of(new TaskLock(lockName, ownerInstanceId, 1));
-        } catch (DuplicateKeyException e) {
+        } catch ( DataIntegrityViolationException e) {
             // 主键冲突，锁已存在。进入步骤 2。
-        } catch (Exception e) {
+            logger.warn("Lock [{}] already exists, cannot insert. Trying to update expired lock.", lockName);
+        }catch (Exception e) {
             // 其他数据库异常
             // log.error("Error while trying to insert lock", e);
             return Optional.empty();

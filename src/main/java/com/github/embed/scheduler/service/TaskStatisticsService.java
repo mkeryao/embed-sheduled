@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,13 +26,13 @@ public class TaskStatisticsService {
      * into Map<String, Long> {"SUCCESS": 10L}.
      * @return A map where keys are states and values are their counts.
      */
-    public Map<String, Long> getGlobalExecutionStateCounts() {
-        List<Map<String, Object>> rawCounts = taskExecuteLogDao.getOverallStatusCounts(); // Reusing existing DAO method
+    public Map<String, Long> getGlobalExecutionStateCounts(String taskGroup) {
+        List<Map<String, Object>> rawCounts = taskExecuteLogDao.getOverallStatusCounts(taskGroup); // Reusing existing DAO method
         Map<String, Long> counts = new HashMap<>();
         for (Map<String, Object> row : rawCounts) {
             String state = (String) row.get("state");
             // The count might be Integer, Long, or BigDecimal depending on DB and JDBC driver
-            Object countValue = row.get("count");
+            Object countValue =  row.get("count");
             if (state != null && countValue instanceof Number) {
                 counts.put(state, ((Number) countValue).longValue());
             } else if (state != null) {
@@ -57,9 +58,9 @@ public class TaskStatisticsService {
      * Uses the new DAO method getPerTaskSuccessFailureCounts().
      * @return A list of maps, where each map contains task_id, task_name, success_count, failed_count.
      */
-    public List<Map<String, Object>> getTaskBreakdownStatistics() {
+    public List<Map<String, Object>> getTaskBreakdownStatistics(String taskGroup) {
         // This DAO method already joins with task_config to get task_name
-        return taskExecuteLogDao.getPerTaskSuccessFailureCounts();
+        return taskExecuteLogDao.getPerTaskSuccessFailureCounts(taskGroup);
     }
 
     /**
@@ -69,11 +70,11 @@ public class TaskStatisticsService {
      * @param limit The number of top tasks to retrieve.
      * @return A list of maps, where each map contains task_id, task_name, and avg_duration_ms.
      */
-    public List<Map<String, Object>> getTopNTasksByAverageExecutionTime(int limit) {
+    public List<Map<String, Object>> getTopNTasksByAverageExecutionTime(String taskGroup , int limit) {
         if (limit <= 0) {
             limit = 5; // Default to a sensible limit
         }
-        return taskExecuteLogDao.getTopNAverageExecutionTimes(limit);
+        return taskExecuteLogDao.getTopNAverageExecutionTimes(taskGroup , limit);
     }
 
 }

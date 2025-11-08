@@ -140,7 +140,9 @@ public class BeanTaskExecutor implements TaskExecutor {
     }
 
     private String resolveParameters(TaskExecuteLog log, TaskConfig taskConfig) {
-        if (log.getTaskPattern() == ExecutionPattern.WORKFLOW_STEP && StringUtils.hasText(log.getParameters())) {
+        if ( (log.getTaskPattern() == ExecutionPattern.WORKFLOW_STEP
+               || log.getTaskPattern() == ExecutionPattern.MANUAL )
+                && StringUtils.hasText(log.getParameters())) {
             logger.debug("Using parameters from workflow node log for log ID {}.", log.getLogId());
             return log.getParameters();
         }

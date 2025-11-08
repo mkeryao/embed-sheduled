@@ -970,11 +970,12 @@ if (typeof window.tasksUiInitialized === 'undefined') {
         $('#confirmManualTriggerBtn').off('click').on('click', function() {
             var inputName = $('#manualTriggerTaskNameInput').val().trim();
             var taskId = $('#manualTriggerTaskId').val();
+            var params = $('#manualTriggerParams').val();
             var expectedName = $('#manualTriggerTaskNameInput').attr('placeholder');
 
             if (inputName === expectedName) {
                 // 通过API触发任务
-                makeApiCall('POST', `/tasks/${taskId}/trigger`, null,
+                makeApiCall('POST', `/tasks/${taskId}/trigger`, params,
                     function () {
                         $('#manualTriggerConfirmModal').modal('hide');
                         showFeedback(i18n.translate('tasksPage.feedback.taskTriggered', "Task {{taskId}} triggered successfully!").replace('{{taskId}}', taskId), false);

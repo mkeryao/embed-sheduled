@@ -1,8 +1,9 @@
 package com.github.embed.scheduler.dao;
 
-import com.github.embed.scheduler.entity.TaskWorkflowNodeState;
-import com.github.embed.scheduler.enums.ExecutionState;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
+
+import javax.annotation.Resource;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
@@ -11,8 +12,8 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Resource;
-import java.util.List;
+import com.github.embed.scheduler.entity.TaskWorkflowNodeState;
+import com.github.embed.scheduler.enums.ExecutionState;
 
 @Repository
 public class TaskWorkflowNodeStateDaoImpl implements TaskWorkflowNodeStateDao {

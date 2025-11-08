@@ -286,6 +286,8 @@ window.translations.en = {
             "title": "Confirm Manual Trigger",
             "message": "To prevent accidental action, please enter the task name to confirm manual trigger:",
             "inputPlaceholder": "Enter task name",
+            "paramsLabel": "Custom Parameters",
+            "paramsPlaceholder": "If empty, the task's default parameters will be used",
             "validationError": "Task name does not match. Please enter the correct name",
             "confirmBtn": "Confirm Trigger"
         },
@@ -420,7 +422,8 @@ window.translations.en = {
             "running": "Running",
             "timed_out": "Timed Out",
             "skipped": "Skipped",
-            "cancelled": "Cancelled"
+            "cancelled": "Cancelled",
+            "not_execute": "Not Executed"
         },
         "status": {
             "success": "Success",

@@ -286,6 +286,8 @@ window.translations.zh = {
       "title": "确认手动触发任务",
       "message": "为防止误操作，请输入任务名称以确认手动触发：",
       "inputPlaceholder": "输入任务名称",
+      "paramsLabel": "自定义参数",
+      "paramsPlaceholder": "如果为空，则使用任务默认参数",
       "validationError": "任务名称不匹配，请输入正确的任务名称",
       "confirmBtn": "确认触发"
     },
@@ -421,7 +423,8 @@ window.translations.zh = {
       "running": "运行中",
       "timed_out": "超时",
       "skipped": "跳过",
-      "cancelled": "取消"
+      "cancelled": "取消",
+      "not_execute": "未执行"
     },
     "status": {
       "success": "成功",
