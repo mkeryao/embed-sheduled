@@ -1,12 +1,10 @@
 package com.github.embed.scheduler.controller;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors; // Fastjson import
+
+import com.github.embed.scheduler.util.CronExpressionUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory; // Fastjson TypeReference
@@ -16,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus; // Added
 import org.springframework.http.ResponseEntity; // Added
 import org.springframework.scheduling.support.CronExpression; // Added
+import org.springframework.scheduling.support.CronSequenceGenerator;
 import org.springframework.util.StringUtils; // Added for new endpoint
 import org.springframework.web.bind.annotation.DeleteMapping; // Added
 import org.springframework.web.bind.annotation.GetMapping; // Added for new endpoint
@@ -131,14 +130,15 @@ public class TaskConfigController {
         // For non-workflow tasks, if cron is provided, it must be valid. If not provided, it's allowed.
         // For workflow tasks (type 10), cron is mandatory.
         if (taskConfigDto.getTaskType() != 10) {
-            if (StringUtils.hasText(taskConfigDto.getCronExpression()) && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+            if (StringUtils.hasText(taskConfigDto.getCronExpression())
+                    && !CronExpressionUtil.isValidExpression2(taskConfigDto.getCronExpression())) {
                 return ResponseEntity.badRequest().body("Invalid CRON expression format.");
             }
         } else { // Workflow task
             if (!StringUtils.hasText(taskConfigDto.getCronExpression())) {
                 return ResponseEntity.badRequest().body("CRON expression is required for workflow tasks.");
             }
-            if (!CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+            if (!CronExpressionUtil.isValidExpression2(taskConfigDto.getCronExpression())) {
                 return ResponseEntity.badRequest().body("Invalid CRON expression format for workflow.");
             }
         }
@@ -226,14 +226,15 @@ public class TaskConfigController {
         // For non-workflow tasks, if cron is provided, it must be valid.
         // For workflow tasks (type 10), cron is mandatory.
         if (taskConfigDto.getTaskType() != 10) {
-            if (StringUtils.hasText(taskConfigDto.getCronExpression()) && !CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+            if (StringUtils.hasText(taskConfigDto.getCronExpression())
+                    && !CronExpressionUtil.isValidExpression2(taskConfigDto.getCronExpression())) {
                 return ResponseEntity.badRequest().body("Invalid CRON expression format.");
             }
         } else { // Workflow task
             if (!StringUtils.hasText(taskConfigDto.getCronExpression())) {
                 return ResponseEntity.badRequest().body("CRON expression is required for workflow tasks.");
             }
-            if (!CronExpression.isValidExpression(taskConfigDto.getCronExpression())) {
+            if (!CronExpressionUtil.isValidExpression2(taskConfigDto.getCronExpression())) {
                 return ResponseEntity.badRequest().body("Invalid CRON expression format for workflow.");
             }
         }
@@ -402,6 +403,7 @@ public class TaskConfigController {
         return ResponseEntity.ok("Task " + id + " disabled successfully.");
     }
 
+
     @GetMapping("/validate-cron")
     public ResponseEntity<Map<String, Object>> validateCronAndGetNextTimes(
             @RequestParam String cronExpression,
@@ -413,40 +415,38 @@ public class TaskConfigController {
             response.put("error", "CRON expression cannot be empty.");
             return ResponseEntity.badRequest().body(response);
         }
-
-        boolean isValid = CronExpression.isValidExpression(cronExpression);
-        response.put("isValid", isValid);
-
-        if (isValid) {
-            try {
-                CronExpression cron = CronExpression.parse(cronExpression);
-                List<String> nextTimes = new ArrayList<>();
-                LocalDateTime next = LocalDateTime.now();
-                for (int i = 0; i < count; i++) {
-                    next = cron.next(next);
-                    if (next == null) { // Should ideally not happen with a valid expression that has future dates
-                        break;
+        try{
+            CronExpression cron = CronExpressionUtil.cronExpression2(cronExpression) ;
+            if (Objects.nonNull(cron)) {
+                try {
+                    List<String> nextTimes = new ArrayList<>();
+                    LocalDateTime next = LocalDateTime.now();
+                    for (int i = 0; i < count; i++) {
+                        next = cron.next(next);
+                        if (next == null) { // Should ideally not happen with a valid expression that has future dates
+                            break;
+                        }
+                        nextTimes.add(next.toString());
                     }
-                    nextTimes.add(next.toString());
+                    response.put("nextExecutionTimes", nextTimes);
+                    return ResponseEntity.ok(response);
+                } catch (IllegalArgumentException e) {
+                    response.put("isValid", true); // Correct the status if parse fails
+                    response.put("error",
+                            "Failed to parse CRON expression or determine next execution time: " + e.getMessage());
+                    return ResponseEntity.ok(response);
                 }
-                response.put("nextExecutionTimes", nextTimes);
-                return ResponseEntity.ok(response);
-            } catch (IllegalArgumentException e) {
-                // This catch might be redundant if isValidExpression is comprehensive
-                // but good as a safeguard if parse has stricter checks or for unforeseen
-                // issues.
-                response.put("isValid", true); // Correct the status if parse fails
-                response.put("error",
-                        "Failed to parse CRON expression or determine next execution time: " + e.getMessage());
-                // Still return 200 OK as it's a validation endpoint, but indicate failure in
-                // body
+            } else {
+                response.put("error", "Invalid CRON expression format.");
                 return ResponseEntity.ok(response);
             }
-        } else {
-            response.put("error", "Invalid CRON expression format.");
-            // Return 200 OK with isValid:false, as per common validation endpoint patterns
-            return ResponseEntity.ok(response);
+        }catch (Exception ex ){
+            response.put("isValid", false);
+            response.put("error", ex.getMessage() ) ;
+            return ResponseEntity.badRequest().body(response);
         }
+
+
     }
 
     @GetMapping("/{id}/next-runs")
