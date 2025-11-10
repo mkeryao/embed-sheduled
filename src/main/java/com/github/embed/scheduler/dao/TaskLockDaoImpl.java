@@ -1,6 +1,7 @@
 package com.github.embed.scheduler.dao;
 
 import com.github.embed.scheduler.entity.TaskLock;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Objects;
@@ -124,12 +126,12 @@ public class TaskLockDaoImpl implements TaskLockDao {
             jdbcTemplate.update(INSERT_LOCK_SQL, lockName, ownerInstanceId, leastDurationSeconds);
             // 插入成功，我们获得了锁，版本为 1
             return Optional.of(new TaskLock(lockName, ownerInstanceId, 1));
-        } catch ( DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException e) {
             // 主键冲突，锁已存在。进入步骤 2。
             logger.warn("Lock [{}] already exists, cannot insert. Trying to update expired lock.", lockName);
         }catch (Exception e) {
             // 其他数据库异常
-            // log.error("Error while trying to insert lock", e);
+            logger.error("Error while trying to insert lock", e);
             return Optional.empty();
         }
 

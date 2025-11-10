@@ -111,14 +111,39 @@ public class JdbcProcTask {
         String dbProduct = detectDbProduct(jdbcTemplate);
         List<Object> params = collectParams(context);
 
-        log.info("Executing stored procedure/function (with return) on DB {}: proc={} params={} returnSqlType={}", dbProduct, procName, params, returnSqlType);
+        log.info("Executing stored procedure/function (with return) on DB" +
+                " {}: proc={} params={} returnSqlType={}", dbProduct, procName, params, returnSqlType);
         try {
             if (MYSQL_DB.equals(dbProduct)) {
                 // For MySQL functions, prefer SELECT func(?,...)
-                String selectSql = buildSelectFunctionSql(procName, params.size());
-                log.debug("[MySQL SELECT invocation: {}]", selectSql);
-                Object val = jdbcTemplate.queryForObject(selectSql, params.toArray(), Object.class);
-                context.put("result", val);
+                // Stored procedure: user can specify out param position via outParamIndex (1-based), default 1
+                int outIndex = MapUtils.getIntValue(context, "outParamIndex", 1);
+                String callSql = buildCallSqlWithOutAt(procName, params.size(), outIndex);
+                log.debug("[MySQL CALL invocation: {}] outIndex={}", callSql, outIndex);
+                Object returnValue = jdbcTemplate.execute(connection -> {
+                    CallableStatement cs = connection.prepareCall(callSql);
+                    cs.registerOutParameter(outIndex, returnSqlType);
+                    // map input params into callable statement skipping the outIndex
+                    for (int i = 0; i < params.size(); i ++ ) {
+                        Object p = params.get(i);
+                        int pos = i + 1;
+                        if (pos >= outIndex) pos ++ ; // shift right when reaching/after out param
+                        if (p == null) {
+                            cs.setNull(pos, sqlTypeForObject(null));
+                        } else {
+                            cs.setObject(pos, p);
+                        }
+                    }
+                    return cs;
+                }, (CallableStatement cs) -> {
+                    cs.execute();
+                    try {
+                        return cs.getObject(outIndex);
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+                context.put("result", returnValue);
                 return context;
             } else if (SQLSERVER_DB.equals(dbProduct)) {
                 // For SQL Server, call stored procedure with OUT as first param: {call proc(?,...)}
@@ -265,10 +290,24 @@ public class JdbcProcTask {
         return sb.toString();
     }
 
+    private String buildCallSqlWithOutAt(String procName, int inputParamCount, int outParamIndex) {
+        int total = inputParamCount + 1;
+        if (outParamIndex < 1) outParamIndex = 1;
+        if (outParamIndex > total) outParamIndex = total;
+        StringBuilder sb = new StringBuilder();
+        sb.append("{call ").append(procName).append("(");
+        for (int i = 1; i <= total; i++) {
+            if (i > 1) sb.append(", ");
+            sb.append("?");
+        }
+        sb.append(")}");
+        return sb.toString();
+    }
+
     // Detect DB product name from JdbcTemplate's DataSource
     private String detectDbProduct(JdbcTemplate jdbcTemplate) {
         DataSource ds = jdbcTemplate.getDataSource();
-        if (Objects.nonNull(ds)) return UNKOWN_DB ;
+        if (Objects.isNull(ds)) return UNKOWN_DB ;
         try (Connection conn = ds.getConnection()) {
             String product = conn.getMetaData().getDatabaseProductName();
             if (product == null) return UNKOWN_DB ;
