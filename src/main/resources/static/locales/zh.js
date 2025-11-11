@@ -436,8 +436,8 @@ window.translations.zh = {
     },
     "logDetailModal": {
       "title": "日志详情",
-      "messageLabel": "消息：",
-      "exceptionLabel": "异常："
+      "messageLabel": "消息",
+      "exceptionLabel": "异常"
     },
     "logDetails": {
       "title": "日志详情",

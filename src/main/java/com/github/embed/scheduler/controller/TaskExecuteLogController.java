@@ -15,6 +15,7 @@ import com.github.embed.scheduler.dto.WorkflowInstanceNodeStatusDto; // Added
 import com.github.embed.scheduler.dto.workflow.WorkflowNode; // Added
 import com.github.embed.scheduler.dto.workflow.WorkflowEdge; // Added
 import com.github.embed.scheduler.entity.TaskConfig; // Added
+import com.github.embed.scheduler.entity.TaskExecuteLog;
 import com.alibaba.fastjson.JSON; // Added
 import org.springframework.util.StringUtils; // Added
 
@@ -117,10 +118,27 @@ public class TaskExecuteLogController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TaskExecuteLog> getLogById(@PathVariable Long id) {
-        return taskExecuteLogDao.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getLogById(@PathVariable Long id) {
+        Optional<TaskExecuteLog> logOpt = taskExecuteLogDao.findById(id);
+        if (!logOpt.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+        TaskExecuteLog log = logOpt.get();
+        
+        String taskName = null;
+        ExecutionMode executionMode = null;
+
+        if (log.getTaskId() != null) {
+            Optional<TaskConfig> configOpt = taskConfigDao.findById(log.getTaskId());
+            if (configOpt.isPresent()) {
+                TaskConfig config = configOpt.get();
+                taskName = config.getTaskName();
+                executionMode = config.getExecutionMode();
+            }
+        }
+
+        TaskExecuteLogDto dto = TaskExecuteLogDto.fromEntity(log, null, taskName, executionMode);
+        return ResponseEntity.ok(dto);
     }
 
     // --- Statistics Endpoints ---

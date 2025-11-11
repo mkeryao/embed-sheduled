@@ -103,9 +103,23 @@
                 <p><strong data-i18n-key="logsPage.logDetails.logId">Log ID:</strong> <span id="modalLogId"></span></p>
                 <p><strong data-i18n-key="logsPage.logDetails.taskId">Task ID:</strong> <span id="modalTaskId"></span></p>
                 <p><strong data-i18n-key="logsPage.logDetails.taskName">Task Name:</strong> <span id="modalTaskName"></span></p>
+                <div class="row">
+                            <div class="col-md-6">
+                                <p><strong><span data-i18n-key="logsPage.logTable.executionMode"></span></strong> <span id="modalExecutionMode"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong><span data-i18n-key="logsPage.logTable.taskPattern"></span></strong> <span id="modalTaskPattern"></span></p>
+                            </div>
+                        </div>
                 <p><strong data-i18n-key="logsPage.logDetails.instanceId">Instance ID:</strong> <span id="modalInstanceId"></span></p>
-                <p><strong data-i18n-key="logsPage.logDetails.taskPattern">Instance ID:</strong> <span id="modalTaskPattern"></span></p>
                 <p><strong data-i18n-key="logsPage.logDetails.status">Status:</strong> <span id="modalLogStatus"></span></p>
+                <div id="retryInfo" style="display:none;">
+                    <p><strong data-i18n-key="logsPage.logDetails.attemptNumber">Attempt Number:</strong> <span id="modalAttemptNumber"></span></p>
+                </div>
+                <div class="form-group">
+                    <label for="modalLogParameters" data-i18n-key="logsPage.logDetails.parameters">Parameters:</label>
+                    <textarea readonly class="form-control" id="modalLogParameters" rows="3"></textarea>
+                </div>
                 <div class="form-group">
                     <label for="modalLogMessage" data-i18n-key="logsPage.logDetailModal.messageLabel">Message:</label>
                     <textarea readonly class="form-control" id="modalLogMessage" rows="5"></textarea>
@@ -232,30 +246,7 @@
             return `<span class="badge ${badgeClass}">${translatedState}</span>`;
         }
 
-        function displayLogs(logsToDisplay) {
-            currentLogs = logsToDisplay; // Update currentLogs with the set being displayed
-            const tableBody = $('#logs-table-body');
-            tableBody.empty();
-
-            if (!logsToDisplay || logsToDisplay.length === 0) {
-                tableBody.html(`<tr><td colspan="11" class="text-center">${i18n.translate('logsPage.logTable.noLogsFound', 'No logs found for the current filter.')}</td></tr>`);
-                setupPagination(0);
-                return;
-            }
-
-            const startIndex = (currentPage - 1) * rowsPerPage;
-            const endIndex = startIndex + rowsPerPage;
-            const paginatedItems = logsToDisplay.slice(startIndex, endIndex);
-
-            paginatedItems.forEach(function(log) {
-                const duration = calculateDuration(log.startTime, log.endTime);
-                let actionsHtml = `<button class="btn btn-xs btn-outline-secondary view-log-details-btn" data-log-id="${log.logId}" title="${i18n.translate('logsPage.viewDetailsBtnTitle', 'View Full Log Details')}">${i18n.translate('logsPage.viewDetailsBtn', 'Details')}</button>`;
-
-                if (log.taskType === 10) { // Assuming taskType is available in the log object
-                    actionsHtml += `<button class="btn btn-sm btn-outline-primary view-workflow-btn ml-1" data-workflow-log-id="${log.logId}" title="${i18n.translate('logsPage.viewWorkflowBtnTitle', 'View Workflow Details')}">${i18n.translate('logsPage.viewWorkflowBtn', 'View Flow')}</button>`;
-                }
-
-                function formatExecutionMode(mode) {
+        function formatExecutionMode(mode) {
                     if (!mode) return `<span class="badge badge-secondary">-</span>`;
                     const modeMap = {
                         'BROADCAST': {
@@ -272,8 +263,7 @@
                         class: 'badge-secondary'
                     };
                     return `<span class="badge ${modeInfo.class}">${modeInfo.text}</span>`;
-                }
-
+                } ;
                 function formatTaskPattern(mode) {
                     if (!mode.taskPattern) return `<span class="badge badge-secondary">-</span>`;
                     const modeMap = {
@@ -298,11 +288,36 @@
                             class: 'badge-success'
                         }
                     };
+
                     const modeInfo = modeMap[mode.taskPattern.toUpperCase()] || {
                         text: mode.taskPattern,
                         class: 'badge-secondary'
                     };
                     return `<span class="badge ${modeInfo.class}">${modeInfo.text}</span>`;
+                     
+                }
+
+        function displayLogs(logsToDisplay) {
+            currentLogs = logsToDisplay; // Update currentLogs with the set being displayed
+            const tableBody = $('#logs-table-body');
+            tableBody.empty();
+
+            if (!logsToDisplay || logsToDisplay.length === 0) {
+                tableBody.html(`<tr><td colspan="11" class="text-center">${i18n.translate('logsPage.logTable.noLogsFound', 'No logs found for the current filter.')}</td></tr>`);
+                setupPagination(0);
+                return;
+            }
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const paginatedItems = logsToDisplay.slice(startIndex, endIndex);
+
+            paginatedItems.forEach(function(log) {
+                const duration = calculateDuration(log.startTime, log.endTime);
+                let actionsHtml = `<button class="btn btn-xs btn-outline-secondary view-log-details-btn" data-log-id="${log.logId}" title="${i18n.translate('logsPage.viewDetailsBtnTitle', 'View Full Log Details')}">${i18n.translate('logsPage.viewDetailsBtn', 'Details')}</button>`;
+
+                if (log.taskType === 10) { // Assuming taskType is available in the log object
+                    actionsHtml += `<button class="btn btn-sm btn-outline-primary view-workflow-btn ml-1" data-workflow-log-id="${log.logId}" title="${i18n.translate('logsPage.viewWorkflowBtnTitle', 'View Workflow Details')}">${i18n.translate('logsPage.viewWorkflowBtn', 'View Flow')}</button>`;
                 }
 
 
@@ -333,19 +348,31 @@
 
         $('#logs-table-body').on('click', '.view-log-details-btn', function() {
             const logId = $(this).data('log-id');
-            const logEntry = currentLogs.find(log => log.logId === logId); // Find from currently displayed logs
+            makeApiCall('GET', `/logs/${logId}`, null, function(logEntry) {
+                if (logEntry) {
+                    $('#modalLogId').text(logEntry.logId);
+                    $('#modalTaskId').text(logEntry.taskId);
+                    $('#modalTaskName').text(logEntry.taskName || '-');
+                    $('#modalExecutionMode').html(formatExecutionMode(logEntry.executionMode) || '-');
+                    $('#modalTaskPattern').html(formatTaskPattern(logEntry) || '-');
+                    $('#modalInstanceId').text(logEntry.instanceId || '-');
+                    $('#modalLogStatus').html(formatStateWithBadge(logEntry.state));
+                    $('#modalLogParameters').val(logEntry.parameters || '');
+                    $('#modalLogMessage').val(logEntry.rtnMsg || '');
+                    $('#modalLogException').val(logEntry.exMsg || '');
 
-            if (logEntry) {
-                $('#modalLogId').text(logEntry.logId);
-                $('#modalTaskId').text(logEntry.taskId);
-                $('#modalTaskName').text(logEntry.taskName || '-');
-                $('#modalTaskPattern').text(logEntry.taskPattern || '-');
-                $('#modalInstanceId').text(logEntry.instanceId || '-');
-                $('#modalLogStatus').html(formatStateWithBadge(logEntry.state));
-                $('#modalLogMessage').val(logEntry.rtnMsg || '');
-                $('#modalLogException').val(logEntry.exMsg || '');
-                $('#logDetailModal').modal('show');
-            }
+                    if (logEntry.taskPattern === 'RETRY' && logEntry.attemptNumber > 0) {
+                        $('#modalAttemptNumber').text(logEntry.attemptNumber);
+                        $('#retryInfo').show();
+                    } else {
+                        $('#retryInfo').hide();
+                    }
+
+                    $('#logDetailModal').modal('show');
+                }
+            }, function(jqXHR) {
+                showError(i18n.translate('logsPage.feedback.errorLoadingLogs', 'Error loading log details: ') + jqXHR.statusText);
+            });
         });
 
 
